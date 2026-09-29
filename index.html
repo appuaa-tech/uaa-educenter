@@ -3501,8 +3501,11 @@ function vColl(s, key, embedded){
     <div class="body">${viewFields(SCHEMA[c.schema].flatMap(sec=>sec.fields).filter(f=>!['fecha','hora','tipo','modalidad','estado','etapa','lugar','profesional','motivo','respuesta','asignatura','cumplimiento','nota'].includes(f.k) && !(empty(x[f.k]) && f.t!=='bool')), x, ctx)}${key==='medidas'?medBody(x):''}${key==='adaptadas'?(()=>{ const g = adapGap(s,x); return (g.falta.length&&x.estado!=='Por adaptar')?`<p class="gapnote">${ic('alert','sm inl3')} Acordadas en el PAEC/PACI y no marcadas: ${esc(g.falta.join(', '))}</p>`:''; })()+(x.motivo?`<dl class="fields" style="margin-top:10px"><div class="w2"><dt>Motivo</dt><dd>${esc(x.motivo)}</dd></div></dl>`:'')+(x.respuesta?`<dl class="fields" style="margin-top:10px"><div class="w2"><dt>Cómo respondió</dt><dd>${esc(x.respuesta)}</dd></div></dl>`:''):''}${x._creado?`<p class="audit">Registrado ${esc(fmtTs(x._creado))} por ${esc(whoName(x._por))}${x._mod&&x._mod!==x._creado?` · modificado ${esc(fmtTs(x._mod))} por ${esc(whoName(x._modPor))}`:''}</p>`:''}</div></article>`).join('')}</div>`:`<p class="empty">Sin registros todavía.</p>`}`;
 }
 
+function agendaExtra(){ return []; }
+function agendaExtraSlot(x){ return ''; }
+function agendaExtraBar(){ return ''; }
 function vAgenda(){
-  const all = S.data.students.flatMap(s=>(s.sesiones||[]).map(x=>({...x, s}))).filter(x=>!S.fprof || x.profesional===S.fprof);
+  const all = S.data.students.flatMap(s=>(s.sesiones||[]).map(x=>({...x, s}))).filter(x=>!S.fprof || x.profesional===S.fprof).concat(agendaExtra());
   const start = new Date(TODAY); const wd = (start.getDay()+6)%7; start.setDate(start.getDate()-wd-7);
   const days = Array.from({length:28},(_,i)=>{ const d = new Date(start); d.setDate(d.getDate()+i); return isoOf(d); });
   const count = f => all.filter(x=>x.fecha===f).length;
@@ -3515,8 +3518,8 @@ function vAgenda(){
   return `${demoBanner()}<header class="pagehead"><div><p class="eyebrow">${cap(monthLbl)}</p><h1>Agenda del <b>equipo</b></h1></div><div class="actions"><select id="fprof" class="selpill" aria-label="Profesional"><option value="">Todo el equipo</option>${S.data.equipo.map(p=>`<option value="${p.id}" ${S.fprof===p.id?'selected':''}>${esc(p.nombre)}</option>`).join('')}</select><button class="btn primary" data-act="new-session">${ic('plus')} Nueva sesión</button></div></header>
   <section class="glass card" style="margin-bottom:18px"><header><h2>Calendario</h2>${S.fday?`<button class="btn sm" data-act="day" data-d="">${ic('x','sm')} Quitar filtro de día</button>`:''}</header>
   <div class="days" id="daystrip">${days.map(f=>{ const d = parse(f), n = count(f); return `<button class="daypill ${f===isoOf(TODAY)?'today':''}" data-act="day" data-d="${f}" aria-pressed="${S.fday===f}" ${f===isoOf(TODAY)?'id="today-pill"':''}><small>${d.toLocaleDateString('es-CL',{weekday:'short'}).replace('.','')}</small><b>${d.getDate()}</b><span class="dots">${'<i></i>'.repeat(Math.min(n,3))}</span></button>`; }).join('')}</div></section>
-  <section class="glass card"><header><h2>${S.fday?'Línea de tiempo':'Sesiones'}</h2>${S.fday?`<span class="chip">${cap(parse(S.fday).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'}))}</span>`:`<div class="seg"><button aria-selected="${S.frange==='proximas'}" data-act="range" data-r="proximas">Próximas</button><button aria-selected="${S.frange==='pasadas'}" data-act="range" data-r="pasadas">Últimos 30 días</button><button aria-selected="${S.frange==='todas'}" data-act="range" data-r="todas">Todas</button></div>`}</header>
-  ${byDay.length?`<div class="timeline">${byDay.map(g=>`<div class="tday">${S.fday?'':`<h3>${relDay(g.f)} · ${parse(g.f).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'short'})}</h3>`}${g.items.map(x=>`<div class="tslot"><span class="h">${esc(x.hora||'—')}</span><div class="tchip"><span class="icw ${AREA_AV(x.s.nombre)}">${initials(x.s.nombre)}</span><div class="main"><button class="t" data-act="open" data-sid="${x.s.id}" data-tab="sesiones">${esc(x.s.nombre)}</button><div class="d">${esc(x.modalidad||'Sesión')} · ${esc(profName(x.profesional))}${x.duracion?' · '+esc(x.duracion)+' min':''}</div></div><span class="pill ${estadoCls(x.estado)}">${esc(x.estado||'—')}</span>${x.estado==='Programada'?`<button class="btn sm" data-act="mark-done" data-sid="${x.s.id}" data-id="${x.id}">${ic('check','sm')} Realizada</button>`:''}</div></div>`).join('')}</div>`).join('')}</div>`:'<p class="empty">No hay sesiones en este período.</p>'}</section>`;
+  <section class="glass card"><header><h2>${S.fday?'Línea de tiempo':'Sesiones'}</h2>${S.fday?`<span class="chip">${cap(parse(S.fday).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'}))}</span>`:`<div class="seg"><button aria-selected="${S.frange==='proximas'}" data-act="range" data-r="proximas">Próximas</button><button aria-selected="${S.frange==='pasadas'}" data-act="range" data-r="pasadas">Últimos 30 días</button><button aria-selected="${S.frange==='todas'}" data-act="range" data-r="todas">Todas</button></div>`}</header>${agendaExtraBar()}
+  ${byDay.length?`<div class="timeline">${byDay.map(g=>`<div class="tday">${S.fday?'':`<h3>${relDay(g.f)} · ${parse(g.f).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'short'})}</h3>`}${g.items.map(x=> x.g ? agendaExtraSlot(x) : `<div class="tslot"><span class="h">${esc(x.hora||'—')}</span><div class="tchip"><span class="icw ${AREA_AV(x.s.nombre)}">${initials(x.s.nombre)}</span><div class="main"><button class="t" data-act="open" data-sid="${x.s.id}" data-tab="sesiones">${esc(x.s.nombre)}</button><div class="d">${esc(x.modalidad||'Sesión')} · ${esc(profName(x.profesional))}${x.duracion?' · '+esc(x.duracion)+' min':''}</div></div><span class="pill ${estadoCls(x.estado)}">${esc(x.estado||'—')}</span>${x.estado==='Programada'?`<button class="btn sm" data-act="mark-done" data-sid="${x.s.id}" data-id="${x.id}">${ic('check','sm')} Realizada</button>`:''}</div></div>`).join('')}</div>`).join('')}</div>`:'<p class="empty">No hay sesiones en este período.</p>'}</section>`;
 }
 
 function vEquipo(){
@@ -3978,6 +3981,149 @@ document.addEventListener('click', e=>{
   if(act==='wipe' || act==='reseed'){ stop(); toast('No disponible en la versión compartida', true); return; }
   if(act==='restore' && myRol()!=='coordinacion'){ stop(); toast('Solo la coordinación puede restaurar datos', true); return; }
 }, true);
+
+/* ================= Google Calendar (versión compartida) ================= */
+const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+const GAPI = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+const TZ = 'America/Santiago';
+const G = {tok:null, exp:0, err:null, items:[], range:'', ts:0, busy:false, syncing:false, del:[]};
+try{ const t = JSON.parse(sessionStorage.getItem('uaa-gtok')||'null'); if(t && t.exp > Date.now()){ G.tok = t.tok; G.exp = t.exp; } }catch(e){}
+const gOk = () => !!G.tok && G.exp > Date.now();
+function gSetTok(tok){ G.tok = tok; G.exp = Date.now() + 55*60*1000; G.err = null; try{ sessionStorage.setItem('uaa-gtok', JSON.stringify({tok, exp:G.exp})); }catch(e){} }
+function gDrop(err){ G.tok = null; G.exp = 0; G.err = err; try{ sessionStorage.removeItem('uaa-gtok'); }catch(e){} }
+const gPref = () => { try{ return JSON.parse(localStorage.getItem('uaa-gcal-'+(C.perfil?.email||''))||'{"ses":true}'); }catch(e){ return {ses:true}; } };
+const gSetPref = p => { try{ localStorage.setItem('uaa-gcal-'+(C.perfil?.email||''), JSON.stringify(p)); }catch(e){} };
+
+/* el ingreso pide también permiso sobre el calendario */
+cloudLogin = async function(reconnect){
+  const qp = {access_type:'online', include_granted_scopes:'true', ...(CFG.dominio?{hd:CFG.dominio}:{})};
+  if(reconnect && C.perfil?.email) qp.login_hint = C.perfil.email; else qp.prompt = 'select_account';
+  const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: location.origin + location.pathname, scopes:GCAL_SCOPE, queryParams:qp}});
+  if(error) (C.ready ? toast('No se pudo conectar con Google: '+error.message, true) : showLogin('No se pudo iniciar sesión: '+esc(error.message)));
+};
+const _startSessionG = startSession;
+startSession = async function(session){
+  if(session?.provider_token) gSetTok(session.provider_token);
+  await _startSessionG(session);
+  if(C.ready && myRol()==='coordinacion') fillCorreos();
+  if(C.ready && isTeam()) setTimeout(gSync, 1500);
+};
+async function fillCorreos(){
+  const {data} = await sb.from('perfiles').select('email,equipo_id').eq('activo', true);
+  let n = 0; (data||[]).forEach(p=>{ const e = S.data.equipo.find(x=>x.id===p.equipo_id); if(e && e.correo !== p.email){ e.correo = p.email; n++; } });
+  if(n) cloudPersist();
+}
+
+async function gFetch(url, opt={}){
+  if(!gOk()) throw {code:'no_token'};
+  const r = await fetch(url, {...opt, headers:{Authorization:'Bearer '+G.tok, 'Content-Type':'application/json', ...(opt.headers||{})}});
+  if(r.status===401){ gDrop('expired'); refreshSoon(); throw {code:'expired'}; }
+  if(r.status===403){ const j = await r.json().catch(()=>({})); const msg = JSON.stringify(j); if(/insufficient|scope|PERMISSION/i.test(msg)){ gDrop('scope'); refreshSoon(); } throw {code:'forbidden', msg}; }
+  if(r.status===404 || r.status===410) return null;
+  if(!r.ok) throw {code:'http', status:r.status};
+  return r.status===204 ? null : r.json();
+}
+
+/* ---- lectura: eventos del calendario en la agenda ---- */
+function agendaRange(){ const start = new Date(TODAY); const wd = (start.getDay()+6)%7; start.setDate(start.getDate()-wd-7); const end = new Date(start); end.setDate(end.getDate()+28); return [start, end]; }
+async function gLoad(force){
+  if(!gOk() || G.busy) return; const [a, b] = agendaRange(); const key = isoOf(a);
+  if(!force && G.range===key && Date.now()-G.ts < 5*60*1000) return;
+  G.busy = true;
+  try{
+    const q = new URLSearchParams({timeMin:a.toISOString(), timeMax:b.toISOString(), singleEvents:'true', orderBy:'startTime', maxResults:'250', timeZone:TZ});
+    const j = await gFetch(GAPI+'?'+q);
+    G.items = (j?.items||[]).filter(e=>e.status!=='cancelled' && !e.extendedProperties?.private?.uaa).map(e=>{
+      const dt = e.start?.dateTime, d = e.start?.date; const f = dt ? isoOf(new Date(dt)) : d;
+      const h = dt ? new Date(dt).toLocaleTimeString('es-CL',{hour:'2-digit', minute:'2-digit', hour12:false, timeZone:TZ}) : '';
+      const hf = e.end?.dateTime ? new Date(e.end.dateTime).toLocaleTimeString('es-CL',{hour:'2-digit', minute:'2-digit', hour12:false, timeZone:TZ}) : '';
+      return {g:true, id:e.id, fecha:f, hora:h, horaFin:hf, titulo:e.summary||'(Sin título)', lugar:e.location||'', link:e.htmlLink, meet:e.hangoutLink||'', todoDia:!dt};
+    });
+    G.range = key; G.ts = Date.now(); G.err = null;
+  }catch(e){ if(e.code==='forbidden' && !G.err) G.err = 'api'; }
+  G.busy = false; if(S.view==='agenda') refreshSoon();
+}
+agendaExtra = function(){ if(!isTeam() || (S.fprof && S.fprof!==S.data.usuario)) return []; if(S.view==='agenda') gLoad(); return G.items.slice(); };
+agendaExtraSlot = function(x){
+  return `<div class="tslot"><span class="h">${esc(x.todoDia?'Todo el día':x.hora||'—')}</span><div class="tchip gcal"><span class="icw gcal-ic">${ic('calendar')}</span><div class="main"><a class="t" href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.titulo)}</a><div class="d">Google Calendar${x.horaFin?' · hasta las '+esc(x.horaFin):''}${x.lugar?' · '+esc(x.lugar):''}</div></div>${x.meet?`<a class="btn sm" href="${esc(x.meet)}" target="_blank" rel="noopener">Meet</a>`:''}</div></div>`;
+};
+agendaExtraBar = function(){
+  if(!isTeam()) return '';
+  const p = gPref();
+  if(!gOk()) return `<div class="gcalbar"><span class="small muted">${G.err==='scope'?'Falta el permiso para usar tu Google Calendar.':G.err==='api'?'Google Calendar no está habilitado en el proyecto del colegio.':'Conecta tu Google Calendar para ver tus eventos aquí.'}</span>${G.err==='api'?'':`<button class="btn sm primary" data-act="gcal-connect">${ic('calendar','sm')} ${G.err?'Reconectar':'Conectar'} Google Calendar</button>`}</div>`;
+  return `<div class="gcalbar"><span class="chip ico">${ic('check','sm')} Google Calendar conectado</span><label class="bool small"><input type="checkbox" data-act="gcal-pref" ${p.ses?'checked':''}><span>Agregar mis sesiones a mi calendario</span></label><button class="btn sm" data-act="gcal-reload">Actualizar</button></div>`;
+};
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.gcalbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:-4px 0 14px;padding-bottom:12px;border-bottom:1px solid var(--glass-edge)}
+.tchip.gcal{background:transparent;border:1px dashed var(--glass-edge)}
+.tchip.gcal .t{color:var(--ink);font-weight:700;text-decoration:none}
+.gcal-ic{background:var(--solid);color:var(--navy-2)}
+`; document.head.appendChild(st); })();
+
+/* ---- escritura: sesiones y reuniones programadas ---- */
+const addMin = (f, h, m) => { const d = new Date(`${f}T${h||'00:00'}:00`); d.setMinutes(d.getMinutes()+(+m||0)); return `${isoOf(d)}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:00`; };
+function whenOf(f, h, fin, dur){
+  if(!h) { const n = new Date(f+'T12:00:00'); n.setDate(n.getDate()+1); return {start:{date:f}, end:{date:isoOf(n)}}; }
+  const end = fin ? `${f}T${fin}:00` : addMin(f, h, dur||45);
+  return {start:{dateTime:`${f}T${h}:00`, timeZone:TZ}, end:{dateTime:end, timeZone:TZ}};
+}
+function sesEvent(s, x){
+  return {summary:`Sesión UAA · ${initials(s.nombre)} · ${cursoOf(s)}`, description:`${x.modalidad||'Sesión'} de la Unidad de Apoyo al Aprendizaje.\nDetalle en la plataforma: ${location.origin}`,
+    ...whenOf(x.fecha, x.hora, null, x.duracion), visibility:'private', reminders:{useDefault:true}, extendedProperties:{private:{uaa:'ses', ref:x.id}}};
+}
+function reuEvent(r){
+  const mails = (r.asistentes||[]).filter(id=>id!==S.data.usuario).map(id=>S.data.equipo.find(p=>p.id===id)?.correo).filter(Boolean);
+  return {summary:`Reunión UAA: ${r.tipo||'Reunión de equipo'}`, description:`${r.tabla ? 'Tabla:\n'+r.tabla+'\n\n' : ''}Acta y acuerdos en la plataforma: ${location.origin}`, location:r.lugar||'',
+    ...whenOf(r.fecha, r.hora, r.horaTermino, 60), reminders:{useDefault:true}, extendedProperties:{private:{uaa:'reu', ref:r.id}},
+    ...(r.invitarGcal ? {attendees: mails.map(email=>({email}))} : {})};
+}
+const gHash = ev => JSON.stringify([ev.summary, ev.start, ev.end, ev.location||'', (ev.attendees||[]).map(a=>a.email).sort(), ev.description]);
+async function gUpsert(holder, ev, notify){
+  const h = gHash(ev); const cur = holder.gcal;
+  if(cur && cur.by===S.data.usuario && cur.h===h) return false;
+  const qs = notify ? '?sendUpdates=all' : '';
+  let res = null;
+  if(cur && cur.by===S.data.usuario && cur.id) res = await gFetch(`${GAPI}/${encodeURIComponent(cur.id)}${qs}`, {method:'PATCH', body:JSON.stringify(ev)});
+  if(!res) res = await gFetch(GAPI+qs, {method:'POST', body:JSON.stringify(ev)});
+  if(res?.id){ holder.gcal = {id:res.id, by:S.data.usuario, h}; return true; }
+  return false;
+}
+async function gRemove(g, notify){ if(!g?.id || g.by!==S.data.usuario) return; await gFetch(`${GAPI}/${encodeURIComponent(g.id)}${notify?'?sendUpdates=all':''}`, {method:'DELETE'}).catch(()=>{}); }
+async function gSync(){
+  if(!gOk() || !isTeam() || G.syncing) return; G.syncing = true; let changed = false; const me = S.data.usuario; const from = D(-1);
+  try{
+    while(G.del.length){ const d = G.del.shift(); await gRemove(d.g, d.n); }
+    if(gPref().ses){
+      for(const s of S.data.students) for(const x of (s.sesiones||[])){
+        if(x.profesional!==me) continue;
+        if(x.estado==='Programada' && x.fecha>=from){ if(await gUpsert(x, sesEvent(s, x), false)) changed = true; }
+        else if(x.gcal && x.gcal.by===me && x.estado==='Suspendida'){ await gRemove(x.gcal); delete x.gcal; changed = true; }
+      }
+    }
+    for(const r of (S.data.reuniones||[])){
+      const own = r.gcal ? r.gcal.by===me : (r._por===me);
+      if(!own) continue;
+      if(r.estado==='Programada' && r.fecha>=from){ if(await gUpsert(r, reuEvent(r), !!r.invitarGcal)) { changed = true; } }
+      else if(r.gcal && r.estado==='Suspendida'){ await gRemove(r.gcal, !!r.invitarGcal); delete r.gcal; changed = true; }
+    }
+  }catch(e){ console.warn('gcal', e); }
+  G.syncing = false;
+  if(changed){ cloudPersist(); if(S.view==='agenda') refreshSoon(); }
+}
+const _cloudPersistG = cloudPersist;
+cloudPersist = function(){ _cloudPersistG(); clearTimeout(G.t); G.t = setTimeout(gSync, 1200); };
+persist = cloudPersist;
+(SCHEMA.reunion.find(x=>x.sec==='Participantes')||SCHEMA.reunion[0]).fields.push({k:'invitarGcal', l:'Enviar invitación de Google Calendar a los asistentes', t:'bool', w:2});
+
+/* borrar el evento si se elimina la sesión o la reunión */
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-act]'); if(!el) return; const a = el.dataset.act;
+  if(a==='del-item' && el.dataset.coll==='sesiones' && S.arm==='del-'+el.dataset.id){ const x = (stu(S.sid)?.sesiones||[]).find(y=>y.id===el.dataset.id); if(x?.gcal) G.del.push({g:x.gcal}); }
+  if(a==='reu-del' && S.arm==='rdel-'+el.dataset.id){ const r = (S.data.reuniones||[]).find(y=>y.id===el.dataset.id); if(r?.gcal) G.del.push({g:r.gcal, n:!!r.invitarGcal}); }
+  if(a==='gcal-connect'){ e.stopImmediatePropagation(); if(C.dirty.size || C.saving){ toast('Espera a que termine de guardar e intenta de nuevo', true); return; } cloudLogin(true); }
+  if(a==='gcal-reload'){ gLoad(true); gSync(); toast('Actualizando calendario…'); }
+}, true);
+document.addEventListener('change', e=>{ if(e.target.dataset?.act==='gcal-pref'){ const p = gPref(); p.ses = e.target.checked; gSetPref(p); if(p.ses) gSync(); toast(p.ses?'Tus sesiones programadas se agregarán a tu calendario':'Las nuevas sesiones ya no se agregarán a tu calendario'); } });
 
 cloudBoot();
 </script>
