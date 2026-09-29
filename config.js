@@ -4,6 +4,6 @@
 window.UAA_CONFIG = {
   supabaseUrl: 'https://ntseydvojluyrsappfpd.supabase.co',
   supabaseAnonKey: 'sb_publishable_ULP94GXw2xhXIXKlfhQQKA_LzIRLQNF',
-  dominio: 'educenter.cl',            // dominio de Google Workspace del colegio
+  dominio: 'colegioeducenter.cl',            // dominio de Google Workspace del colegio
   colegio: 'Colegio Particular EDUCENTER'
 };
