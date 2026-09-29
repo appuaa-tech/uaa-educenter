@@ -3169,6 +3169,130 @@ migrate = function(){ _migrateN(); (S.data.students||[]).forEach(s=>{ if(!Array.
     s.autorizaciones.push({id:uid(), tipo:'evaluacion', fecha: ev0 && ev0 < f0 ? ev0 : f0, decision:'Autoriza', vigencia:'Año escolar en curso', evaluaciones:['Psicopedagógica','Educación diferencial'], motivo:'Conocer sus necesidades de apoyo para planificar el PAI.', ...base});
   } }); };
 
+/* ================= Nómina del colegio (matrícula) ================= */
+// Solo datos mínimos para crear fichas: identificación, curso, apoderados y contactos de emergencia.
+const NOM_CAMPOS = ['RUN','nombre','nombre social','curso','fecha de nacimiento','apoderado titular y suplente','contactos de emergencia'];
+const ORD = {Primer:1, Segundo:2, Tercer:3, Cuarto:4, Quinto:5, Sexto:6, 'Séptimo':7, Septimo:7, Octavo:8};
+function nomCurso(txt){
+  const t = String(txt||'').replace(/\s+/g,' ').trim(); const letra = (t.match(/\s([A-Z])$/)||[])[1] || '';
+  if(/^pre-?k/i.test(t)) return {curso:'Pre-kínder', letra};
+  if(/^k[ií]nder/i.test(t)) return {curso:'Kínder', letra};
+  const w = t.split(' ')[0]; const n = ORD[w];
+  if(n) return {curso: /medio/i.test(t) ? `${n}° medio` : `${n}° básico`, letra};
+  return {curso:'', letra};
+}
+function parseCSV(txt, sep){
+  const out = []; let row = [], f = '', q = false;
+  for(let i=0; i<txt.length; i++){ const c = txt[i];
+    if(q){ if(c==='"'){ if(txt[i+1]==='"'){ f+='"'; i++; } else q = false; } else f += c; }
+    else if(c==='"') q = true;
+    else if(c===sep){ row.push(f); f=''; }
+    else if(c==='\n'){ row.push(f.replace(/\r$/,'')); out.push(row); row=[]; f=''; }
+    else f += c; }
+  if(f || row.length){ row.push(f.replace(/\r$/,'')); out.push(row); }
+  return out;
+}
+const isoDMY = v => { const m = String(v||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : ''; };
+const telOf = (...v) => v.map(x=>String(x||'').trim()).find(x=>x && x!=='-') || '';
+function nomFromRows(rows){
+  const h = rows[0].map(x=>x.trim()); const ix = n => h.indexOf(n); const g = (r, n) => { const i = ix(n); return i<0 ? '' : String(r[i]||'').trim(); };
+  const need = ['Número Rut','Nombre Curso','Nombres Alumno','Apellido Paterno'];
+  const miss = need.filter(n=>ix(n)<0); if(miss.length) throw new Error('El archivo no tiene las columnas: '+miss.join(', ')+'. Usa la exportación de matrícula de Notas Net.');
+  const L = [];
+  rows.slice(1).forEach(r=>{
+    if(r.length < h.length/2) return;
+    const est = g(r,'Estado Matrícula'); if(est && !/^matriculad/i.test(est)) return;
+    const rut = g(r,'Número Rut'); if(!rut) return;
+    const {curso, letra} = nomCurso(g(r,'Nombre Curso'));
+    const ap = [];
+    const t = g(r,'Nombre Apoderado'); if(t) ap.push({nombre:t, parentesco:g(r,'Relación Apoderado'), telefono:telOf(g(r,'Móvil Apoderado'), g(r,'Telefono Apoderado')), email:g(r,'Email Apoderado'), tipo:'Titular'});
+    const s = g(r,'Nombre Apoderado Suplente'); if(s) ap.push({nombre:s, parentesco:g(r,'Relación Apoderado Suplente'), telefono:telOf(g(r,'Móvil Apoderado Suplente'), g(r,'Telefono Apoderado Suplente')), tipo:'Suplente'});
+    [1,2].forEach(n=>{ const e = g(r,'Emergencias Avisar '+n); if(e && !ap.some(a=>a.nombre===e)) ap.push({nombre:e, parentesco:'', telefono:telOf(g(r,'Emergencias Telefonos '+n)), tipo:'Contacto de emergencia'}); });
+    L.push({rut, nombre:[g(r,'Nombres Alumno'), g(r,'Apellido Paterno'), g(r,'Apellido Materno')].filter(Boolean).join(' '), nombreSocial:g(r,'Nombre Social'),
+      curso, letra, cursoOrig:g(r,'Nombre Curso').replace(/\s+/g,' '), fnac:isoDMY(g(r,'Nacimiento')), lista:+g(r,'Número Lista')||null, apoderados:ap});
+  });
+  return L;
+}
+async function readCSVFile(file){
+  const buf = await file.arrayBuffer();
+  let txt = new TextDecoder('utf-8').decode(buf);
+  if(txt.includes('\uFFFD')) txt = new TextDecoder('windows-1252').decode(buf);
+  const first = txt.split('\n')[0]; const sep = (first.match(/;/g)||[]).length >= (first.match(/,/g)||[]).length ? ';' : ',';
+  return parseCSV(txt, sep);
+}
+const nom = () => S.data.nomina?.lista || [];
+const normTxt = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const rutKey = r => String(r||'').replace(/[^0-9kK]/g,'').toUpperCase().replace(/^0+/,'');
+function nomBuscar(q){
+  const t = normTxt(q).trim(); if(t.length<2) return [];
+  const rk = rutKey(q); const words = t.split(/\s+/);
+  return nom().filter(n => (rk.length>=4 && rutKey(n.rut).startsWith(rk)) || words.every(w=>normTxt(n.nombre).includes(w))).slice(0, 30);
+}
+const enUAA = n => S.data.students.find(s=>rutKey(s.rut) && rutKey(s.rut)===rutKey(n.rut));
+
+/* buscador para crear fichas desde la nómina */
+function nomModalHTML(q){
+  const R = nomBuscar(q||'');
+  return `<p class="muted" style="margin-bottom:10px">Busca por nombre, apellido o RUN entre los ${nom().length} estudiantes matriculados${S.data.nomina?.fecha?` (nómina al ${fmt(S.data.nomina.fecha)})`:''}. Al elegirlo se completa la ficha con sus datos y los de sus apoderados.</p>
+  <input type="search" id="nomq" class="search" placeholder="Ej.: Pérez 3° básico, o 12.345.678" value="${esc(q||'')}" autocomplete="off" style="width:100%;margin-bottom:12px">
+  <div id="nomres">${nomResHTML(R, q)}</div>`;
+}
+function nomResHTML(R, q){
+  if(!q || normTxt(q).trim().length<2) return '<p class="small muted">Escribe al menos dos letras.</p>';
+  if(!R.length) return '<p class="small muted">Sin resultados en la nómina.</p>';
+  return `<ul class="rows">${R.map(n=>{ const e = enUAA(n); return `<li class="rowi click" data-act="${e?'open':'nom-pick'}" ${e?`data-sid="${e.id}"`:`data-rut="${esc(n.rut)}"`}><span class="icw avatar md av1">${initials(n.nombre)}</span><div class="main"><span class="t">${esc(n.nombre)}</span><span class="d">${esc(n.curso?n.curso+(n.letra?' '+n.letra:''):n.cursoOrig)} · RUN ${esc(n.rut)}</span></div><span class="end">${e?'<span class="pill ok">Ya está en la unidad</span>':ic('plus','sm')}</span></li>`; }).join('')}</ul>`;
+}
+document.addEventListener('input', e=>{ if(e.target.id==='nomq'){ const el = document.getElementById('nomres'); if(el) el.innerHTML = nomResHTML(nomBuscar(e.target.value), e.target.value); } });
+
+/* importación (coordinación) */
+function nomCard(){
+  const N = S.data.nomina; const coord = !S.data.usuario || isCoord(S.data.usuario);
+  const cursos = N ? Object.entries(nom().reduce((m,n)=>{ const k = n.curso||'Sin curso'; m[k] = (m[k]||0)+1; return m; }, {})) : [];
+  return `<section class="glass card"><header><h2>Nómina del colegio</h2>${N?`<span class="pill ok">${nom().length} estudiantes</span>`:'<span class="pill none">Sin cargar</span>'}</header>
+    <p class="muted" style="margin:8px 0 12px">${N?`Actualizada al ${fmt(N.fecha)}${N.origen?' desde '+esc(N.origen):''}. `:''}Permite buscar a un estudiante y crear su ficha con sus datos y los de sus apoderados. Solo se guardan: ${NOM_CAMPOS.join(', ')}. El resto de las columnas del archivo se descarta.</p>
+    ${cursos.length?`<div class="chips" style="margin-bottom:12px">${cursos.map(([c,n])=>`<span class="chip">${esc(c)}: ${n}</span>`).join('')}</div>`:''}
+    ${coord?`<div class="form"><div class="field"><label for="nomfile">Archivo de matrícula exportado desde Notas Net (.csv)</label><input type="file" id="nomfile" accept=".csv,text/csv"></div>
+      <div class="field"><label for="nomfecha">Fecha de la nómina</label><input type="date" id="nomfecha" value="${D(0)}"></div>
+      ${S.nomPrev?`<p class="small" style="margin:8px 0">${S.nomPrev.lista.length} estudiantes matriculados listos para cargar${S.nomPrev.sinCurso?` · ${S.nomPrev.sinCurso} sin curso reconocido`:''}. ${N?'Reemplazará la nómina actual.':''}</p><button class="btn primary" data-act="nom-save">${ic('check','sm')} Cargar nómina</button> <button class="btn" data-act="nom-cancel">Cancelar</button>`:''}
+      ${S.nomErr?`<p class="form-err" style="margin-top:8px">${esc(S.nomErr)}</p>`:''}</div>`:'<p class="small muted">Solo la coordinación actualiza la nómina.</p>'}
+  </section>`;
+}
+document.addEventListener('change', async e=>{
+  if(e.target.id!=='nomfile' || !e.target.files?.[0]) return;
+  S.nomErr = null; S.nomPrev = null;
+  try{ const rows = await readCSVFile(e.target.files[0]); const L = nomFromRows(rows); if(!L.length) throw new Error('No se encontraron estudiantes matriculados en el archivo.');
+    S.nomPrev = {lista:L, sinCurso:L.filter(n=>!n.curso).length}; }
+  catch(err){ S.nomErr = err.message || 'No se pudo leer el archivo.'; }
+  keepScroll(render);
+});
+const _vRespaldoO = vRespaldo;
+vRespaldo = function(){ const h = _vRespaldoO(); const i = h.indexOf('<section class="glass card"><header><h2>Exportar</h2>'); return i<0 ? h : h.slice(0,i) + nomCard() + h.slice(i); };
+function syncCursos(){
+  let n = 0; S.data.students.forEach(s=>{ const m = nom().find(x=>rutKey(x.rut) && rutKey(x.rut)===rutKey(s.rut)); if(m && m.curso && (s.curso!==m.curso || (s.letra||'')!==m.letra)){ s.curso = m.curso; s.letra = m.letra; n++; } }); return n;
+}
+
+/* "Nuevo estudiante" busca primero en la nómina */
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-act="new-student"]'); if(!el || !nom().length || el.dataset.blank) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  S.modal = {title:'Nuevo estudiante', html:nomModalHTML('') + `<p class="small muted" style="margin-top:14px">¿No aparece en la nómina? <button class="btn sm" data-act="new-student" data-blank="1">Crear ficha sin nómina</button></p>`}; renderModal();
+  setTimeout(()=>document.getElementById('nomq')?.focus(), 30);
+}, true);
+
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-act]'); if(!el) return;
+  switch(el.dataset.act){
+    case 'nom-pick': { const n = nom().find(x=>x.rut===el.dataset.rut); if(!n) break; S.modal = null;
+      openForm({kind:'student', schema:'student', where:'modal', isNew:true, title:'Nuevo estudiante desde la nómina',
+        draft:{nombre:n.nombre, nombreSocial:n.nombreSocial||'', rut:n.rut, fnac:n.fnac, curso:n.curso, letra:n.letra, referente:S.data.usuario && !isCoord(S.data.usuario) ? S.data.usuario : '', apoderados:(n.apoderados||[]).map(a=>({nombre:a.nombre, parentesco:a.parentesco, telefono:a.telefono, tipo:a.tipo})), diagnosticos:[]}}); break; }
+    case 'nom-save': { if(!S.nomPrev) break; const f = document.getElementById('nomfecha')?.value || D(0);
+      S.data.nomina = {fecha:f, origen:'Notas Net', cargada:nowIso(), por:S.data.usuario||'', lista:S.nomPrev.lista};
+      const n = syncCursos(); logEv('', 'Actualizó nómina', `${S.nomPrev.lista.length} estudiantes · nómina al ${fmt(f)}${n?` · ${n} cursos actualizados en fichas`:''}`);
+      S.nomPrev = null; persist(); keepScroll(render); toast(`Nómina cargada: ${nom().length} estudiantes`); break; }
+    case 'nom-cancel': S.nomPrev = null; S.nomErr = null; keepScroll(render); break;
+  }
+});
+
 
 /* ---------- íconos ---------- */
 const ICONS = {
@@ -3592,7 +3716,7 @@ document.addEventListener('change', onField);
 /* ================= Versión compartida: Supabase + inicio de sesión con Google ================= */
 const CFG = window.UAA_CONFIG || {};
 const LOCAL_KEYS = ['usuario','guiaOculta','guiaHecha','log','folio','students'];
-const COLL_KEYS = ['bitacora','grupos','refSesiones','reuniones','inst'];
+const COLL_KEYS = ['bitacora','grupos','refSesiones','reuniones','inst','nomina'];
 const TEAM_ROLES = ['coordinacion','profesional'];
 let sb = null;
 const C = {rows:{}, dirty:new Set(), saving:false, timer:null, perfil:null, sent:new WeakSet(), ready:false, status:'ok', warned:false};
@@ -3602,20 +3726,20 @@ S.cloud = true;
 function splitData(d){
   const out = {core:{}};
   Object.keys(d).forEach(k=>{ if(!LOCAL_KEYS.includes(k) && !COLL_KEYS.includes(k)) out.core[k] = d[k]; });
-  COLL_KEYS.forEach(k=>{ out[k] = d[k] ?? (k==='inst' ? {} : []); });
+  COLL_KEYS.forEach(k=>{ if(k==='nomina' && !d.nomina) return; out[k] = d[k] ?? (k==='inst' ? {} : []); });
   (d.students||[]).forEach(s=>{ out['st:'+s.id] = s; });
   return out;
 }
 function applyRow(k, data){
   if(k==='dir_snapshot'){ S.snap = data; return; }
   if(k==='core'){ Object.keys(data||{}).forEach(x=>{ if(!LOCAL_KEYS.includes(x)) S.data[x] = data[x]; }); return; }
-  if(COLL_KEYS.includes(k)){ S.data[k] = data ?? (k==='inst' ? {} : []); return; }
+  if(COLL_KEYS.includes(k)){ S.data[k] = data ?? (k==='inst' ? {} : k==='nomina' ? null : []); return; }
   if(k.startsWith('st:')){ const id = k.slice(3), L = S.data.students, i = L.findIndex(s=>s.id===id);
     if(data==null){ if(i>=0) L.splice(i,1); if(S.sid===id && S.view==='ficha'){ S.view = 'estudiantes'; } }
     else if(i>=0) L[i] = data; else L.push(data); }
 }
 const myRol = () => C.perfil?.rol;
-const canWrite = k => myRol()==='coordinacion' || (myRol()==='profesional' && k!=='core');
+const canWrite = k => myRol()==='coordinacion' || (myRol()==='profesional' && k!=='core' && k!=='nomina');
 const isTeam = () => TEAM_ROLES.includes(myRol());
 
 /* ---- combinación de cambios simultáneos ---- */
