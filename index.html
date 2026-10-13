@@ -681,7 +681,7 @@ const SCHEMA = {
       {k:'fechaElaboracion', l:'Fecha de elaboración', t:'date', req:1},
       {k:'proximaRevision', l:'Próxima revisión', t:'date'},
       {k:'docentes', l:'Docentes de asignatura involucrados', t:'text', w:2}]},
-    {sec:'Adecuaciones de acceso', note:'Decreto 83/2015. Reducen barreras sin cambiar los objetivos de aprendizaje.', fields:[
+    {sec:'Adecuaciones de acceso', note:'Decreto 83/2015 en parvularia y básica; en media, Decreto 67/2018 y Reglamento de Evaluación. Reducen barreras sin cambiar los objetivos de aprendizaje.', fields:[
       {k:'acceso', l:'Tipos de adecuación', t:'checks', o:()=>['Presentación de la información','Formas de respuesta','Entorno','Organización del tiempo y el horario'], w:2},
       {k:'accesoDetalle', l:'Detalle de las adecuaciones de acceso', t:'textarea', w:2}]},
     {sec:'Adecuaciones en los objetivos de aprendizaje', note:'Solo cuando las de acceso no bastan, con justificación basada en la evaluación.', fields:[
@@ -863,7 +863,7 @@ let toastT; function toast(m, bad){ const t = document.getElementById('toast'); 
 
 const stu = id => S.data.students.find(s=>s.id===id);
 const cursoOf = s => s.curso + (s.letra ? ' '+s.letra : '');
-const teaDate = s => { const t = (s.diagnosticos||[]).filter(d=>d.condicion==='Autismo (TEA)' && d.fecha).map(d=>d.fecha).sort(); return t[0] || null; };
+const teaDate = s => { const D_ = (s.diagnosticos||[]).filter(d=>d.condicion==='Autismo (TEA)'); const t = D_.filter(d=>d.fecha).map(d=>d.fecha).sort(); return t[0] || (D_.length ? String(s._creado||'').slice(0,10) || null : null); };
 const overdue = d => d && diffDays(d) < 0;
 
 /* ---------- reglas de alerta ---------- */
@@ -871,7 +871,7 @@ function alertsFor(s){
   const a = []; const push = (lvl,t,d,tab) => a.push({lvl,t,d,tab,sid:s.id,nombre:s.nombre});
   const tea = teaDate(s);
   if(tea && !s.paec?.fechaElaboracion){ const due = addDays(tea,14), d = diffDays(due);
-    push(d<0?'crit':d<=5?'warn':'info', d<0 ? `PAEC fuera de plazo hace ${-d} ${-d===1?'día':'días'}` : d===0 ? 'PAEC vence hoy' : `PAEC pendiente: quedan ${d} ${d===1?'día':'días'}`, `Plazo de dos semanas desde la recepción del diagnóstico (${fmt(tea)}). Vence el ${fmt(due)}.`, 'paec'); }
+    push(d<0?'crit':d<=5?'warn':'info', d<0 ? `PAEC fuera de plazo hace ${-d} ${-d===1?'día':'días'}` : d===0 ? 'PAEC vence hoy' : `PAEC pendiente: quedan ${d} ${d===1?'día':'días'}`, `Plazo de dos semanas desde la recepción del diagnóstico, según las Orientaciones Mineduc 2025 (${fmt(tea)}). Vence el ${fmt(due)}.`, 'paec'); }
   if(s.paec?.fechaElaboracion){
     if(overdue(s.paec.proximaRevision)) push('warn','Revisión del PAEC vencida',`Estaba programada para el ${fmt(s.paec.proximaRevision)}.`,'paec');
     if(!s.paec.firmaApoderado && !s.paec.firmaSuplente) push('warn','PAEC sin firma de la familia','Debe firmarlo el apoderado y un integrante del equipo de gestión.','paec');
@@ -1082,7 +1082,7 @@ function obligations(s){
     judge(commState(findC(s,'Autorización para evaluación','Autorización de evaluación')), propias[0].fecha));
   // 3. devolución de cada evaluación
   propias.forEach(e=>{ const plazo = addDays(e.fecha,15);
-    add({id:'dev-'+e.id, titulo:`Devolución de resultados: ${e.tipo} (${fmtShort(e.fecha)})`, norma:'Decreto 67/2018, art. 18 · plazo interno sugerido de 15 días', cuando:'Tras cada evaluación', plazo, pre:{motivo:'Devolución de resultados de evaluación', documentos:['Informe de evaluación']}},
+    add({id:'dev-'+e.id, titulo:`Devolución de resultados: ${e.tipo} (${fmtShort(e.fecha)})`, norma:'Decreto 67/2018, art. 18 · plazo interno de la unidad: 15 días', cuando:'Tras cada evaluación', plazo, pre:{motivo:'Devolución de resultados de evaluación', documentos:['Informe de evaluación']}},
       judge(commState(findC(s,'Devolución de resultados de evaluación','Informe de evaluación', e.fecha)), plazo, null)); });
   // 4. circular Ley TEA y PAEC
   const tea = teaDate(s);
@@ -1102,7 +1102,7 @@ function obligations(s){
   if(s.pai?.fechaElaboracion){ const pl = addDays(s.pai.fechaElaboracion,15);
     add({id:'pai', titulo:'Entrega del PAI', norma:'Buena práctica · compromisos de la familia', cuando:'Al elaborarlo y en cada revisión', plazo:pl, pre:{motivo:'Entrega de PAI', documentos:['PAI']}}, judge(commState(findC(s,'Entrega de PAI','PAI', s.pai.fechaElaboracion)), pl)); }
   if(s.paci?.fechaElaboracion){ const pl = addDays(s.paci.fechaElaboracion,15);
-    add({id:'paci', titulo:'Entrega del PACI', norma:'Decreto 83/2015 · Decreto 67/2018', cuando:'Al elaborarlo, antes de evaluar con adecuaciones', plazo:pl, pre:{motivo:'Entrega de PACI', documentos:['PACI']}}, judge(commState(findC(s,'Entrega de PACI','PACI', s.paci.fechaElaboracion)), pl, s.paci.informado ? null : null)); }
+    add({id:'paci', titulo:'Entrega del PACI', norma:'Decreto 83/2015 (parvularia y básica) · Decreto 67/2018', cuando:'Al elaborarlo, antes de evaluar con adecuaciones', plazo:pl, pre:{motivo:'Entrega de PACI', documentos:['PACI']}}, judge(commState(findC(s,'Entrega de PACI','PACI', s.paci.fechaElaboracion)), pl, s.paci.informado ? null : null)); }
   // 6. informes de avance semestrales
   if(s.pai?.fechaElaboracion || (s.sesiones||[]).some(x=>x.estado==='Realizada')){ const Y = TODAY.getFullYear();
     const sems = [{n:'primer semestre', from:Y+'-06-01', to:Y+'-08-31', plazo:Y+'-07-31'},{n:'segundo semestre', from:Y+'-11-15', to:Y+'-12-31', plazo:Y+'-12-18'}];
@@ -1130,7 +1130,7 @@ function oblAlerts(s){ return obligations(s).filter(o=>o.st==='late' && !/^(dato
 function obRec(o){ const p = o.plazo ? fmt(o.plazo) : '';
   if(o.st==='late') return `${o.titulo}: vencido${p?' el '+p:''}. Entregar a la familia y registrar el acuse de recibo${o.ev?' ('+o.ev+')':''}.`;
   if(o.st==='partial') return `${o.titulo}: entregado sin acuse. Obtener firma o confirmación escrita; si la familia se niega, registrar un testigo.`;
-  return `${o.titulo}: programar la entrega antes del ${p}.`; }
+  return p ? `${o.titulo}: programar la entrega antes del ${p}.` : `${o.titulo}: programar la entrega.`; }
 
 /* ================= Recomendaciones ================= */
 function genRecs(s, kind, desde, hasta){
@@ -2009,7 +2009,7 @@ ${anContext(s, x, a.hall)}`;
     a.hall = a.hall.filter(h=>h.origen!=='claude').concat(nh);
     a.cl = {resumen:String(r?.resumen||''), preguntas:(Array.isArray(r?.preguntas)?r.preguntas:[]).slice(0,3).map(String)};
     logEv(s.id, 'Consultó a Claude', `análisis del episodio del ${fmt(x.fecha)}`); persist();
-  }catch(e){ a.cl = {err: e?.code==='not_granted'||e?.code==='sampling_disabled' ? 'La consulta a Claude no está autorizada en esta vista.' : e?.code==='rate_limited' ? 'Demasiadas consultas seguidas. Intenta en unos minutos.' : e?.code==='invalid_json' ? 'La respuesta no vino en el formato esperado. Intenta de nuevo.' : 'No se pudo completar la consulta. Intenta de nuevo.'}; }
+  }catch(e){ a.cl = {err: e?.code==='not_granted'||e?.code==='sampling_disabled' ? 'El análisis avanzado no está activado en esta plataforma.' : e?.code==='rate_limited' ? 'Demasiadas consultas seguidas. Intenta en unos minutos.' : e?.code==='invalid_json' ? 'La respuesta no vino en el formato esperado. Intenta de nuevo.' : 'No se pudo completar la consulta. Intenta de nuevo.'}; }
   renderModal();
 }
 async function anAsk(q){
@@ -2080,13 +2080,13 @@ function renderAnalysis(){
     ${(cl?.preguntas||[]).length?`<div class="chips">${cl.preguntas.map((q,i)=>`<button class="chip q" data-act="an-q" data-i="${i}">${esc(q)}</button>`).join('')}</div>`:''}
     <div class="chatlog">${a.chat.map((m,i)=>`<div class="bubble ${m.role==='user'?'me':'ai'}" ${i===a.chat.length-1&&m.role==='assistant'?'id="an-last"':''}>${esc(m.content || (a.chatBusy?'Pensando…':''))}</div>`).join('')}</div>
     <form class="askrow" data-anask="1"><input type="text" id="an-input" placeholder="Pregunta sobre este episodio y el PAEC" autocomplete="off" ${a.chatBusy?'disabled':''}>${a.chatBusy?`<button type="button" class="btn sm" data-act="an-stop">Detener</button>`:`<button type="submit" class="btn primary sm">Preguntar</button>`}</form></section>`
-    : `<p class="small muted">La consulta a Claude no está disponible en esta vista. El análisis de la app funciona igual.</p>`;
+    : `<p class="small muted">El análisis avanzado no está activado en esta plataforma. El análisis de la app funciona igual.</p>`;
   return `<div class="scrim" data-act="scrim"><div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="an-t"><header><div><p class="eyebrow">${esc(s.nombre)} · Episodio del ${fmt(x.fecha)}${x.hora?' · '+esc(x.hora):''} · ${esc(etapaTxt(et))}</p><h2 id="an-t">Análisis del episodio frente al PAEC</h2></div><button class="iconbtn sm" data-act="an-close" aria-label="Cerrar">${ic('x')}</button></header>
   <div class="body">
     <div class="an-compare"><div class="glass-lite"><p class="eyebrow">Lo que pasó</p><dl class="fields"><div class="w2"><dt>Gatillante</dt><dd>${esc(x.gatillante||'—')}</dd></div><div class="w2"><dt>Acciones realizadas</dt><dd>${esc(x.acciones||'—')}</dd></div><div><dt>Lugar</dt><dd>${esc(x.lugar||'—')}</dd></div><div><dt>Familia informada</dt><dd>${x.apoderadoInformado?'Sí':'No'}</dd></div></dl></div>
       <div class="glass-lite"><p class="eyebrow">Lo que dice el PAEC</p>${p.fechaElaboracion?`<dl class="fields"><div class="w2"><dt>Gatillantes identificados</dt><dd>${esc(p.gatillantes||'Sin registrar')}</dd></div><div class="w2"><dt>Respuesta prevista: ${esc(etapaTxt(et).toLowerCase())}</dt><dd>${esc(p['etapa'+et]||'Sin definir')}</dd></div><div class="w2"><dt>Apoyos acordados</dt><dd>${esc((p.apoyos||[]).join(', ')||'—')}</dd></div></dl>`:'<p class="muted">El estudiante no tiene PAEC.</p>'}</div></div>
     <div class="chips">${a.pat.map(t=>`<span class="chip ico">${ic('activity')}${esc(t)}</span>`).join('')}</div>
-    <div class="halls">${a.hall.length?a.hall.map(card).join(''):'<p class="empty">No se detectan ajustes necesarios. El PAEC anticipa este episodio y la respuesta coincide con lo acordado.</p>'}</div>
+    <div class="halls">${a.hall.length?a.hall.map(card).join(''):((x.descripcion||x.gatillante)?'<p class="empty">No se detectan ajustes necesarios. El PAEC anticipa este episodio y la respuesta coincide con lo acordado.</p>':'<p class="empty">Falta el relato o el gatillante del episodio. Complétalos para que el análisis pueda compararlo con el PAEC.</p>')}</div>
     ${claudeBlock}
   </div>
   <div class="form-foot"><span class="small muted" style="margin-right:auto">${p.fechaElaboracion?'Los ajustes se agregan al PAEC con la fecha del episodio y quedan como una revisión del plan.':'Crea el PAEC para poder aplicar ajustes.'}</span><button class="btn" data-act="an-save">Guardar análisis</button>${p.fechaElaboracion?`<button class="btn primary" data-act="an-apply" ${nSel?'':'disabled'}>${ic('check','sm')} Aplicar ${nSel} ${nSel===1?'ajuste':'ajustes'} al PAEC</button>`:''}</div></div></div>`;
@@ -2893,7 +2893,7 @@ function dirData(R){
   const decs = st.flatMap(s=>(s.dec||[]).filter(x=>inR(x.fecha)));
   const RR = (S.data.reuniones||[]).filter(r=>r.estado==='Realizada' && inR(r.fecha));
   const acu = RR.flatMap(r=>(r.acuerdos||[]).filter(a=>a.acuerdo)); const acuDue = acu.filter(a=>a.estado==='Cumplido' || (a.plazo && diffDays(a.plazo)<0));
-  const team = rows.map(k=>{ const v = [k.agendaPct, k.calidadPct, k.resp, k.acuPct].filter(x=>x!=null); const g = v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null; const p = S.data.equipo.find(x=>x.id===k.pid); return {k:{pid:k.pid, mine:k.mine, real:k.real, urg:k.urg, minDir:k.minDir, agendaPct:k.agendaPct}, g, p:{nombre:p.nombre, cargo:p.cargo}}; });
+  const team = rows.map(k=>{ const v = [k.agendaPct, k.calidadPct, k.resp, k.acuPct].filter(x=>x!=null); const g = v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null; const p = S.data.equipo.find(x=>x.id===k.pid); return {k:{pid:k.pid, mine:k.mine.size, real:k.real, urg:k.urg, minDir:k.minDir, agendaPct:k.agendaPct}, g, p:{nombre:p.nombre, cargo:p.cargo}}; });
   return {nSt:st.length, critN:crit.length, warnN:warn.length, cats, inst:inst.map(i=>({t:i.t, norma:i.norma, st:i.st, d:i.d})), instLate, instPart, status, tea, real, minDir, agendaPct:pctOf(real, ag), resp,
     decs:decs.length, decInf:pctOf(decs.filter(x=>x.apoderadoInformado).length, decs.length), decAn:pctOf(decs.filter(x=>x.analisis).length, decs.length),
     reu:RR.length, acuPct:pctOf(acu.filter(a=>a.estado==='Cumplido').length, acuDue.length), team};
@@ -2904,7 +2904,7 @@ function lastReview(){ return (S.data.log||[]).filter(l=>l.accion==='Revisó vis
 
 function vDireccion(){
   const R = kpiRange(); const X = dirData(R); const u = whoP(S.data.usuario); const lr = lastReview();
-  const tile = (lbl, v, sfx, st, sub) => `<div class="glass ktile"><span class="l">${lbl}</span><div class="v">${v==null?'—':v+(sfx||'')}</div>${st?`<span class="kc k-${st}">${SEM_TXT[st]}</span>`:''}${sub?`<span class="small muted">${sub}</span>`:''}</div>`;
+  const tile = (lbl, v, sfx, st, sub) => `<div class="glass ktile"><span class="l">${lbl}</span><div class="v">${v==null?'—':esc(String(v))+(sfx||'')}</div>${st?`<span class="kc k-${st}">${SEM_TXT[st]}</span>`:''}${sub?`<span class="small muted">${sub}</span>`:''}</div>`;
   const [stT, stI] = DIR_ST[X.status];
   const catRows = Object.entries(X.cats).sort((a,b)=>b[1].crit-a[1].crit || b[1].warn-a[1].warn);
   return `<header class="pagehead"><div><p class="eyebrow">${esc(u?.cargo||'Dirección')} · ${esc(R.lbl)}</p><h1>Visión <b>general</b></h1></div><div class="actions"><button class="btn" data-act="dir-rev">${ic('check','sm')} Registrar revisión</button><button class="btn primary" data-act="rep-dir">${ic('print','sm')} Informe ejecutivo</button></div></header>
@@ -2922,12 +2922,12 @@ function vDireccion(){
   </div>
   <div class="dircols">
     <section class="glass card"><header><h2>Riesgos abiertos</h2><span class="small muted">Por tema, sin datos de estudiantes</span></header>
-      ${catRows.length?`<ul class="rows">${catRows.map(([c,v])=>`<li class="rowi lv-${v.crit?'crit':'warn'}"><span class="icw">${ic(v.crit?'alert':'clock')}</span><div class="main"><span class="t">${esc(c)}</span><span class="d">${v.est} ${v.est===1?'estudiante':'estudiantes'}</span></div><span class="end">${v.crit?`<span class="pill crit">${v.crit} urgentes</span> `:''}${v.warn?`<span class="pill warn">${v.warn} por revisar</span>`:''}</span></li>`).join('')}</ul>`:`<p class="muted" style="margin-top:8px">Sin riesgos abiertos.</p>`}</section>
+      ${catRows.length?`<ul class="rows">${catRows.map(([c,v])=>`<li class="rowi lv-${v.crit?'crit':'warn'}"><span class="icw">${ic(v.crit?'alert':'clock')}</span><div class="main"><span class="t">${esc(c)}</span><span class="d">${Number(v.est)||0} ${v.est===1?'estudiante':'estudiantes'}</span></div><span class="end">${v.crit?`<span class="pill crit">${v.crit} urgentes</span> `:''}${v.warn?`<span class="pill warn">${v.warn} por revisar</span>`:''}</span></li>`).join('')}</ul>`:`<p class="muted" style="margin-top:8px">Sin riesgos abiertos.</p>`}</section>
     <section class="glass card"><header><h2>Obligaciones del colegio</h2><span class="small muted">${TODAY.getFullYear()}</span></header>
-      <ul class="rows">${X.inst.map(i=>{ const [c,l] = INST_PILL[i.st]||['none',i.st]; return `<li class="rowi"><div class="main"><span class="t">${esc(i.t)}</span><span class="d">${esc(i.norma)}</span></div><span class="end"><span class="pill ${c}">${l}</span></span></li>`; }).join('')}</ul></section>
+      <ul class="rows">${X.inst.map(i=>{ const [c,l] = INST_PILL[i.st]||['none',String(i.st)]; return `<li class="rowi"><div class="main"><span class="t">${esc(i.t)}</span><span class="d">${esc(i.norma)}</span></div><span class="end"><span class="pill ${esc(c)}">${esc(l)}</span></span></li>`; }).join('')}</ul></section>
   </div>
   <section class="glass card" style="margin-top:18px"><header><h2>Equipo de la unidad</h2><span class="small muted">Estado general de cada integrante</span></header>
-    <ul class="rows">${X.team.map(({k,g,p})=>{ const s = semaf(g); return `<li class="rowi"><span class="icw avatar md ${AREA_AV(p.cargo)}">${initials(p.nombre)}</span><div class="main"><span class="t">${esc(p.nombre)}</span><span class="d">${esc(p.cargo)}</span><div class="meta"><span class="chip">${k.mine} ${k.mine===1?'estudiante':'estudiantes'}</span><span class="chip ico">${ic('activity')}${k.real} ${k.real===1?'atención':'atenciones'}</span>${k.urg?`<span class="pill crit">${k.urg} urgentes</span>`:''}</div></div><span class="end"><span class="kc k-${s}" title="Promedio de cumplimiento de agenda, calidad del registro, respaldo con familias y acuerdos">${g==null?'Sin datos':SEM_TXT[s]}</span></span></li>`; }).join('')}</ul></section>
+    <ul class="rows">${X.team.map(({k,g,p})=>{ const s = semaf(g); return `<li class="rowi"><span class="icw avatar md ${AREA_AV(p.cargo)}">${initials(p.nombre)}</span><div class="main"><span class="t">${esc(p.nombre)}</span><span class="d">${esc(p.cargo)}</span><div class="meta"><span class="chip">${Number(k.mine)||0} ${k.mine===1?'estudiante':'estudiantes'}</span><span class="chip ico">${ic('activity')}${Number(k.real)||0} ${k.real===1?'atención':'atenciones'}</span>${k.urg?`<span class="pill crit">${Number(k.urg)} urgentes</span>`:''}</div></div><span class="end"><span class="kc k-${s}" title="Promedio de cumplimiento de agenda, calidad del registro, respaldo con familias y acuerdos">${g==null?'Sin datos':SEM_TXT[s]}</span></span></li>`; }).join('')}</ul></section>
   <p class="muted dirnote">Esta vista no muestra nombres ni información clínica de los estudiantes. Son datos sensibles de menores (Ley 19.628, reformada por la Ley 21.719) y su detalle queda en manos del equipo de la unidad. Para un caso puntual, solicítalo a la coordinación.</p>`;
 }
 
@@ -2963,10 +2963,11 @@ document.addEventListener('click', e=>{
 const AUT = {
   ingreso:    {t:'Ingreso a la Unidad de Apoyo al Aprendizaje', c:'Ingreso a la unidad', ic:'users', req:'Obligatoria para todo estudiante', norma:'Reglamento Interno · Ley 19.628 y Ley 21.719 (datos sensibles)'},
   evaluacion: {t:'Evaluación del estudiante', c:'Evaluación', ic:'chart', req:'Antes de cada proceso de evaluación', norma:'Buena práctica (obligatoria en PIE, Decreto 170) · Decreto 67/2018'},
-  contencion: {t:'Contención física ante situaciones de riesgo', c:'Contención física', ic:'shield', req:'Recomendada para estudiantes con PAEC', norma:'Reglamento Interno, protocolo DEC · Ley 21.545 · Circular 586/2023'}
+  contencion: {t:'Respuesta segura en etapa de descontrol', c:'Información para contención', ic:'shield', req:'Recomendada para estudiantes con PAEC', norma:'Reglamento Interno, protocolo DEC · Ley 21.545 · Circular 586/2023'}
 };
 const AUT_KEYS = Object.keys(AUT);
 const AUT_DEC = ['Autoriza','Autoriza con condiciones','No autoriza'];
+const CONT_DEC = ['Toma conocimiento','Toma conocimiento con observaciones'];
 const AUT_MEDIO = ['Firma en papel, archivada en carpeta','Firma electrónica','Confirmación escrita por correo o Notas Net'];
 const AUT_EVALS = ['Psicopedagógica','Psicológica','Educación diferencial','Fonoaudiológica','Terapia ocupacional'];
 const AUT_APOYOS = ['Intervención individual','Intervención grupal','Apoyo en aula y coordinación con docentes','Reforzamiento','Elaboración y seguimiento de PAI y PACI','PAEC (estudiantes autistas)'];
@@ -2975,7 +2976,7 @@ SCHEMA.autorizacion = [
   {sec:'Documento', note:'Registra aquí el formulario firmado por el apoderado. Imprime el formulario en blanco desde la pestaña Autorizaciones.', fields:[
     {k:'tipo', l:'Autorización', t:'select', req:1, w:2, o:()=>AUT_KEYS.map(k=>[k, AUT[k].t])},
     {k:'fecha', l:'Fecha de firma', t:'date', req:1},
-    {k:'decision', l:'Decisión de la familia', t:'select', req:1, o:()=>AUT_DEC},
+    {k:'decision', l:'Decisión de la familia', t:'select', req:1, o:()=>S.form?.draft?.tipo==='contencion' ? CONT_DEC : AUT_DEC},
     {k:'firmante', l:'Nombre de quien firma', t:'text', req:1},
     {k:'rutFirmante', l:'RUN de quien firma', t:'text'},
     {k:'parentesco', l:'Parentesco o calidad', t:'text'},
@@ -2991,7 +2992,7 @@ SCHEMA.autorizacion = [
     {k:'evaluaciones', l:'Evaluaciones autorizadas', t:'checks', w:2, o:()=>AUT_EVALS},
     {k:'motivo', l:'Motivo de la evaluación', t:'textarea', w:2},
     {k:'profesionales', l:'Profesionales que evaluarán', t:'text', w:2}]},
-  {sec:'Información para una contención segura', when:isT('contencion'), note:'La contención física solo procede ante riesgo extremo para el estudiante o para otras personas, como restricción de movimiento tutelada y por el menor tiempo posible (Reglamento Interno, protocolo DEC, nivel de descontrol). No es una medida disciplinaria ni de uso habitual.', fields:[
+  {sec:'Información de la familia para una respuesta segura', when:isT('contencion'), note:'No es una autorización ni un veto: la contención física solo procede como último recurso ante riesgo inminente para el estudiante o para otras personas, como restricción de movimiento tutelada y por el menor tiempo posible (Reglamento Interno, protocolo DEC). Lo que informa la familia orienta cómo responder de la forma más segura.', fields:[
     {k:'informadoProtocolo', l:'Se explicó a la familia el protocolo DEC del Reglamento Interno y en qué casos procede', t:'bool', w:2},
     {k:'contraindicaciones', l:'Condiciones de salud, sensoriales o de experiencia previa a considerar', t:'textarea', w:2},
     {k:'calma', l:'Lo que ayuda a calmarlo y formas de contacto que acepta', t:'textarea', w:2},
@@ -3010,7 +3011,9 @@ RISK_CAT.autorizaciones = 'Autorizaciones de la familia';
 /* secciones que dependen del tipo de autorización */
 const _formBodyN = formBody;
 formBody = function(schema, draft, ctx){ return _formBodyN(schema.filter(sec=>!sec.when || sec.when(draft||{})), draft, ctx); };
-document.addEventListener('change', e=>{ if(S.form?.schema==='autorizacion' && e.target.dataset?.path==='tipo') setTimeout(()=>keepScroll(render), 0); });
+document.addEventListener('change', e=>{ if(S.form?.schema==='autorizacion' && e.target.dataset?.path==='tipo'){ const d = S.form.draft, c = d.tipo==='contencion';
+  if(c && !CONT_DEC.includes(d.decision)) d.decision = CONT_DEC[0]; if(!c && !AUT_DEC.includes(d.decision)) d.decision = AUT_DEC[0];
+  setTimeout(()=>keepScroll(render), 0); } });
 
 /* estado de cada autorización */
 function autRecs(s, k){ return (s.autorizaciones||[]).filter(x=>x.tipo===k).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))); }
@@ -3025,6 +3028,10 @@ function autVigente(x, en){
 function autState(s, k, en){
   const L = autRecs(s, k).filter(x=>!en || x.fecha<=en); const x = L[0];
   if(!x) return {st:'none', lbl:'Sin registrar', x:null};
+  if(k==='contencion'){ const f = en || D(0);
+    if(x.revocada && (!x.fechaRevocacion || x.fechaRevocacion <= f)) return {st:'warn', lbl:'Actualizar con la familia', x};
+    if(x.vigencia!=='Hasta que la familia la revoque' && String(x.fecha).slice(0,4) !== String(f).slice(0,4)) return {st:'warn', lbl:'Vencida', x};
+    return {st:'ok', lbl: x.decision==='Toma conocimiento con observaciones' ? 'Informada, con observaciones' : 'Informada a la familia', x}; }
   if(x.revocada && (!x.fechaRevocacion || x.fechaRevocacion <= (en||D(0)))) return {st:'crit', lbl:'Revocada', x};
   if(x.decision==='No autoriza') return {st:'crit', lbl:'No autoriza', x};
   if(!autVigente(x, en)) return {st:'warn', lbl:'Vencida', x};
@@ -3042,12 +3049,14 @@ function autAlerts(s){
   if(sinAut.length) push('warn', sinAut.length===1 ? 'Evaluación sin autorización previa de la familia' : `${sinAut.length} evaluaciones sin autorización previa`, 'Evaluación del '+sinAut.map(e=>fmt(e.fecha)).join(', ')+'. Registra la autorización firmada antes de evaluar.');
   const ev = autState(s,'evaluacion'); if(ev.st==='crit') push('crit', 'La familia no autorizó evaluar al estudiante', 'No se deben aplicar evaluaciones propias de la unidad sin una nueva autorización.');
   const co = autState(s,'contencion');
-  if(needsCont(s) && co.st==='none') push('info','Sin consentimiento informado sobre contención física','Recomendado para estudiantes con PAEC: informa el protocolo y registra la decisión de la familia.');
+  if(needsCont(s) && co.st==='none') push('info','Falta la información de la familia para una respuesta segura','Recomendado para estudiantes con PAEC: explica el protocolo y registra lo que la familia indica que ayuda o se debe evitar.');
   if(co.x && !co.x.informadoProtocolo && co.st!=='none') push('warn','Contención física: falta registrar que se explicó el protocolo','Marca que se informó a la familia en qué casos procede según el Reglamento Interno.');
   (s.dec||[]).filter(x=>x.contencion).forEach(x=>{
+    if(diffDays(x.fecha) < -60) return;
     const c = autState(s,'contencion', x.fecha);
-    if(c.st==='crit') push('crit','Contención física sin autorización de la familia', `Episodio del ${fmt(x.fecha)}: la familia no la había autorizado. Revisar con dirección, dejar constancia del riesgo que la justificó e informar a la familia.`);
-    else if(c.st!=='ok') push('warn','Contención física sin consentimiento informado vigente', `Episodio del ${fmt(x.fecha)}: registra el riesgo que la justificó, confirma el aviso a la familia y regulariza el consentimiento.`);
+    if(!x.apoderadoInformado) push('crit','Contención física sin aviso a la familia', `Episodio del ${fmt(x.fecha)}: el Reglamento exige informar a la familia a más tardar al término de la jornada, con hora y persona contactada.`);
+    if(c.st==='ok' && (c.x.evitar||c.x.contraindicaciones) && !x.revisadoFamilia) push('warn','Revisar la contención con lo informado por la familia', `Episodio del ${fmt(x.fecha)}: contrasta cómo se realizó con lo que la familia pidió evitar o considerar, y revisa el PAEC con ella.`);
+    else if(c.st!=='ok') push('warn','Contención física sin información previa de la familia', `Episodio del ${fmt(x.fecha)}: revisa el episodio y el PAEC con la familia y registra lo que ayuda y lo que se debe evitar.`);
   });
   return out;
 }
@@ -3110,7 +3119,7 @@ function autTabState(s){ const a = autAlerts(s); return a.some(x=>x.lvl==='crit'
 `; document.head.appendChild(st); })();
 
 /* formularios imprimibles */
-RKINDS.autoriz = {get t(){ const it = String(S.rep?.item||''); const s = stu(S.rep?.sid); const k = it.startsWith('blank:') ? it.slice(6) : (s?.autorizaciones||[]).find(x=>x.id===it)?.tipo; return k==='contencion' ? 'Consentimiento informado sobre contención física' : 'Autorización: '+(AUT[k]?.t||''); }, d:'', ic:'doc', norecs:1};
+RKINDS.autoriz = {get t(){ const it = String(S.rep?.item||''); const s = stu(S.rep?.sid); const k = it.startsWith('blank:') ? it.slice(6) : (s?.autorizaciones||[]).find(x=>x.id===it)?.tipo; return k==='contencion' ? 'Respuesta segura en etapa de descontrol' : 'Autorización: '+(AUT[k]?.t||''); }, d:'', ic:'doc', norecs:1};
 function buildAut(s, o, meta){
   const it = String(o.item||''); const x = it.startsWith('blank:') ? null : (s.autorizaciones||[]).find(a=>a.id===it);
   const k = x ? x.tipo : it.slice(6); const A = AUT[k] || AUT.ingreso;
@@ -3118,7 +3127,7 @@ function buildAut(s, o, meta){
   const L = (v, w) => v ? `<b>${esc(v)}</b>` : `<span class="line" style="min-width:${w||180}px">&nbsp;</span>`;
   const chk = (on, txt) => `<div class="opt"><i>${on?'✓':''}</i><span>${txt}</span></div>`;
   const E = S.data.estab; const coord = S.data.equipo.find(p=>isCoord(p.id));
-  const title = k==='contencion' ? 'Consentimiento informado sobre contención física en situaciones de riesgo' : 'Autorización de '+(k==='ingreso'?'ingreso a la Unidad de Apoyo al Aprendizaje':'evaluación del estudiante');
+  const title = k==='contencion' ? 'Información y preferencias de la familia sobre la respuesta en etapa de descontrol' : 'Autorización de '+(k==='ingreso'?'ingreso a la Unidad de Apoyo al Aprendizaje':'evaluación del estudiante');
   let h = rHead(title, x ? `Registro de la decisión de la familia · ${fmt(x.fecha)}` : 'Formulario para firma del apoderado', meta);
   h += `<h2>Identificación</h2>${rkv([['Estudiante', s.nombre],['RUN', s.rut],['Curso', cursoOf(s)],['Fecha de nacimiento', s.fnac?fmt(s.fnac):''],['Profesional referente', profName(s.referente)]])}`;
   h += `<div class="aut-txt"><p>Yo, ${L(x?.firmante||ap.nombre, 220)}, RUN ${L(x?.rutFirmante, 110)}, en calidad de ${L(x?.parentesco||ap.parentesco, 110)} del estudiante individualizado, declaro haber recibido la siguiente información de parte de ${esc(E.nombre)} y manifiesto mi decisión:</p></div>`;
@@ -3133,17 +3142,17 @@ function buildAut(s, o, meta){
     h += `<h2>Evaluación que se propone</h2><div class="aut-txt"><p>El objetivo es conocer las fortalezas y necesidades de apoyo del estudiante para planificar las ayudas que requiere. La evaluación no constituye un diagnóstico médico.</p></div>`;
     h += AUT_EVALS.map(a=>chk(x ? (x.evaluaciones||[]).includes(a) : false, 'Evaluación '+esc(a.toLowerCase()))).join('');
     h += `<h3>Motivo</h3><div class="box">${esc(x?.motivo||'')}</div><h3>Profesionales que evaluarán</h3><div class="box" style="min-height:28px">${esc(x?.profesionales||'')}</div>`;
-    h += `<div class="aut-txt"><p>La evaluación se realiza durante la jornada escolar y puede incluir pruebas estandarizadas o informales, observación en aula, revisión de trabajos y entrevistas con docentes y con la familia. La familia recibirá una devolución de los resultados por escrito, en entrevista, dentro de los 15 días siguientes a su término (Decreto 67/2018, art. 18).</p></div>`;
+    h += `<div class="aut-txt"><p>La evaluación se realiza durante la jornada escolar y puede incluir pruebas estandarizadas o informales, observación en aula, revisión de trabajos y entrevistas con docentes y con la familia. La familia recibirá una devolución de los resultados por escrito, en entrevista, dentro del plazo interno que fija la unidad, como parte del derecho a ser informada del proceso de evaluación (Decreto 67/2018, art. 18).</p></div>`;
     h += `<h2>Decisión de la familia</h2>` + chk(dec('Autoriza')||dec('Autoriza con condiciones'), '<b>Autorizo</b> la evaluación del estudiante en los términos descritos.') + chk(dec('No autoriza'), '<b>No autorizo</b> la evaluación del estudiante.');
   } else {
     h += `<h2>Qué establece el Reglamento Interno</h2><div class="aut-txt"><p>El Protocolo de Desregulación Emocional y Conductual del Reglamento Interno establece que la contención física, entendida como una restricción de movimiento tutelada, procede únicamente en casos de extremo riesgo para el estudiante o para otras personas de la comunidad educativa, cuando pueda evitar daños a su integridad física o a la de terceros. No es una medida disciplinaria ni de uso habitual, y no reemplaza los apoyos del Plan de Acompañamiento Emocional y Conductual (PAEC).</p></div>`;
     h += `<h2>Compromisos del colegio si fuera necesaria</h2><ul><li>Se usará solo cuando las etapas anteriores del protocolo no hayan sido suficientes y exista un riesgo inminente.</li><li>La realizará personal del establecimiento, en lo posible dos adultos, con el menor contacto y por el menor tiempo posibles, sin maniobras que causen dolor ni comprometan la respiración.</li><li>Se suspenderá apenas cese el riesgo y se acompañará al estudiante hasta que recupere la calma.</li><li>Se informará a la familia de inmediato por la vía acordada y, a más tardar, al término de la jornada, dejando constancia de la hora y de la persona contactada.</li><li>Se registrará en la bitácora del episodio, se activará el protocolo de accidentes escolares cuando corresponda y se revisará el PAEC junto a la familia.</li></ul>`;
     h += `<h2>Información que entrega la familia</h2><h3>Condiciones de salud, sensoriales o experiencias previas a considerar</h3><div class="box">${esc(x?.contraindicaciones||'')}</div><h3>Lo que ayuda a calmarlo y formas de contacto que acepta</h3><div class="box">${esc(x?.calma||'')}</div><h3>Formas de contacto o maniobras que se deben evitar</h3><div class="box">${esc(x?.evitar||'')}</div><h3>A quién avisar de inmediato y por qué medio</h3><div class="box" style="min-height:28px">${esc(x?.aviso||'')}</div>`;
-    h += `<h2>Decisión de la familia</h2>` + chk(x?.informadoProtocolo, 'Declaro que se me explicó el protocolo y en qué casos procede la contención física.') + chk(dec('Autoriza')||dec('Autoriza con condiciones'), '<b>Autorizo</b> la contención física del estudiante solo en las condiciones descritas.') + chk(dec('No autoriza'), '<b>No autorizo</b> la contención física. Solicito que se me contacte de inmediato ante una situación de riesgo.');
-    h += `<p class="note">Aun sin autorización, el colegio mantiene su deber de proteger la vida y la integridad del estudiante y de las demás personas ante un peligro inminente. Si llegara a ser necesario, se informará de inmediato a la familia.</p>`;
+    h += `<h2>Toma de conocimiento</h2>` + chk(x?.informadoProtocolo, 'Declaro que se me explicó el protocolo de desregulación del Reglamento Interno y en qué casos excepcionales procede la contención física.') + chk(!!x, 'Tomo conocimiento y entrego la información anterior para que el equipo la considere si fuera necesario responder ante un riesgo.') + chk(x?.decision==='Toma conocimiento con observaciones', 'Dejo observaciones, indicadas más abajo, que solicito revisar en el PAEC.');
+    h += `<p class="note">Este documento no es una autorización ni un veto. La contención física es un último recurso ante un peligro inminente para el estudiante o para otras personas, y el colegio mantiene su deber de proteger la vida y la integridad de todos. Lo que informa la familia orienta cómo hacerlo de la forma más segura. Si llegara a ser necesaria, se informará a la familia de inmediato.</p>`;
   }
   h += `<h3>Condiciones u observaciones de la familia</h3><div class="box">${esc(x?.condiciones||'')}</div>`;
-  h += `<h2>Vigencia y revocación</h2><div class="aut-txt"><p>${x?.vigencia==='Hasta que la familia la revoque' ? 'Esta decisión se mantiene vigente hasta que la familia la revoque.' : 'Esta decisión rige durante el año escolar en curso y se renueva cada año.'} La familia puede revocarla en cualquier momento, por escrito, ante la coordinación de la unidad. Revocarla o no autorizar no afecta los derechos del estudiante ni su permanencia en el colegio, y se mantienen los apoyos generales del aula (Decreto 83/2015).</p></div>`;
+  h += `<h2>Vigencia y revocación</h2><div class="aut-txt"><p>${x?.vigencia==='Hasta que la familia la revoque' ? 'Esta decisión se mantiene vigente hasta que la familia la revoque.' : 'Esta decisión rige durante el año escolar en curso y se renueva cada año.'} La familia puede revocarla en cualquier momento, por escrito, ante la coordinación de la unidad. ${k==='contencion' ? 'La información entregada se puede actualizar en cualquier momento y se revisa junto al PAEC.' : 'Revocarla o no autorizar no afecta los derechos del estudiante ni su permanencia en el colegio, y se mantienen los apoyos generales del aula.'}</p></div>`;
   h += `<p>Fecha: ${L(x?fmt(x.fecha):'', 140)}</p>`;
   h += signs([[x?.firmante||ap.nombre||'','Apoderado/a · firma y RUN'],[x?.recibe?profName(x.recibe):'','Profesional que recibe'],[coord?coord.nombre:'','Coordinación UAA']]);
   return `<div class="rpt">${h}${rFoot(meta)}</div>`;
@@ -3155,19 +3164,23 @@ buildReport = function(kind, s, o, meta){ return kind==='autoriz' ? buildAut(s, 
 document.addEventListener('click', e=>{
   const el = e.target.closest('[data-act]'); if(!el) return;
   if(el.dataset.act==='aut-new'){ const s = stu(S.sid); if(!s) return; const k = el.dataset.tipo; const ap = (s.apoderados||[]).find(a=>a.tipo==='Titular') || (s.apoderados||[])[0] || {};
-    openForm({kind:'autorizaciones', schema:'autorizacion', where:'modal', sid:s.id, isNew:true, title:'Registrar autorización firmada',
-      draft:{tipo:k, fecha:D(0), decision:'Autoriza', firmante:ap.nombre||'', parentesco:ap.parentesco||'', medio:AUT_MEDIO[0], vigencia: k==='ingreso' ? 'Hasta que la familia la revoque' : 'Año escolar en curso', recibe:S.data.usuario||s.referente, datos:k==='ingreso', apoyos:k==='ingreso'?AUT_APOYOS.slice(0,4):undefined, informadoProtocolo:k==='contencion'}}); }
+    openForm({kind:'autorizaciones', schema:'autorizacion', where:'modal', sid:s.id, isNew:true, title: k==='contencion' ? 'Registrar información de la familia' : 'Registrar autorización firmada',
+      draft:{tipo:k, fecha:D(0), decision: k==='contencion' ? CONT_DEC[0] : 'Autoriza', firmante:ap.nombre||'', parentesco:ap.parentesco||'', medio:AUT_MEDIO[0], vigencia: k==='ingreso' ? 'Hasta que la familia la revoque' : 'Año escolar en curso', recibe:S.data.usuario||s.referente, datos:k==='ingreso', apoyos:k==='ingreso'?AUT_APOYOS.slice(0,4):undefined, informadoProtocolo:k==='contencion'}}); }
 });
 
 /* datos de ejemplo y migración */
 const _migrateN = migrate;
 migrate = function(){ _migrateN(); (S.data.students||[]).forEach(s=>{ if(!Array.isArray(s.autorizaciones)) s.autorizaciones = [];
+  s.autorizaciones.forEach(x=>{ if(x.tipo==='contencion' && !CONT_DEC.includes(x.decision)){ if(x.decision==='No autoriza'){ x.condiciones = [x.condiciones, 'La familia pidió ser contactada de inmediato ante una situación de riesgo.'].filter(Boolean).join(' '); x.decision = CONT_DEC[1]; } else x.decision = x.condiciones ? CONT_DEC[1] : CONT_DEC[0]; } });
   if(S.data.demo && s.id==='s1' && !s._autSeed){ s._autSeed = 1; const ap = (s.apoderados||[])[0] || {};
     const base = {firmante:ap.nombre||'Apoderado', parentesco:ap.parentesco||'', medio:AUT_MEDIO[0], verificacion:'Carpeta del estudiante', recibe:s.referente, _creado:nowIso(), _por:s.referente};
     const f0 = s.anamnesis?.fecha || D(-120); const ev0 = (s.evaluaciones||[]).filter(e=>e.tipo!=='Informe externo recibido').map(e=>e.fecha).sort()[0];
     s.autorizaciones.push({id:uid(), tipo:'ingreso', fecha:f0, decision:'Autoriza', vigencia:'Hasta que la familia la revoque', datos:true, salud:true, saludDetalle:'Neuróloga y terapeuta ocupacional tratantes', apoyos:AUT_APOYOS.slice(0,4), ...base});
     s.autorizaciones.push({id:uid(), tipo:'evaluacion', fecha: ev0 && ev0 < f0 ? ev0 : f0, decision:'Autoriza', vigencia:'Año escolar en curso', evaluaciones:['Psicopedagógica','Educación diferencial'], motivo:'Conocer sus necesidades de apoyo para planificar el PAI.', ...base});
   } }); };
+
+/* el episodio con contención se revisa con la familia */
+(()=>{ const sec = SCHEMA.dec.find(x=>x.fields.some(f=>f.k==='contencionDetalle')); if(sec){ const i = sec.fields.findIndex(f=>f.k==='contencionDetalle'); sec.fields.splice(i+1, 0, {k:'revisadoFamilia', l:'Contención revisada con la familia y con el PAEC', t:'bool', w:2}); } })();
 
 /* ================= Nómina del colegio (matrícula) ================= */
 // Solo datos mínimos para crear fichas: identificación, curso, apoderados y contactos de emergencia.
@@ -3293,6 +3306,654 @@ document.addEventListener('click', e=>{
   }
 });
 
+/* ================= Rediseño: menú lateral y panel tipo tablero ================= */
+const DPAL = ['#1646B4','#B58A00','#8B6FD8','#1E9483']; // validada: daltonismo y contraste sobre blanco
+(()=>{ const st = document.createElement('style'); st.textContent = `
+:root:not([data-theme="dark"]){ --bg:#F5F6FA; --glass:#FFFFFF; --glass-edge:#E4E7EF; --shadow:0 1px 2px rgba(12,22,51,.04); --wash-a:rgba(0,45,130,.04); --wash-b:rgba(255,230,0,.06); --wash-c:rgba(150,170,230,.06); }
+.glass{border-radius:18px;backdrop-filter:none;-webkit-backdrop-filter:none}
+.card > header h2{font-size:1.18rem}
+/* tablero */
+.dhead{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:22px 0 18px}
+.dhead h1{font-size:clamp(1.8rem,1.2rem + 1.6vw,2.4rem);font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.dhead .actions{display:flex;gap:10px;flex-wrap:wrap}
+.dbanner{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:var(--brand-soft);border:1px solid #D3DCF2;margin-bottom:18px}
+.dbanner .bi{width:44px;height:44px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--navy-2);flex:none}
+.dbanner p{flex:1;margin:0;font-weight:600}
+.dbanner.crit{background:var(--crit-soft);border-color:#F6C5CB}.dbanner.crit .bi{color:var(--crit)}
+.dgrid{display:grid;grid-template-columns:minmax(230px,270px) minmax(0,1fr) minmax(260px,320px);gap:18px;align-items:stretch}
+.dgrid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:18px;margin-top:18px}
+.dcard{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.dcard > .hd{padding:20px 22px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.dcard > .hd h2{font-size:1.2rem;margin:0 0 2px}
+.dcard > .hd p{margin:0;color:var(--muted);font-size:.88rem}
+.dcard > .bd{padding:18px 22px 20px;flex:1}
+.dlink{font-weight:700;color:var(--brand-text);text-decoration:underline;text-underline-offset:3px;background:none;border:0;cursor:pointer;font:inherit;font-size:.92rem;padding:0;white-space:nowrap}
+.kpis{border-left:4px solid var(--brand-soft);padding:0}
+.kpi{display:flex;gap:14px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line)}
+.kpi:last-child{border-bottom:0}
+.kpi .kt{width:44px;height:44px;border-radius:12px;background:var(--row);display:grid;place-items:center;color:var(--muted);flex:none}
+.kpi .kv{font-size:1.45rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .kv small{font-size:.9rem;color:var(--muted);font-weight:600}
+.kpi .kl{font-size:.86rem;color:var(--muted)}
+.donutwrap{display:grid;grid-template-columns:minmax(130px,180px) minmax(0,1fr);gap:20px;align-items:center}
+.donut{position:relative;width:100%;aspect-ratio:1}
+.donut svg{width:100%;height:100%;transform:rotate(-90deg)}
+.donut circle.seg{transition:stroke-width .15s;cursor:default}
+.donut circle.seg:hover{stroke-width:15}
+.donut .ctr{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.donut .ctr img{width:46px;height:auto;opacity:.95}
+.donut .ctr b{display:block;font-size:1.5rem;line-height:1;margin-top:6px}
+.donut .ctr span{font-size:.75rem;color:var(--muted)}
+.dleg h3{font-size:.95rem;color:var(--muted);font-weight:600;margin:0 0 12px}
+.dleg ul{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.dleg li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center}
+.dleg .sw{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:.72rem;font-weight:800}
+.dleg .nm{font-weight:700;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dleg .br{display:flex;align-items:center;gap:8px;margin-top:4px}
+.dleg .tr{flex:1;height:5px;border-radius:99px;background:var(--row);overflow:hidden}
+.dleg .tr i{display:block;height:100%;border-radius:99px}
+.dleg .pc{font-size:.8rem;font-weight:600;font-variant-numeric:tabular-nums;min-width:62px;text-align:right}
+.dtoggle{display:flex;justify-content:center;margin-top:16px}
+.actbox{display:flex;align-items:center;gap:10px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;width:100%;background:#fff;cursor:pointer;font:inherit;color:inherit;text-align:left}
+.actbox:hover{background:var(--row)}
+.actbox b{font-size:1.05rem}.actbox span{flex:1;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.actbox .ic{color:var(--crit)}
+.actgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 18px;margin-top:22px}
+.am .v{font-size:1.35rem;font-weight:800;display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+.am .t{font-size:.72rem;font-weight:700;color:var(--muted);display:inline-flex;align-items:center;gap:2px}
+.am .t svg{width:16px;height:16px}
+.am .l{font-size:.84rem;color:var(--muted)}
+.prow{padding:14px 0;border-bottom:1px solid var(--line)}
+.prow:last-child{border-bottom:0}
+.prow .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.prow .top b{font-size:.98rem}.prow .top span{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.prow .tr{height:8px;border-radius:99px;background:var(--brand-soft);overflow:hidden}
+.prow .tr i{display:block;height:100%;border-radius:99px;background:var(--navy-2)}
+.prow .tr i.warn{background:var(--warn)}.prow .tr i.crit{background:var(--crit)}.prow .tr i.ok{background:var(--ok)}
+.prow .sub{display:flex;justify-content:space-between;margin-top:6px;font-size:.8rem;color:var(--muted)}
+.alcount{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+/* menú lateral en pantallas grandes */
+@media (min-width:1100px){
+  .topbar{max-width:none;margin:0;position:sticky;top:0;z-index:16;background:#fff;border-bottom:1px solid var(--line);padding:14px 28px}
+  .dock{position:fixed;top:79px;left:0;bottom:0;right:auto;width:248px;transform:none;max-width:none;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:18px 12px;border-radius:0;background:#fff;border:0;border-right:1px solid var(--line);box-shadow:none;backdrop-filter:none;overflow-y:auto;z-index:15}
+  .dock button,.dock button[aria-current="page"]{height:46px;justify-content:flex-start;padding:0 14px;border-radius:10px;background:transparent;color:var(--ink);gap:14px;font-weight:600}
+  .dock button span.lbl{display:inline;font-weight:600;font-size:.95rem}
+  .dock button:hover{background:var(--row)}
+  .dock button[aria-current="page"]{background:var(--brand-soft);color:var(--brand-text);box-shadow:inset 3px 0 0 var(--navy-2)}
+  .dock button[aria-current="page"] .ic{color:var(--navy-2)}
+  .dock .dotc{position:static;margin-left:auto;border:0}
+  .dock .desk-only{display:flex!important}
+  .dock .sidecard{margin-top:auto;border:1px solid #CBD5F0;border-radius:14px;padding:14px;background:#fff}
+  .dock .sidecard h4{margin:0 0 10px;font-size:.95rem;color:var(--brand-text);display:flex;gap:8px;align-items:center}
+  .dock .sidecard button{height:auto;min-height:40px;background:var(--row);border-radius:10px;margin-top:6px;padding:8px 12px;font-size:.85rem;font-weight:600;white-space:normal;text-align:left;justify-content:space-between}
+  .dock .sidecard button span{flex:1}
+  main{max-width:1320px;margin:0 0 0 248px;padding-inline:36px}
+  .toast{left:calc(50% + 124px)}
+}
+@media (max-width:1360px){ .dgrid{grid-template-columns:minmax(230px,270px) minmax(0,1fr)} .dgrid .actcard{grid-column:1 / -1} .dgrid .actcard .actgrid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (max-width:900px){ .dgrid,.dgrid2{grid-template-columns:minmax(0,1fr)} .donutwrap{grid-template-columns:minmax(0,1fr)} .donut{max-width:220px;margin:0 auto} }
+@media (max-width:640px){ .dcard > .hd{flex-direction:column} .actgrid,.dgrid .actcard .actgrid{gap:18px 12px;grid-template-columns:repeat(2,minmax(0,1fr))} .kpi{padding:14px 16px} }
+.sidecard{display:none}
+@media (min-width:1100px){ .sidecard{display:block} }
+`; document.head.appendChild(st); })();
+
+const TREND = d => d>0 ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/></svg>' : d<0 ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7l6 6 4-4 7 7"/><path d="M14 16h6v-6"/></svg>' : '';
+function dashData(){
+  const st = S.data.students; const inR = (f,a,b) => f && f>=a && f<=b;
+  const A = [D(-29), D(0)], P = [D(-59), D(-30)];
+  const cnt = (fn, R) => st.reduce((t,s)=>t+fn(s).filter(x=>inR(x.fecha, R[0], R[1])).length, 0);
+  const M = [
+    ['Sesiones realizadas', s=>(s.sesiones||[]).filter(x=>x.estado==='Realizada')],
+    ['Comunicaciones con familias', s=>s.comunicaciones||[]],
+    ['Episodios de desregulación', s=>s.dec||[]],
+    ['Evaluaciones adaptadas', s=>s.adaptadas||[]],
+    ['Autorizaciones firmadas', s=>s.autorizaciones||[]]
+  ].map(([l, fn])=>({l, v:cnt(fn, A), p:cnt(fn, P)}));
+  const R = S.data.reuniones||[]; const rr = rg => R.filter(r=>r.estado==='Realizada' && inR(r.fecha, rg[0], rg[1])).length;
+  M.splice(4, 0, {l:'Reuniones de equipo', v:rr(A), p:rr(P)});
+  return M;
+}
+function distData(mode){
+  const st = S.data.students;
+  let cats;
+  if(mode==='prof'){
+    const order = S.data.equipo.map(p=>p.id);
+    const m = {}; st.forEach(s=>{ const k = s.referente && order.includes(s.referente) ? s.referente : '_'; m[k] = (m[k]||0)+1; });
+    cats = order.filter(id=>m[id]).map(id=>({k:id, l:profName(id), ini:initials(profName(id)), n:m[id]}));
+    if(m._) cats.push({k:'_', l:'Sin referente', ini:'—', n:m._});
+  } else {
+    const order = [...CONDICIONES, 'Sin diagnóstico'];
+    const m = {}; st.forEach(s=>{ const c = (s.diagnosticos||[])[0]?.condicion || 'Sin diagnóstico'; m[c] = (m[c]||0)+1; });
+    cats = order.filter(c=>m[c]).map(c=>({k:c, l:c, ini:c==='Autismo (TEA)'?'TEA':initials(c), n:m[c]}));
+    Object.keys(m).filter(c=>!order.includes(c)).forEach(c=>cats.push({k:c, l:c, ini:initials(c), n:m[c]}));
+  }
+  // color fijo por entidad (orden estable); más de 4 se agrupa en "Otros"
+  cats = cats.map((c,i)=>({...c, i}));
+  if(cats.length > 4){ const keep = cats.slice(0,3); const rest = cats.slice(3); cats = [...keep, {k:'otros', l:`Otros (${rest.length})`, ini:'+', n:rest.reduce((t,c)=>t+c.n,0), i:3}]; }
+  const tot = cats.reduce((t,c)=>t+c.n,0) || 1;
+  return {cats: cats.map(c=>({...c, pct: c.n/tot*100, col: DPAL[c.i%4]})), tot};
+}
+function donutSVG(D_){
+  const r = 42, C = 2*Math.PI*r, gap = D_.cats.length>1 ? 1.4 : 0; let off = 0;
+  const segs = D_.cats.map(c=>{ const len = Math.max(0, C*c.pct/100 - gap); const s = `<circle class="seg" cx="50" cy="50" r="${r}" fill="none" stroke="${c.col}" stroke-width="12" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" stroke-linecap="butt"><title>${esc(c.l)}: ${c.n} (${Math.round(c.pct)}%)</title></circle>`; off += C*c.pct/100; return s; }).join('');
+  return `<svg viewBox="0 0 100 100" role="img" aria-label="Distribución de estudiantes">${D_.tot&&D_.cats.length?'':`<circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--row)" stroke-width="12"/>`}${segs}</svg>`;
+}
+function sideCard(){
+  const u = S.data.usuario; const coordView = isCoord(u) && (S.pview||'coord')==='coord';
+  let all = allAlerts();
+  if(!coordView && typeof myTasks==='function'){ const mt_ = myTasks(u, myStudents(u)); all = mt_.al.concat(mt_.T); }
+  const al = all.filter(a=>a.lvl==='crit').slice(0,3); const nrev = all.filter(a=>a.lvl==='warn').length;
+  if(!al.length) return `<div class="sidecard"><h4>${ic('check','sm')} Sin urgencias</h4><p class="small muted" style="margin:0">${nrev ? `${nrev} ${nrev===1?'tema':'temas'} por revisar en el panel de inicio.` : 'Todo al día en la unidad.'}</p></div>`;
+  return `<div class="sidecard"><h4>${ic('alert','sm')} Urgente</h4>${al.map(a=>`<button data-act="open" data-sid="${a.sid}" data-tab="${a.tab}" title="${esc(a.nombre)}"><span>${esc(trunc(a.t, 46))}</span>${ic('arrow','sm')}</button>`).join('')}</div>`;
+}
+const _renderChromeP = renderChrome;
+renderChrome = function(){ _renderChromeP(); const dk = document.getElementById('dock'); if(dk && !isDir(S.data.usuario) && S.data.usuario) dk.insertAdjacentHTML('beforeend', sideCard()); };
+
+vPanelCoord = function(){
+  const al = allAlerts(); const st = S.data.students;
+  const urg = al.filter(a=>a.lvl==='crit'), rev = al.filter(a=>a.lvl==='warn'), inf = al.filter(a=>a.lvl==='info');
+  const mes = TODAY.getMonth(), anio = TODAY.getFullYear(); const mesNombre = TODAY.toLocaleDateString('es-CL',{month:'long'});
+  const allSes = st.flatMap(s=>(s.sesiones||[]).map(x=>({...x, s})));
+  const delMes = allSes.filter(x=>{ const d = parse(x.fecha); return d.getMonth()===mes && d.getFullYear()===anio && x.estado==='Realizada'; });
+  const refMes = (S.data.refSesiones||[]).filter(r=>{ const d = parse(r.fecha); return d.getMonth()===mes && d.getFullYear()===anio; });
+  const minMes = delMes.reduce((t,x)=>t+(+x.duracion||0),0) + refMes.reduce((t,r)=>t+(+(r.duracion||grp(r.gid)?.duracion)||0),0);
+  const tea = st.filter(teaDate); const teaOk = tea.filter(s=>s.paec?.fechaElaboracion).length;
+  const resp = st.length ? Math.round(st.reduce((t,s)=>t+respaldo(s).pct,0)/st.length) : null;
+  const ing = st.filter(s=>autState(s,'ingreso').st==='ok').length;
+  const prog = allSes.filter(x=>x.estado==='Programada' && diffDays(x.fecha)>=0).sort((a,b)=>(a.fecha+(a.hora||'')).localeCompare(b.fecha+(b.hora||'')));
+  const hoy = prog.filter(x=>diffDays(x.fecha)===0).length;
+  const dm = S.dmode || 'cond'; const DD = distData(dm);
+  const M = dashData();
+  const inst = instItems();
+  const kpi = (icn, v, l, tip) => `<div class="kpi"><span class="kt">${ic(icn)}</span><div><div class="kv">${v}</div><div class="kl" ${tip?`title="${esc(tip)}"`:''}>${l}</div></div></div>`;
+  const prow = (l, n, d, sub, cls) => { const p = d ? Math.round(n/d*100) : 0; return `<div class="prow"><div class="top"><b>${l}</b><span>${d?`${n} de ${d}`:'Sin casos'}</span></div><div class="tr"><i class="${cls || (p>=90?'ok':p>=60?'':'warn')}" style="width:${d?Math.max(p,2):0}%"></i></div><div class="sub"><span>${sub}</span><span>${d?p+'%':'—'}</span></div></div>`; };
+  const instOk = inst.filter(i=>i.st==='ok').length;
+  const mode = S.loadMode;
+  const carga = S.data.equipo.map(p=>{ const list = mode==='mes' ? delMes.filter(x=>x.profesional===p.id) : prog.filter(x=>x.profesional===p.id); return {p, n:list.length, min:list.reduce((a,x)=>a+(+x.duracion||0),0)}; });
+  const maxN = Math.max(1, ...carga.map(c=>c.n)); const topN = Math.max(...carga.map(c=>c.n));
+  const hm = m => m>=60 ? `${Math.floor(m/60)}h${m%60?' '+(m%60)+'m':''}` : `${m}m`;
+  const banner = urg.length
+    ? `<div class="dbanner crit"><span class="bi">${ic('alert')}</span><p>${urg.length} ${urg.length===1?'situación urgente requiere':'situaciones urgentes requieren'} atención hoy.</p><button class="btn sm primary" data-act="dash-alerts">Revisar</button></div>`
+    : `<div class="dbanner"><span class="bi">${ic('check')}</span><p>${hoy?`Hoy hay ${hoy} ${hoy===1?'sesión programada':'sesiones programadas'}. `:''}Sin situaciones urgentes en la unidad.</p><button class="btn sm" data-act="nav" data-view="agenda">Ver agenda</button></div>`;
+  return `${demoBanner()}
+  <div class="dhead"><div><p class="eyebrow">${cap(TODAY.toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'}))}</p><h1>Unidad de Apoyo al Aprendizaje</h1></div><div class="actions"><button class="btn" data-act="new-student">${ic('plus','sm')} Nuevo estudiante</button><button class="btn primary" data-act="new-session">${ic('plus','sm')} Nueva sesión</button></div></div>
+  ${bitNotice()}${instNotice()}${banner}
+  <div class="dgrid">
+    <section class="glass kpis">
+      ${kpi('users', st.length, 'Estudiantes atendidos')}
+      ${kpi('activity', delMes.length, `Sesiones realizadas en ${mesNombre}`)}
+      ${kpi('clock', hrs(minMes), `Atención directa y reforzamiento en ${mesNombre}`)}
+      ${kpi('heart', `${teaOk}<small> / ${tea.length}</small>`, 'Estudiantes autistas con PAEC')}
+      ${kpi('doc', resp==null?'—':resp+'%', 'Respaldo documental con familias', 'Promedio de entregas con acuse de recibo')}
+    </section>
+    <section class="glass dcard"><div class="hd"><div><h2>Distribución</h2><p>${dm==='prof'?'Estudiantes por profesional referente':'Estudiantes por condición diagnosticada'}</p></div><button class="dlink" data-act="nav" data-view="estudiantes">Ver estudiantes</button></div>
+      <div class="bd">${st.length?`<div class="donutwrap"><div class="donut">${donutSVG(DD)}<div class="ctr"><div><img src="${LOGO()}" alt=""><b>${DD.tot}</b><span>${DD.tot===1?'estudiante':'estudiantes'}</span></div></div></div>
+        <div class="dleg"><h3>${dm==='prof'?'Referentes':'Condiciones'}</h3><ul>${DD.cats.map(c=>`<li><span class="sw" style="background:${c.col}">${esc(c.ini)}</span><div style="min-width:0"><div class="nm" title="${esc(c.l)}">${esc(c.l)}</div><div class="br"><span class="tr"><i style="width:${c.pct}%;background:${c.col}"></i></span><span class="pc">${c.n} · ${Math.round(c.pct)}%</span></div></div></li>`).join('')}</ul></div></div>
+        <div class="dtoggle"><nav class="seg" role="tablist"><button role="tab" aria-selected="${dm==='cond'}" data-act="dmode" data-v="cond">Por condición</button><button role="tab" aria-selected="${dm==='prof'}" data-act="dmode" data-v="prof">Por referente</button></nav></div>`:'<p class="empty">Aún no hay estudiantes en la unidad.</p>'}</div></section>
+    <section class="glass dcard actcard"><div class="hd"><div><h2>Actividad</h2><p>Últimos 30 días vs. los 30 anteriores</p></div></div>
+      <div class="bd"><button class="actbox" data-act="dash-alerts">${ic(urg.length?'alert':'check')}<b>${urg.length+rev.length}</b><span>Pendientes por resolver</span>${ic('arrow','sm')}</button>
+      <div class="actgrid">${M.map(m=>{ const d = m.v - m.p; return `<div class="am"><div class="v">${m.v}${d?`<span class="t" title="${m.p} en los 30 días anteriores">${TREND(d)}${d>0?'+':''}${d}</span>`:`<span class="t" title="Igual que los 30 días anteriores">=</span>`}</div><div class="l">${m.l}</div></div>`; }).join('')}</div></div></section>
+  </div>
+  <div class="dgrid2">
+    <section class="glass dcard"><div class="hd"><div><h2>Cumplimiento</h2><p>Obligaciones con familias y normativa vigente</p></div><button class="btn sm primary" data-act="nav" data-view="normativa">Ver normativa</button></div>
+      <div class="bd">
+        ${prow('PAEC de estudiantes autistas', teaOk, tea.length, 'Ley 21.545 · plazo de dos semanas (Orientaciones Mineduc)')}
+        ${prow('Autorización de ingreso a la unidad', ing, st.length, 'Firmada por el apoderado y vigente')}
+        ${prow('Respaldo documental con familias', resp??0, st.length?100:0, 'Entregas con acuse de recibo, promedio').replace(/(\d+) de 100/,'$1%')}
+        ${prow('Obligaciones del establecimiento', instOk, inst.length, inst.filter(i=>i.st!=='ok').map(i=>i.t).slice(0,2).join(' · ') || 'Circular Ley TEA, capacitación, Reglamento')}
+      </div></section>
+    <section class="glass dcard" id="dash-alerts"><div class="hd"><div><h2>Alertas</h2><p>${al.length} en total</p></div>${al.length>5?`<button class="dlink" data-act="dash-all">${S.dashAll?'Ver menos':'Ver todas'}</button>`:''}</div>
+      <div class="bd"><div class="alcount">${urg.length?`<span class="pill crit">${urg.length} urgentes</span>`:''}${rev.length?`<span class="pill warn">${rev.length} por revisar</span>`:''}${inf.length?`<span class="pill info">${inf.length} avisos</span>`:''}${!al.length?'<span class="pill ok">Sin alertas</span>':''}</div>
+      ${al.length?`<ul class="rows">${(S.dashAll?al:al.slice(0,5)).map(a=>alertRow(a)).join('')}</ul>`:''}</div></section>
+  </div>
+  ${guideCard()}
+  <div class="grid2" style="margin-top:18px">
+    <section class="glass card"><header><h2>Sesiones por profesional</h2></header>
+      <div class="seg" role="tablist" style="margin-bottom:18px"><button role="tab" aria-selected="${mode==='mes'}" data-act="loadmode" data-m="mes">Realizadas en ${mesNombre}</button><button role="tab" aria-selected="${mode==='prog'}" data-act="loadmode" data-m="prog">Programadas</button></div>
+      <div class="bars">${carga.map(c=>`<div class="barcol ${c.n===topN&&c.n>0?'top':''}"><div class="track"><div class="fillh" style="height:${c.n/maxN*100}%"></div></div><span class="icw ${AREA_AV(c.p.cargo)}" title="${esc(c.p.cargo)}">${initials(c.p.nombre)}</span><span class="nm" title="${esc(c.p.nombre)}">${esc(c.p.corto||firstName(c.p.nombre))}</span><span class="vv">${c.n}<small> ses.</small></span><small class="muted">${hm(c.min)}</small></div>`).join('')}</div></section>
+    <section class="glass card"><header><h2>Próximas sesiones</h2><button class="iconbtn sm" data-act="nav" data-view="agenda" aria-label="Ver agenda">${ic('arrow')}</button></header>
+      ${prog.length ? `<ul class="rows">${prog.slice(0,5).map(x=>`<li class="rowi click" data-act="open" data-sid="${x.s.id}" data-tab="sesiones"><span class="icw avatar md ${AREA_AV(x.s.nombre)}">${initials(x.s.nombre)}</span><div class="main"><span class="t">${esc(x.s.nombre)}</span><div class="meta"><span class="chip ico">${ic('calendar')}${fmtShort(x.fecha)}</span>${x.hora?`<span class="chip ico">${ic('clock')}${esc(x.hora)}</span>`:''}<span class="chip ico">${esc(firstName(profName(x.profesional)))}</span></div></div></li>`).join('')}</ul>` : '<p class="empty">Sin sesiones programadas.</p>'}</section>
+  </div>`;
+};
+
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-act]'); if(!el) return;
+  switch(el.dataset.act){
+    case 'dmode': S.dmode = el.dataset.v; keepScroll(render); break;
+    case 'dash-all': S.dashAll = !S.dashAll; keepScroll(render); break;
+    case 'dash-alerts': { if(S.view!=='panel'){ S.view = 'panel'; render(); } const t = document.getElementById('dash-alerts'); if(t) window.scrollTo({top: t.getBoundingClientRect().top + window.scrollY - 100, behavior:'smooth'}); break; }
+  }
+});
+
+/* ================= Campos para el material de la unidad (formatos de Lissette Ríos) ================= */
+(function(){
+  const sec = n => SCHEMA.pai.find(s=>s.sec===n);
+  sec('Perfil de apoyo').fields.push({k:'docenteJefe', l:'Profesora jefe o educadora del curso', t:'text', w:2});
+  const i = SCHEMA.pai.findIndex(s=>s.sec==='Objetivos');
+  SCHEMA.pai.splice(i+1, 0, {sec:'Estrategias y adecuaciones', fields:[
+    {k:'estrategias', l:'Estrategias pedagógicas y de apoyo', t:'textarea', w:2},
+    {k:'adecuaciones', l:'Adecuaciones curriculares', t:'textarea', w:2}]});
+  sec('Familia y seguimiento').fields.splice(1, 0, {k:'criterios', l:'Criterios de evaluación del PAI', t:'textarea'});
+  const d = SCHEMA.student.flatMap(s=>s.fields).find(f=>f.k==='diagnosticos');
+  d.sub.push({k:'detalle', l:'Diagnóstico según el informe', t:'text', w:2});
+  const pv = SCHEMA.paci.find(s=>s.sec==='Vigencia'); pv.fields.push({k:'recursos', l:'Recursos y modalidad de apoyo', t:'textarea', w:2});
+  const po = SCHEMA.paci.find(s=>/objetivos de aprendizaje/i.test(s.sec)); po.fields.unshift({k:'objetivosGenerales', l:'Adecuación de objetivos (criterios generales)', t:'textarea', w:2});
+})();
+
+/* ================= Ajustes de lanzamiento: seguridad, uso y textos ================= */
+
+/* ---- 1. Identificadores seguros: nunca se inserta en la página un id con caracteres extraños ---- */
+const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+function sanitizeIds(o, depth){
+  depth = depth || 0; if(!o || typeof o!=='object' || depth>8) return o;
+  if(Array.isArray(o)){ o.forEach(x=>sanitizeIds(x, depth+1)); return o; }
+  if('id' in o && o.id!=null && !SAFE_ID.test(String(o.id))) o.id = uid();
+  Object.keys(o).forEach(k=>{ const v = o[k]; if(v && typeof v==='object') sanitizeIds(v, depth+1); });
+  return o;
+}
+const _migrateR = migrate;
+migrate = function(){ _migrateR(); ['students','reuniones','grupos','refSesiones','bitacora','equipo','direccion'].forEach(k=>sanitizeIds(S.data[k])); };
+const safeUrl = u => /^https:\/\//i.test(String(u||'')) ? String(u) : '#';
+
+/* ---- 2. Estilos: pestañas visibles, botón Guardar siempre a la vista, contraste, foco ---- */
+(()=>{ const st = document.createElement('style'); st.textContent = `
+@media (min-width:641px){ .seg.tabs-ficha{flex-wrap:wrap;overflow:visible;row-gap:8px} }
+#modal .dialog .form-foot{position:sticky;bottom:0;background:var(--solid);z-index:2;box-shadow:0 -6px 16px rgba(12,22,51,.06)}
+#modal .scrim{align-items:flex-start}
+.field.invalid input,.field.invalid select,.field.invalid textarea{border-color:var(--crit)!important;box-shadow:0 0 0 3px var(--crit-soft)}
+.field.invalid > label{color:var(--crit)}
+.form-err-top{margin:0 0 4px;padding:10px 14px;border-radius:12px;background:var(--crit-soft);color:var(--crit);font-weight:600;font-size:.9rem}
+.form-warn{padding:10px 14px;border-radius:12px;background:var(--warn-soft);color:#7A4A00;font-weight:600;font-size:.88rem;flex:1 1 100%}
+.pill.none,.pill.na,.s-none,.s-na{color:#4A5370!important}
+.lvl{color:#8A5200}
+.rowi.click:focus-visible,.stud:focus-visible,[role=button]:focus-visible{outline:3px solid var(--navy-2);outline-offset:2px}
+.pgroup{border:1px solid var(--line);border-radius:14px;margin-bottom:10px;background:var(--solid)}
+.pgroup > summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border-radius:14px}
+.pgroup > summary::-webkit-details-marker{display:none}
+.pgroup > summary:hover{background:var(--row)}
+.pgroup > summary .t{flex:1;font-weight:700;font-size:.95rem}
+.pgroup > summary .n{font-size:.8rem;color:var(--muted);white-space:nowrap}
+.pgroup[open] > summary{border-bottom:1px solid var(--line);border-radius:14px 14px 0 0}
+.pgroup .rows{padding:8px}
+.pgroup .chev{transition:transform .15s}.pgroup[open] .chev{transform:rotate(90deg)}
+.steps{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:10px}
+.steps li{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:var(--row)}
+.steps li b.nx{width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-size:.85rem;flex:none}
+.steps li div{flex:1;min-width:0}.steps li div span{display:block;font-size:.84rem;color:var(--muted)}
+.welcome > h1{position:relative;z-index:1}.welcome > p:not(.eyebrow){position:relative;z-index:1;max-width:min(100%,300px)}
+@media (max-width:640px){.welcome > p:not(.eyebrow){max-width:72%}}
+`; document.head.appendChild(st); })();
+
+/* ---- 3. Validación visible: el campo que falta queda marcado y recibe el foco ---- */
+const _renderR = render;
+render = function(){
+  _renderR();
+  const f = S.form; if(!f) { a11yRows(); return; }
+  const root = document.getElementById(f.where==='modal' ? 'modal' : 'tabbody'); if(!root) return;
+  if(f.err && f.err.length){
+    const sch = SCHEMA[f.schema]||[]; const miss = sch.flatMap(x=>x.fields).filter(fl=>fl.req && empty(f.draft[fl.k]));
+    let first = null;
+    miss.forEach(fl=>{ const el = root.querySelector(`[data-path="${fl.k}"]`); if(el){ el.setAttribute('aria-invalid','true'); el.closest('.field')?.classList.add('invalid'); if(!first) first = el; } });
+    const body = root.querySelector('form .sec, .form .sec'); if(body && !root.querySelector('.form-err-top')) body.insertAdjacentHTML('beforebegin', `<p class="form-err-top" role="alert">Falta completar: ${esc(f.err.join(', '))}</p>`);
+    if(first && f._errShown!==f.err){ f._errShown = f.err; first.scrollIntoView({block:'center'}); first.focus({preventScroll:true}); }
+  }
+  a11yRows();
+};
+// filas clicables accesibles con teclado
+function a11yRows(){ document.querySelectorAll('li[data-act], div[data-act].glass, article[data-act]').forEach(el=>{ if(!el.hasAttribute('tabindex') || el.getAttribute('tabindex')==='-1'){ el.setAttribute('tabindex','0'); el.setAttribute('role','button'); } }); }
+document.addEventListener('keydown', e=>{
+  if((e.key==='Enter' || e.key===' ') && e.target.matches && e.target.matches('li[data-act][role=button], article[data-act][role=button]')){ e.preventDefault(); e.target.click(); }
+  if(e.key==='Tab'){ const m = document.querySelector('#modal [role=dialog]'); if(!m) return;
+    const F = [...m.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(x=>!x.disabled && x.offsetParent!==null);
+    if(!F.length) return; const a = F[0], z = F[F.length-1];
+    if(e.shiftKey && document.activeElement===a){ e.preventDefault(); z.focus(); }
+    else if(!e.shiftKey && document.activeElement===z){ e.preventDefault(); a.focus(); }
+    else if(!m.contains(document.activeElement)){ e.preventDefault(); a.focus(); } }
+});
+
+/* ---- 4. Aviso si otra persona cambió el mismo registro mientras lo editabas ---- */
+function formTarget(f){
+  if(!f) return null; const s = f.sid ? stu(f.sid) : null;
+  if(['anamnesis','pai','paci','paec'].includes(f.kind)) return s?.[f.kind] || null;
+  if(f.kind==='student' && !f.isNew) return s;
+  if(COLL[f.kind] && f.draft?.id) return (s?.[f.kind]||[]).find(x=>x.id===f.draft.id) || null;
+  if(f.kind==='reunion' && f.draft?.id) return (S.data.reuniones||[]).find(x=>x.id===f.draft.id) || null;
+  return null;
+}
+const _openFormR = openForm;
+openForm = function(o){ _openFormR(o); if(S.form){ const t = formTarget(S.form); S.form.baseMod = t ? (t._mod||'') : null; } };
+const _formFootR = formFoot;
+formFoot = function(){ const w = S.form?.warn; return w ? _formFootR().replace('<div class="form-foot">', `<div class="form-foot"><span class="form-warn" role="alert">${esc(w)}</span>`) : _formFootR(); };
+const _saveFormR = saveForm;
+saveForm = function(){
+  const f = S.form; if(!f) return;
+  const t = formTarget(f);
+  if(t && f.baseMod!=null && (t._mod||'') !== f.baseMod && !f.warnOk){
+    f.warn = `${whoName(t._modPor)} guardó cambios en este registro mientras lo editabas (${fmtTs(t._mod)}). Presiona Guardar de nuevo para reemplazarlos con tu versión, o Cancelar para conservar la suya.`;
+    f.warnOk = true; keepScroll(render); return;
+  }
+  // DEC con familia informada: se registra también la comunicación con la familia
+  const decNew = f.kind==='dec' && f.draft?.apoderadoInformado && !(t && t.apoderadoInformado);
+  const sid = f.sid, dd = f.draft ? {...f.draft} : null;
+  const r = _saveFormR.apply(this, arguments);
+  if(decNew && !S.form){ const s = stu(sid); if(s){ const fecha = dd.fechaInforme || dd.fecha;
+    const ya = (s.comunicaciones||[]).some(c=>c.motivo==='Aviso de episodio de desregulación' && c.fecha===fecha);
+    if(!ya){ s.comunicaciones = s.comunicaciones||[];
+      s.comunicaciones.push(stamp({id:uid(), fecha, hora:dd.horaInforme||'', tipo:'Llamado telefónico', motivo:'Aviso de episodio de desregulación', profesional:S.data.usuario||s.referente||'',
+        familiares:dd.contactoCon||'', temas:`Aviso del episodio de desregulación del ${fmt(dd.fecha)} (${etapaTxt(dd.etapa).toLowerCase()}).`, documentos:[], respuesta:'Recibido sin firma',
+        verificacion:'Registrado en la bitácora del episodio', observaciones:'Creado automáticamente desde el registro DEC. Corrige el medio si no fue por teléfono.'}, true));
+      logEv(s.id, 'Registró', `comunicación del ${fmt(fecha)} · Aviso de episodio de desregulación`); persist();
+      setTimeout(()=>toast('El aviso a la familia quedó registrado también en la pestaña Familia'), 2800); } } }
+  return r;
+};
+
+/* ---- 5. Nueva sesión: "Realizada" si la fecha es hoy o anterior; "Programada" si es futura ---- */
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-act="new-session"]'); if(!el) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  const f = S.fday || D(0);
+  openForm({kind:'agenda', schema:'agendaSesion', where:'modal', draft:{fecha:f, estado: f>D(0) ? 'Programada' : 'Realizada', duracion:45, profesional:S.data.usuario||''}, isNew:true, title:'Nueva sesión'});
+}, true);
+document.addEventListener('change', e=>{
+  const f = S.form; if(!f || !['agenda','sesiones'].includes(f.kind)) return; const p = e.target.dataset?.path;
+  if(p==='estado') f.estadoTocado = true;
+  if(p==='fecha' && !f.estadoTocado && f.draft.fecha){ f.draft.estado = f.draft.fecha > D(0) ? 'Programada' : 'Realizada'; const sel = document.querySelector('#modal [data-path="estado"], #tabbody [data-path="estado"]'); if(sel) sel.value = f.draft.estado; }
+});
+
+/* ---- 6. Pendientes agrupados por tipo, con conteo único ---- */
+function pendGroups(al, T){
+  const G = new Map(); const ord = {crit:0, warn:1, info:2};
+  al.forEach(a=>{ const t = a.t.replace(/ por \d+ /,' por '); const k = a.lvl+'|'+t; if(!G.has(k)) G.set(k, {lvl:a.lvl, t:a.t, items:[]}); else G.get(k).t = t; G.get(k).items.push(alertRow(a)); });
+  T.forEach(x=>{ const t = x.t.replace(/ del \d.*$| de .+$/,'').replace(/ por \d+ /,' por '); const k = x.lvl+'|T|'+t; if(!G.has(k)) G.set(k, {lvl:x.lvl, t:x.t, items:[]}); else G.get(k).t = t; G.get(k).items.push(taskRow(x)); });
+  return [...G.values()].sort((a,b)=>ord[a.lvl]-ord[b.lvl] || b.items.length-a.items.length);
+}
+function pendHTML(al, T){
+  const gs = pendGroups(al, T); const n = al.length + T.length;
+  if(!n) return '<p class="empty">Todo al día.</p>';
+  return gs.map(g=>`<details class="pgroup lv-${g.lvl}" ${g.lvl==='crit'?'open':''}><summary><span class="icw">${ic(g.lvl==='crit'?'alert':g.lvl==='warn'?'clock':'info')}</span><span class="t"><span class="lvl">${g.lvl==='crit'?'Urgente':g.lvl==='warn'?'Por revisar':'Aviso'}</span> ${esc(g.items.length>1 ? g.t.replace(/ del \d.*$/,'') : g.t)}</span><span class="n">${g.items.length} ${g.items.length===1?'caso':'casos'}</span><span class="chev">${ic('arrow','sm')}</span></summary><ul class="rows">${g.items.join('')}</ul></details>`).join('');
+}
+const _vPanelProR = vPanelPro;
+vPanelPro = function(pid){
+  const h = _vPanelProR(pid); const mine = myStudents(pid); const {al, T} = myTasks(pid, mine);
+  const n = al.length + T.length, urg = al.filter(a=>a.lvl==='crit').length + T.filter(t=>t.lvl==='crit').length, rev = n - urg - al.filter(a=>a.lvl==='info').length - T.filter(t=>t.lvl==='info').length;
+  return h.replace(/<section class="glass card"><header><h2>Mis pendientes<\/h2>[\s\S]*?<\/section>/,
+    `<section class="glass card"><header><h2>Mis pendientes</h2><span class="chip">${urg?urg+' urgentes · ':''}${rev} por revisar</span></header>${pendHTML(al, T)}</section>`)
+   .replace(/Tienes \d+ pendientes? por resolver\./, urg ? `Tienes ${urg} ${urg===1?'situación urgente':'situaciones urgentes'} y ${rev} por revisar.` : (rev ? `Tienes ${rev} ${rev===1?'tema':'temas'} por revisar.` : 'No tienes pendientes.'))
+   .replace(/<div class="v">\d+<\/div><div class="l">Pendientes<\/div>/, `<div class="v">${rev+urg}</div><div class="l">Por revisar${urg?` (${urg} urgentes)`:''}</div>`);
+};
+
+/* ---- 7. Primeros pasos por rol (versión real, sin datos de ejemplo) ---- */
+const INICIO = {
+  coord: [['Revisa a los estudiantes y asigna un referente a cada uno','Cada estudiante necesita un profesional referente para aparecer en su panel.','nav','estudiantes'],
+          ['Revisa al equipo y sus accesos','Agrega integrantes con su correo institucional para habilitar su ingreso.','nav','equipo'],
+          ['Revisa las obligaciones del colegio','Circular Ley TEA, capacitación anual, PAEC y autorizaciones.','nav','normativa'],
+          ['Revisa las alertas de la unidad','Están agrupadas por tema en este mismo panel.','dash-alerts','']],
+  pro:   [['Revisa a tus estudiantes','Abre cada ficha: resumen, planes, intervenciones y familia.','nav','estudiantes'],
+          ['Registra tu primera sesión','Elige el estudiante, el objetivo del PAI trabajado y cómo respondió.','new-session',''],
+          ['Revisa tus pendientes','Están agrupados por tipo; parte por los urgentes.','',''],
+          ['Cierra tu bitácora semanal','Queda como evidencia del trabajo realizado.','nav','trabajo']]
+};
+const inicioKey = () => 'uaa-inicio-'+(S.data.usuario||'');
+const _guideCardR = guideCard;
+guideCard = function(){
+  if(S.data.lis && !S.data.guiaOculta) return _guideCardR();
+  if(S.data.demo || !S.data.usuario || isDir(S.data.usuario)) return '';
+  try{ if(localStorage.getItem(inicioKey())) return ''; }catch(e){}
+  const coord = isCoord(S.data.usuario) && (S.pview||'coord')==='coord'; const L = INICIO[coord?'coord':'pro'];
+  return `<section class="glass card guide" style="margin-top:18px"><header><div><p class="eyebrow">Primeros pasos</p><h2>${coord?'Para empezar a coordinar la unidad':'Para empezar a trabajar en la plataforma'}</h2></div><button class="btn sm" data-act="inicio-ocultar">Ya lo revisé</button></header>
+    <ol class="steps">${L.map(([t,d,act,v],i)=>`<li><b class="nx">${i+1}</b><div><b>${esc(t)}</b><span>${esc(d)}</span></div>${act?`<button class="btn sm" data-act="${act}" ${v?`data-view="${v}"`:''}>Ir</button>`:''}</li>`).join('')}</ol></section>`;
+};
+document.addEventListener('click', e=>{ const el = e.target.closest('[data-act="inicio-ocultar"]'); if(!el) return; try{ localStorage.setItem(inicioKey(), '1'); }catch(err){} keepScroll(render); toast('Listo, guía ocultada'); });
+
+/* ================= Psicología: seguimiento socioemocional e informes para profesionales externos ================= */
+const isPsi = pid => /^psic[oó]log/i.test((S.data.equipo||[]).find(p=>p.id===pid)?.cargo||'');
+const PSI_AREAS = [['flex','Flexibilidad cognitiva'],['ident','Identificación de emociones'],['control','Control y regulación emocional'],['com','Comunicación con sus compañeros'],['grupo','Juego y tareas en grupo']];
+const PSI_NIV = [['1','1 · Inicial'],['2','2 · En desarrollo'],['3','3 · Logrado con apoyo'],['4','4 · Logrado']];
+const PSI_TXT = {1:'inicial',2:'en desarrollo',3:'logrado con apoyo',4:'logrado'};
+const PSI_TIPOS = ['Entrevista inicial con el estudiante','Sesión individual','Seguimiento','Taller grupal (juegos y tareas en grupo)','Entrevista con la familia','Coordinación con profesional externo'];
+const PSI_INST = ['Profesional del colegio','Clínica o centro de salud','Hospital','Consulta particular','Otro establecimiento educacional','Otro'];
+
+/* ---- 1. Campos de seguimiento en cada sesión de la psicóloga ---- */
+const PSI_SEC = {sec:'Seguimiento socioemocional', when:d=>isPsi(d.profesional), note:'Marca el nivel observado hoy solo en las áreas que trabajaste en esta sesión. Con estos registros la plataforma muestra la evolución del estudiante y prepara el informe de progreso.', fields:[
+  {k:'psiTipo', l:'Tipo de atención', t:'select', w:2, o:()=>PSI_TIPOS},
+  ...PSI_AREAS.map(([k,l])=>({k:'psi_'+k, l, t:'select', o:()=>[['','No se trabajó en esta sesión'], ...PSI_NIV]})),
+  {k:'psiObs', l:'Observaciones del proceso', t:'textarea', w:2, ph:'Lo que observaste en el estudiante: cómo se vinculó, qué estrategias usó, qué le costó.'}]};
+SCHEMA.sesion.push(PSI_SEC); SCHEMA.agendaSesion.push(PSI_SEC);
+document.addEventListener('change', e=>{ const f = S.form; if(!f || !['sesion','agendaSesion'].includes(f.schema)) return;
+  if(e.target.dataset?.path==='profesional') setTimeout(()=>keepScroll(render), 0); });
+
+/* ---- 2. Plan de acompañamiento psicológico y solicitudes de informe ---- */
+SCHEMA.psi = [
+  {sec:'Acompañamiento psicológico', fields:[
+    {k:'responsable', l:'Psicólogo/a a cargo', t:'prof', req:1},
+    {k:'inicio', l:'Inicio del acompañamiento', t:'date', req:1},
+    {k:'frecuencia', l:'Frecuencia', t:'text', ph:'Ej.: semanal, 45 minutos'},
+    {k:'derivadoPor', l:'Derivado por', t:'text', ph:'Profesor jefe, familia, equipo UAA, especialista externo'},
+    {k:'motivo', l:'Motivo del acompañamiento', t:'textarea', req:1, w:2},
+    {k:'externos', l:'Profesionales externos que acompañan al estudiante', t:'textarea', w:2, ph:'Nombre, profesión e institución. Se usan como destinatarios sugeridos para los informes.'}]},
+  {sec:'Objetivos de intervención', fields:[
+    {k:'objetivos', t:'list', l:'Objetivo', sub:[
+      {k:'area', l:'Área', t:'select', o:()=>PSI_AREAS.map(a=>a[1]).concat(['Otra'])},
+      {k:'objetivo', l:'Objetivo', t:'text'},
+      {k:'indicador', l:'Cómo se verá el logro', t:'text'}]}]}
+];
+SCHEMA.solinf = [
+  {sec:'Solicitud de la familia', note:'El informe se entrega solo a petición de la familia y al destinatario que ella indique.', fields:[
+    {k:'fecha', l:'Fecha de la solicitud', t:'date', req:1},
+    {k:'solicitante', l:'Quién lo solicita', t:'text', req:1, ph:'Nombre del apoderado'},
+    {k:'parentesco', l:'Parentesco', t:'text'},
+    {k:'medio', l:'Cómo lo solicitó', t:'select', o:()=>['Entrevista presencial','Correo electrónico','Agenda virtual (Notas Net)','Llamado telefónico']}]},
+  {sec:'Destinatario', fields:[
+    {k:'destinatario', l:'Nombre del profesional', t:'text', req:1},
+    {k:'profesion', l:'Profesión o cargo', t:'text', ph:'Neurólogo/a, psiquiatra infantil, terapeuta ocupacional'},
+    {k:'institucion', l:'Institución', t:'text', req:1},
+    {k:'tipoInst', l:'Tipo de institución', t:'select', o:()=>PSI_INST},
+    {k:'motivo', l:'Para qué lo necesitan', t:'textarea', w:2},
+    {k:'plazo', l:'Fecha comprometida de entrega', t:'date'}]},
+  {sec:'Autorización de la familia', note:'Compartir datos de salud de un estudiante con terceros requiere la autorización expresa de la familia (Ley 19.628 y Ley 21.719).', fields:[
+    {k:'consentimiento', l:'La familia autorizó por escrito entregar este informe a este destinatario', t:'bool', w:2},
+    {k:'respaldo', l:'Dónde está el respaldo de la autorización', t:'text', w:2, ph:'Correo del apoderado del 10/10, formulario firmado en carpeta'}]},
+  {sec:'Entrega', fields:[
+    {k:'estado', l:'Estado', t:'select', o:()=>['Pendiente','Entregado','Anulada']},
+    {k:'fechaEntrega', l:'Fecha de entrega', t:'date'},
+    {k:'medioEntrega', l:'Medio de entrega', t:'select', o:()=>['Entregado a la familia','Correo a la institución con copia a la familia','Entregado en mano al profesional']},
+    {k:'folio', l:'Folio del informe', t:'text'}]}
+];
+COLL.solicitudes = {schema:'solinf', label:'solicitud de informe'};
+const _myStudentsS = myStudents;
+myStudents = function(pid){ const set = _myStudentsS(pid); S.data.students.forEach(s=>{ if(s.psi?.responsable===pid) set.add(s.id); }); return set; };
+const psiSes = (s, desde, hasta) => (s.sesiones||[]).filter(x=>isPsi(x.profesional) && (!desde || x.fecha>=desde) && (!hasta || x.fecha<=hasta)).sort((a,b)=>(a.fecha+(a.hora||'')).localeCompare(b.fecha+(b.hora||'')));
+const solPend = s => (s.solicitudes||[]).filter(x=>(x.estado||'Pendiente')==='Pendiente');
+function psiEvol(ses){
+  return PSI_AREAS.map(([k,l])=>{ const pts = ses.filter(x=>x.estado==='Realizada' && x['psi_'+k]).map(x=>({f:x.fecha, v:+x['psi_'+k]}));
+    const a = pts[0], z = pts[pts.length-1];
+    return {k, l, pts, ini:a?.v, act:z?.v, tend: !pts.length ? '' : pts.length<2 ? 'Un registro' : z.v>a.v ? 'Avanza' : z.v<a.v ? 'Retrocede' : 'Se mantiene'}; });
+}
+function sparkSVG(pts, w, h){
+  w = w||200; h = h||40; if(!pts.length) return '';
+  const X = i => pts.length===1 ? w/2 : 6 + i*(w-12)/(pts.length-1), Y = v => h-6 - (v-1)*(h-12)/3;
+  const grid = [1,2,3,4].map(v=>`<line x1="0" x2="${w}" y1="${Y(v)}" y2="${Y(v)}" stroke="#D9DEEA" stroke-width="1"/>`).join('');
+  const line = pts.length>1 ? `<polyline fill="none" stroke="#1646B4" stroke-width="2" stroke-linejoin="round" points="${pts.map((p,i)=>X(i)+','+Y(p.v)).join(' ')}"/>` : '';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Evolución: ${pts.map(p=>PSI_TXT[p.v]).join(', ')}">${grid}${line}${pts.map((p,i)=>`<circle cx="${X(i)}" cy="${Y(p.v)}" r="4" fill="#1646B4" stroke="#fff" stroke-width="2"><title>${fmtShort(p.f)}: ${PSI_TXT[p.v]}</title></circle>`).join('')}</svg>`;
+}
+
+/* ---- 3. Pestaña de la ficha: seguimiento socioemocional ---- */
+function vSeguimiento(s){
+  const P = s.psi, ses = psiSes(s), real = ses.filter(x=>x.estado==='Realizada'), E = psiEvol(ses);
+  const asis = ses.filter(x=>['Realizada','Ausente'].includes(x.estado)); const pct = asis.length ? Math.round(real.length/asis.length*100) : null;
+  const plan = P ? `<section class="glass card"><header><div><p class="eyebrow">Desde el ${fmt(P.inicio)} · ${esc(profName(P.responsable))}${P.frecuencia?' · '+esc(P.frecuencia):''}</p><h2>Acompañamiento psicológico</h2></div><button class="btn sm" data-act="psi-edit">${ic('edit','sm')} Editar</button></header>
+      <p style="margin:0 0 10px">${esc(P.motivo||'')}</p>${(P.objetivos||[]).length?`<ul class="rows">${P.objetivos.map(o=>`<li class="rowi"><span class="icw">${ic('target')}</span><div class="main"><span class="t">${esc(o.objetivo||'')}</span><span class="d">${esc(o.area||'')}${o.indicador?' · '+esc(o.indicador):''}</span></div></li>`).join('')}</ul>`:''}
+      ${P.externos?`<p class="small muted" style="margin:10px 0 0">Profesionales externos: ${esc(P.externos)}</p>`:''}</section>`
+    : `<section class="glass card"><header><h2>Acompañamiento psicológico</h2></header><p class="muted">Registra el motivo, los objetivos y los profesionales externos. Ordena el seguimiento y se usa en el informe de progreso.</p><button class="btn primary" data-act="psi-edit">${ic('plus','sm')} Iniciar acompañamiento</button></section>`;
+  const evol = `<section class="glass card"><header><div><p class="eyebrow">${real.length} ${real.length===1?'sesión realizada':'sesiones realizadas'}${pct!=null?` · asistencia ${pct}%`:''}</p><h2>Evolución por área</h2></div><button class="btn sm" data-act="new-session-psi">${ic('plus','sm')} Registrar sesión</button></header>
+    ${E.some(a=>a.pts.length) ? `<div class="psi-grid">${E.map(a=>`<div class="psi-row"><div class="psi-l"><b>${esc(a.l)}</b><span class="small muted">${a.pts.length ? `${a.pts.length} ${a.pts.length===1?'registro':'registros'} · ${a.ini===a.act||a.pts.length<2 ? 'nivel '+PSI_TXT[a.act] : PSI_TXT[a.ini]+' → '+PSI_TXT[a.act]}` : 'Sin registros'}</span></div><div class="psi-s">${sparkSVG(a.pts)}</div><span class="pill ${a.tend==='Avanza'?'ok':a.tend==='Retrocede'?'crit':a.tend?'info':'none'}">${esc(a.tend||'—')}</span></div>`).join('')}</div><p class="small muted" style="margin:12px 0 0">Escala: 1 inicial · 2 en desarrollo · 3 logrado con apoyo · 4 logrado. Cada punto es una sesión.</p>`
+      : `<p class="empty">Aún no hay sesiones con niveles registrados. Al registrar una sesión de psicología, marca el nivel observado en las áreas trabajadas.</p>`}</section>`;
+  const sols = s.solicitudes||[];
+  const solHTML = `<section class="glass card"><header><div><p class="eyebrow">A petición de la familia</p><h2>Informes para profesionales externos</h2></div><button class="btn sm primary" data-act="sol-new">${ic('plus','sm')} Registrar solicitud</button></header>
+    ${sols.length ? `<ul class="rows">${sols.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(x=>{ const st = x.estado||'Pendiente';
+      return `<li class="rowi"><span class="icw">${ic('external')}</span><div class="main"><span class="t">${esc(x.destinatario)}${x.profesion?' · '+esc(x.profesion):''} · ${esc(x.institucion)}</span><span class="d">Solicitado el ${fmt(x.fecha)} por ${esc(x.solicitante)}${x.parentesco?' ('+esc(x.parentesco)+')':''}${st==='Entregado'?` · entregado el ${fmt(x.fechaEntrega)}${x.folio?' · folio '+esc(x.folio):''}`:x.plazo?' · plazo '+fmt(x.plazo):''}${x.consentimiento?'':' · falta la autorización de la familia'}</span></div>
+      <span class="end" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="pill ${st==='Entregado'?'ok':st==='Anulada'?'none':x.consentimiento?'warn':'crit'}">${esc(st)}</span>${st==='Anulada'?'':`<button class="btn sm ${st==='Pendiente'?'primary':''}" data-act="sol-rep" data-id="${x.id}">${ic('print','sm')} ${st==='Entregado'?'Volver a emitir':'Preparar informe'}</button>`}<button class="iconbtn sm" data-act="sol-edit" data-id="${x.id}" aria-label="Editar solicitud">${ic('edit','sm')}</button></span></li>`; }).join('')}</ul>`
+      : `<p class="empty">Cuando la familia pida un informe para un neurólogo, psiquiatra, terapeuta u otro colegio, regístralo aquí con su autorización. Desde la solicitud se prepara el informe con folio y queda constancia de la entrega.</p>`}</section>`;
+  const list = ses.length ? `<section class="glass card"><header><h2>Sesiones de psicología</h2><span class="chip">${ses.length}</span></header><ul class="rows">${ses.slice().reverse().slice(0,30).map(x=>`<li class="rowi click" data-act="edit-item" data-coll="sesiones" data-id="${x.id}"><span class="icw">${ic('activity')}</span><div class="main"><span class="t">${fmt(x.fecha)} · ${esc(x.psiTipo||x.modalidad||'Sesión')}</span><span class="d">${esc(trunc(x.psiObs||x.respuesta||x.actividades||x.motivo||'',150))}</span></div><span class="pill ${estadoCls(x.estado)}">${esc(x.estado||'')}</span></li>`).join('')}</ul></section>` : '';
+  return `<div class="stack">${solHTML}<div class="grid2"><div class="stack">${evol}</div><div class="stack">${plan}</div></div>${list}</div>`;
+}
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.psi-grid{display:grid;gap:10px}.psi-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--row)}
+.psi-l{display:flex;flex-direction:column;min-width:0}.psi-s svg{display:block}
+@media (max-width:640px){.psi-row{grid-template-columns:minmax(0,1fr) auto}.psi-s{grid-column:1/-1;order:3}}`; document.head.appendChild(st); })();
+
+/* ---- 4. Alertas ---- */
+const _alertsForS = alertsFor;
+alertsFor = function(s){ const a = _alertsForS(s); const push = (lvl,t,d) => a.push({lvl, t, d, tab:'seguimiento', sid:s.id, nombre:s.nombre});
+  solPend(s).forEach(x=>{ const d = x.plazo ? diffDays(x.plazo) : null;
+    if(!x.consentimiento) push('warn','Informe externo sin autorización registrada', `Solicitud del ${fmt(x.fecha)} para ${x.institucion}: registra la autorización escrita de la familia antes de entregarlo.`);
+    else if(d!=null && d<0) push('crit','Informe externo fuera de plazo', `Comprometido para el ${fmt(x.plazo)} (${x.destinatario}, ${x.institucion}).`);
+    else push(d!=null && d<=5 ? 'warn' : 'info','Informe externo solicitado por la familia', `Para ${x.destinatario} (${x.institucion})${x.plazo?' · plazo '+fmt(x.plazo):''}.`); });
+  return a; };
+
+/* ---- 5. Informe de progreso para profesionales externos ---- */
+RKINDS.externo = {t:'Informe de progreso para profesionales externos', d:'A petición de la familia, para neurólogos, psiquiatras, terapeutas u otros colegios: encuadre, objetivos, evolución por área y sugerencias para el trabajo colaborativo.', ic:'external', periodo:1};
+function psiRecs(s, desde, hasta){
+  const E = psiEvol(psiSes(s, desde, hasta)); const R = {flex:'Anticipar los cambios de rutina y ofrecer alternativas visuales ante imprevistos.', ident:'Usar apoyos visuales para nombrar emociones, como el termómetro o las tarjetas de emociones.',
+    control:'Mantener las estrategias de calma y el espacio de regulación acordados en todos los contextos.', com:'Favorecer instancias estructuradas de conversación con pares, con roles y turnos claros.', grupo:'Promover juegos de reglas simples y tareas en grupos pequeños con mediación de un adulto.'};
+  const out = ['# Para el trabajo colaborativo'];
+  E.filter(a=>a.act && a.act<=3).forEach(a=>out.push(R[a.k]));
+  out.push('Mantener comunicación periódica entre el colegio, la familia y los profesionales tratantes para alinear estrategias.');
+  out.push('Compartir con el colegio las indicaciones del tratamiento que sean relevantes para el contexto escolar.');
+  return out.join('\n');
+}
+function psiSintesis(s, desde, hasta){
+  const ses = psiSes(s, desde, hasta), real = ses.filter(x=>x.estado==='Realizada'), aus = ses.filter(x=>x.estado==='Ausente');
+  const n = (s.nombreSocial||s.nombre).split(' ')[0]; const grp = real.filter(x=>/grupal|taller/i.test((x.psiTipo||'')+' '+(x.modalidad||''))).length;
+  let t = `Entre el ${fmt(desde)} y el ${fmt(hasta)}, ${n} participó en ${real.length} ${real.length===1?'sesión':'sesiones'} de acompañamiento psicológico${aus.length?` y se registraron ${aus.length} ${aus.length===1?'inasistencia':'inasistencias'}`:''}${grp?`, ${grp} de ellas en taller grupal de juegos y tareas en grupo`:''}.`;
+  const E = psiEvol(ses).filter(a=>a.pts.length);
+  E.forEach(a=>{ t += a.pts.length<2 ? ` En ${a.l.toLowerCase()}, el nivel observado es ${PSI_TXT[a.act]}.` : a.act>a.ini ? ` En ${a.l.toLowerCase()}, avanzó de un nivel ${PSI_TXT[a.ini]} a ${PSI_TXT[a.act]}.` : a.act<a.ini ? ` En ${a.l.toLowerCase()}, bajó de ${PSI_TXT[a.ini]} a ${PSI_TXT[a.act]}, lo que requiere seguimiento.` : ` En ${a.l.toLowerCase()}, se mantiene en un nivel ${PSI_TXT[a.act]}.`; });
+  const obs = real.filter(x=>x.psiObs).slice(-2).map(x=>x.psiObs.trim().replace(/\.?$/,'.'));
+  if(obs.length) t += ' Observaciones recientes: ' + obs.join(' ');
+  return t;
+}
+function buildExterno(s, o, meta){
+  const x = (s.solicitudes||[]).find(y=>y.id===o.item) || {}; const P = s.psi || {};
+  const ses = psiSes(s, o.desde, o.hasta), real = ses.filter(y=>y.estado==='Realizada'), aus = ses.filter(y=>y.estado==='Ausente');
+  const pct = (real.length+aus.length) ? Math.round(real.length/(real.length+aus.length)*100) : null; const E = psiEvol(ses);
+  const tipos = {}; real.forEach(y=>{ const k = y.psiTipo || y.modalidad || 'Sesión'; tipos[k] = (tipos[k]||0)+1; });
+  let h = rHead(RKINDS.externo.t, `Período: ${fmt(o.desde)} al ${fmt(o.hasta)}`, meta);
+  h += `<h2>1. Identificación</h2>${rkv([['Estudiante', s.nombreSocial ? s.nombreSocial+' (nombre civil: '+s.nombre+')' : s.nombre],['RUN', s.rut],['Fecha de nacimiento', s.fnac?fmt(s.fnac)+' ('+edad(s.fnac)+')':''],['Curso', cursoOf(s)],['Condiciones informadas al colegio', [...new Set((s.diagnosticos||[]).map(d=>d.condicion))].join(', ')],['Profesional que informa', profName(P.responsable||S.data.usuario)+' · '+((S.data.equipo.find(p=>p.id===(P.responsable||S.data.usuario))||{}).cargo||'')]])}`;
+  h += `<h2>2. Destinatario y solicitud</h2>${rkv([['Destinatario', [x.destinatario, x.profesion].filter(Boolean).join(', ')],['Institución', x.institucion],['Solicitado por', x.solicitante ? `${x.solicitante}${x.parentesco?' ('+x.parentesco+')':''}, el ${fmt(x.fecha)}${x.medio?' · '+x.medio:''}` : ''],['Propósito', x.motivo, 1]])}`;
+  h += `<h2>3. Motivo y encuadre del acompañamiento</h2><p>${esc(P.motivo||'Sin motivo registrado.')}</p>${rkv([['Inicio', P.inicio?fmt(P.inicio):''],['Frecuencia', P.frecuencia],['Derivado por', P.derivadoPor],['Sesiones en el período', `${real.length} realizadas${aus.length?' · '+aus.length+' inasistencias':''}${pct!=null?' · asistencia '+pct+'%':''}`],['Tipo de atención', Object.entries(tipos).map(([k,v])=>`${k} (${v})`).join(', '), 1]])}`;
+  if((P.objetivos||[]).length) h += `<h2>4. Objetivos de intervención</h2><table><thead><tr><th>Área</th><th>Objetivo</th><th>Cómo se verá el logro</th></tr></thead><tbody>${P.objetivos.map(b=>`<tr><td>${esc(b.area||'')}</td><td>${esc(b.objetivo||'')}</td><td>${esc(b.indicador||'')}</td></tr>`).join('')}</tbody></table>`;
+  h += `<h2>${(P.objetivos||[]).length?5:4}. Evolución por área</h2><p class="muted" style="font-size:8.5pt">Nivel observado por la psicóloga en cada sesión. Escala: 1 inicial · 2 en desarrollo · 3 logrado con apoyo · 4 logrado.</p>
+    <table><thead><tr><th>Área</th><th>Registros</th><th>Nivel al inicio</th><th>Nivel actual</th><th>Tendencia</th><th>Evolución</th></tr></thead><tbody>${E.map(a=>`<tr><td>${esc(a.l)}</td><td>${a.pts.length||'—'}</td><td>${a.ini?esc(PSI_TXT[a.ini]):'—'}</td><td>${a.act?esc(PSI_TXT[a.act]):'—'}</td><td>${esc(a.tend||'No trabajada')}</td><td>${sparkSVG(a.pts,150,32)}</td></tr>`).join('')}</tbody></table>`;
+  const nx = (P.objetivos||[]).length ? 6 : 5;
+  h += `<h2>${nx}. Síntesis del proceso</h2><p class="pre">${esc(o.sintesis||'')}</p>`;
+  h += `<h2>${nx+1}. Sugerencias</h2>${rRecs(o.recs)}`;
+  h += `<p class="note">Informe emitido a solicitud de la familia y con su autorización, exclusivamente para el destinatario indicado y para coordinar el apoyo al estudiante. Describe el proceso de acompañamiento en el contexto escolar y no constituye un diagnóstico clínico.</p><p class="note">Documento confidencial: contiene datos personales y de salud de un niño, niña o adolescente, que son datos sensibles (Ley 19.628, reformada por la Ley 21.719). El destinatario no debe reproducirlo ni compartirlo con otras personas sin autorización de la familia.</p>`;
+  h += signs([[profName(P.responsable||S.data.usuario), ((S.data.equipo.find(p=>p.id===(P.responsable||S.data.usuario))||{}).cargo||'Psicólogo/a')+' · Unidad de Apoyo al Aprendizaje'],[(S.data.equipo.find(p=>isCoord(p.id))||{}).nombre||'','Coordinación UAA']]);
+  return `<div class="rpt">${h}${rFoot(meta)}</div>`;
+}
+const _buildReportS = buildReport;
+buildReport = function(kind, s, o, meta){ return kind==='externo' ? buildExterno(s, o, meta) : _buildReportS(kind, s, o, meta); };
+const _genRecsS = genRecs;
+genRecs = function(s, kind, desde, hasta){ return kind==='externo' ? psiRecs(s, desde, hasta) : _genRecsS(s, kind, desde, hasta); };
+const _openReportS = openReport;
+openReport = function(kind, sid, item){ _openReportS(kind, sid, item);
+  if(kind==='externo' && S.rep){ const s = stu(sid); const ini = s?.psi?.inicio; if(ini && ini<S.rep.hasta) S.rep.desde = ini;
+    if(!item){ const p = solPend(s||{})[0]; if(p) S.rep.item = p.id; }
+    S.rep.recs = psiRecs(s, S.rep.desde, S.rep.hasta); S.rep.sintesis = psiSintesis(s, S.rep.desde, S.rep.hasta); render(); } };
+const _renderReportModalS = renderReportModal;
+renderReportModal = function(){
+  const h = _renderReportModalS(); const r = S.rep; if(r.kind!=='externo') return h;
+  const s = stu(r.sid); const sols = (s.solicitudes||[]).filter(x=>x.estado!=='Anulada'); const x = sols.find(y=>y.id===r.item);
+  const ing = typeof autState==='function' ? autState(s,'ingreso') : null;
+  const ok = x && x.consentimiento;
+  const block = `<div class="fields" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:4px">
+    <div class="field w2"><label for="rep-sol">Solicitud de la familia</label><select id="rep-sol">${sols.length?'':'<option value="">No hay solicitudes registradas</option>'}${sols.map(y=>`<option value="${y.id}" ${y.id===r.item?'selected':''}>${esc(fmt(y.fecha))} · ${esc(y.destinatario)} (${esc(y.institucion)})${y.estado==='Entregado'?' · entregado':''}</option>`).join('')}</select>
+      ${!x ? '<span class="small" style="color:var(--crit)">Registra primero la solicitud de la familia en la pestaña Seguimiento socioemocional.</span>' : !x.consentimiento ? '<span class="small" style="color:var(--crit)">Falta registrar la autorización escrita de la familia para entregar el informe a este destinatario.</span>' : `<span class="small muted">Autorización registrada${x.respaldo?': '+esc(x.respaldo):''}.${ing && ing.x && !ing.x.salud ? ' En la autorización de ingreso la familia no marcó el intercambio con profesionales de salud: confirma que esta autorización específica esté firmada.' : ''}</span>`}</div>
+    <div class="field w2"><label for="rep-sint">Síntesis del proceso</label><textarea id="rep-sint" style="min-height:140px">${esc(r.sintesis||'')}</textarea><span class="small muted">Redactada a partir de las sesiones registradas. Complétala con tu mirada profesional antes de emitir.</span></div></div>`;
+  let out = h.replace('<div class="rep-actions">', block + '<div class="rep-actions">');
+  if(!ok) out = out.replace(/<div class="rep-actions">[\s\S]*?<\/div>\s*<div class="rpt-frame">/, `<div class="rep-actions"><span class="small" style="color:var(--crit);font-weight:600">Para emitir este informe se necesita una solicitud de la familia con su autorización registrada.</span></div><div class="rpt-frame">`);
+  return out;
+};
+document.addEventListener('input', e=>{ if(S.rep?.kind==='externo' && e.target.id==='rep-sint'){ S.rep.sintesis = e.target.value; S.rep.sintEdit = true; e.stopImmediatePropagation(); } }, true);
+document.addEventListener('change', e=>{ if(S.rep?.kind!=='externo') return; const id = e.target.id;
+  if(id==='rep-sint'){ S.rep.sintesis = e.target.value; refreshPreview(); e.stopImmediatePropagation(); }
+  if(id==='rep-sol'){ S.rep.item = e.target.value; e.stopImmediatePropagation(); renderModal(); }
+  if(id==='rep-desde' || id==='rep-hasta'){ setTimeout(()=>{ const s = stu(S.rep.sid); if(!S.rep.sintEdit){ S.rep.sintesis = psiSintesis(s, S.rep.desde, S.rep.hasta); const t = document.getElementById('rep-sint'); if(t) t.value = S.rep.sintesis; refreshPreview(); } }, 0); } }, true);
+const _emitReportS = emitReport;
+emitReport = async function(mode){
+  const r = S.rep; const isExt = r?.kind==='externo';
+  if(isExt){ const x = (stu(r.sid)?.solicitudes||[]).find(y=>y.id===r.item); if(!x || !x.consentimiento){ toast('Falta la solicitud de la familia con su autorización', true); return; } }
+  const sid = r?.sid, solId = r?.item, before = S.data.folio||0;
+  const res = await _emitReportS.apply(this, arguments);
+  if(isExt && (S.data.folio||0) > before && !S.rep){ const s = stu(sid); const x = (s?.solicitudes||[]).find(y=>y.id===solId);
+    if(x){ x.estado = 'Entregado'; x.fechaEntrega = D(0); x.folio = `UAA-${TODAY.getFullYear()}-${String(S.data.folio).padStart(4,'0')}`; x.entregadoPor = S.data.usuario; stamp(x);
+      logEv(s.id, 'Entregó informe externo', `${x.folio} · ${x.destinatario} (${x.institucion}) · solicitado por ${x.solicitante}`); persist(); keepScroll(render); } }
+  return res;
+};
+// la tarjeta del informe aparece también en la pestaña Informes
+const _vInformesS = vInformes;
+vInformes = function(s){ const h = _vInformesS(s);
+  return h.replace('</div>\n  <section class="glass card"><header><h2>Informes emitidos</h2>', `<article class="glass card rcard"><span class="avatar av2">${ic('external')}</span><h2>${RKINDS.externo.t}</h2><p class="muted small">${RKINDS.externo.d}</p><button class="btn" data-act="tab" data-tab="seguimiento">Ver solicitudes ${ic('arrow','sm')}</button></article></div>\n  <section class="glass card"><header><h2>Informes emitidos</h2>`); };
+
+/* ---- 6. Acciones ---- */
+function saveSimple(f){
+  const miss = missingReq(SCHEMA[f.schema], f.draft); if(miss.length){ f.err = miss; render(); return true; }
+  const s = stu(f.sid); if(!s){ S.form = null; render(); return true; }
+  if(f.kind==='psi'){ s.psi = stamp({...f.draft}, !s.psi); logEv(s.id, s.psi._creado===s.psi._mod?'Creó':'Editó', 'Plan de acompañamiento psicológico'); }
+  else { s.solicitudes = s.solicitudes||[]; const d = {...f.draft, estado: f.draft.estado||'Pendiente'};
+    if(d.id){ const i = s.solicitudes.findIndex(x=>x.id===d.id); if(i<0) s.solicitudes.push(stamp(d)); else s.solicitudes[i] = stamp(d); logEv(s.id,'Editó',`solicitud de informe del ${fmt(d.fecha)} · ${d.institucion}`); }
+    else { const n = stamp({...d, id:uid()}, true); s.solicitudes.push(n); logEv(s.id,'Registró',`solicitud de informe del ${fmt(n.fecha)} · ${n.institucion}`); } }
+  S.form = null; persist(); render(); toast('Guardado'); return true;
+}
+const _saveFormS = saveForm;
+saveForm = function(){ const f = S.form; if(f && (f.kind==='psi' || f.kind==='solicitudes')) return saveSimple(f); return _saveFormS.apply(this, arguments); };
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-act]'); if(!el) return; const a = el.dataset.act; const s = stu(S.sid);
+  if(a==='psi-edit' && s){ openForm({kind:'psi', schema:'psi', where:'modal', sid:s.id, isNew:!s.psi, title:'Acompañamiento psicológico', draft: s.psi ? clone(s.psi) : {responsable: isPsi(S.data.usuario) ? S.data.usuario : (S.data.equipo.find(p=>isPsi(p.id))||{}).id||'', inicio:D(0), objetivos:[]}}); }
+  if(a==='sol-new' && s){ const ap = (s.apoderados||[]).find(x=>x.tipo==='Titular') || (s.apoderados||[])[0] || {};
+    openForm({kind:'solicitudes', schema:'solinf', where:'modal', sid:s.id, isNew:true, title:'Solicitud de informe de la familia', draft:{fecha:D(0), solicitante:ap.nombre||'', parentesco:ap.parentesco||'', estado:'Pendiente', plazo:D(10), consentimiento:false}}); }
+  if(a==='sol-edit' && s){ const x = (s.solicitudes||[]).find(y=>y.id===el.dataset.id); if(x) openForm({kind:'solicitudes', schema:'solinf', where:'modal', sid:s.id, isNew:false, title:'Solicitud de informe de la familia', draft:clone(x)}); }
+  if(a==='sol-rep' && s){ openReport('externo', s.id, el.dataset.id); }
+  if(a==='new-session-psi' && s){ e.stopImmediatePropagation();
+    openForm({kind:'agenda', schema:'agendaSesion', where:'modal', isNew:true, title:'Nueva sesión de psicología', draft:{sid:s.id, fecha:D(0), estado:'Realizada', duracion:45, profesional: isPsi(S.data.usuario) ? S.data.usuario : (S.data.equipo.find(p=>isPsi(p.id))||{}).id||S.data.usuario, modalidad:'Individual fuera del aula', psiTipo:'Sesión individual'}}); }
+});
+
+/* ---- 7. Panel de inicio de la psicóloga ---- */
+const _vPanelProS = vPanelPro;
+vPanelPro = function(pid){
+  const h = _vPanelProS(pid); if(!isPsi(pid)) return h;
+  const mine = [...myStudents(pid)].map(stu).filter(Boolean);
+  const mes = D(0).slice(0,7); const sesMes = mine.reduce((n,s)=>n+psiSes(s).filter(x=>x.profesional===pid && x.estado==='Realizada' && x.fecha.startsWith(mes)).length, 0);
+  const pend = mine.flatMap(s=>solPend(s).map(x=>({s,x}))).sort((a,b)=>String(a.x.plazo||'9').localeCompare(String(b.x.plazo||'9')));
+  const sinSeg = mine.filter(s=>{ const l = psiSes(s).filter(x=>x.estado==='Realizada').pop(); return s.psi && (!l || diffDays(l.fecha) < -21); });
+  const entregados = mine.reduce((n,s)=>n+(s.solicitudes||[]).filter(x=>x.estado==='Entregado' && String(x.fechaEntrega||'').startsWith(String(TODAY.getFullYear()))).length, 0);
+  const card = `<section class="glass card" style="margin-top:18px"><header><div><p class="eyebrow">Psicología</p><h2>Seguimiento socioemocional</h2></div><button class="btn sm primary" data-act="new-session">${ic('plus','sm')} Registrar sesión</button></header>
+    <div class="ktiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">${[[mine.filter(s=>s.psi).length,'Estudiantes en acompañamiento'],[sesMes,'Sesiones este mes'],[pend.length,'Informes solicitados'],[entregados,'Informes entregados este año']].map(([v,l])=>`<div style="padding:12px 14px;border-radius:14px;background:var(--row)"><div style="font-size:1.6rem;font-weight:700">${Number(v)}</div><div class="small muted">${esc(l)}</div></div>`).join('')}</div>
+    ${pend.length?`<h3 style="margin:4px 0 8px;font-size:.95rem">Informes que pidieron las familias</h3><ul class="rows">${pend.slice(0,6).map(({s,x})=>`<li class="rowi click" data-act="open" data-sid="${s.id}" data-tab="seguimiento"><span class="icw">${ic('external')}</span><div class="main"><span class="d">${esc(s.nombre)}</span><span class="t">${esc(x.destinatario)} · ${esc(x.institucion)}</span><span class="d">${x.plazo?'Plazo '+fmt(x.plazo):'Sin plazo'}${x.consentimiento?'':' · falta la autorización de la familia'}</span></div><span class="end">${ic('arrow','sm')}</span></li>`).join('')}</ul>`:''}
+    ${sinSeg.length?`<h3 style="margin:14px 0 8px;font-size:.95rem">Sin sesión en las últimas tres semanas</h3><ul class="rows">${sinSeg.slice(0,6).map(s=>`<li class="rowi click" data-act="open" data-sid="${s.id}" data-tab="seguimiento"><span class="icw">${ic('clock')}</span><div class="main"><span class="t">${esc(s.nombre)}</span><span class="d">${esc(cursoOf(s))}</span></div><span class="end">${ic('arrow','sm')}</span></li>`).join('')}</ul>`:''}
+    ${!pend.length && !sinSeg.length ? '<p class="small muted" style="margin:0">Abre la ficha de un estudiante › Seguimiento socioemocional para iniciar su acompañamiento y registrar las solicitudes de informe de la familia.</p>' : ''}</section>`;
+  return h.replace('<section class="glass card"><header><h2>Mis pendientes</h2>', card + '<section class="glass card"><header><h2>Mis pendientes</h2>');
+};
+
+/* ---- 8. Datos de ejemplo (solo en la demostración) ---- */
+const _migrateS = migrate;
+migrate = function(){ _migrateS();
+  (S.data.students||[]).forEach(s=>{ if(!Array.isArray(s.solicitudes)) s.solicitudes = []; });
+  const psi = (S.data.equipo||[]).find(p=>isPsi(p.id)); const s = S.data.demo && psi ? (S.data.students||[])[0] : null;
+  if(s && !s._psiSeed){ s._psiSeed = 1; const P = psi.id;
+    s.psi = {responsable:P, inicio:D(-84), frecuencia:'Semanal, 45 minutos', derivadoPor:'Profesora jefe y familia', motivo:'Dificultad para tolerar cambios en la rutina y para expresar lo que siente; se aísla en los recreos y le cuesta trabajar en grupo.',
+      externos:'Neuróloga infantil, Clínica Los Andes (ficticio)', objetivos:[{area:'Flexibilidad cognitiva', objetivo:'Aceptar cambios anticipados en la rutina usando su agenda visual', indicador:'Usa la agenda sin desregularse en 3 de 4 cambios'},
+      {area:'Identificación de emociones', objetivo:'Nombrar la emoción que siente con apoyo del termómetro', indicador:'La nombra en la mayoría de las sesiones'},{area:'Juego y tareas en grupo', objetivo:'Participar en juegos de reglas con dos compañeros', indicador:'Completa el juego respetando turnos'}], _creado:nowIso(), _por:P};
+    const L = [[-80,{flex:'1',ident:'1',grupo:'1'},'Entrevista inicial con el estudiante','Se muestra reservado. Acepta el juego de cartas de emociones al final.'],[-73,{flex:'1',ident:'2'},'Sesión individual','Identifica alegría y enojo en láminas; le cuesta reconocer la frustración.'],
+      [-66,{grupo:'1',com:'1'},'Taller grupal (juegos y tareas en grupo)','Observa a sus compañeros antes de sumarse. Participa con apoyo adulto.'],[-52,{flex:'2',ident:'2',control:'2'},'Sesión individual','Usa la agenda visual ante el cambio de sala avisado con anticipación.'],
+      [-45,{grupo:'2',com:'2'},'Taller grupal (juegos y tareas en grupo)','Respeta turnos en un juego de mesa; pide ayuda para unirse.'],[-31,{flex:'2',ident:'3',control:'2'},'Seguimiento','Nombra su emoción con el termómetro y elige una estrategia de calma.'],
+      [-24,{grupo:'3',com:'2'},'Taller grupal (juegos y tareas en grupo)','Propone una regla al grupo y la explica con apoyo.'],[-10,{flex:'3',ident:'3',control:'3'},'Seguimiento','Tolera un cambio no anticipado en el horario usando la respiración acordada.']];
+    L.forEach(([d,lv,tipo,obs])=>{ const x = {id:uid(), fecha:D(d), hora:'11:00', duracion:45, profesional:P, modalidad:/grupal/i.test(tipo)?'Grupal fuera del aula':'Individual fuera del aula', estado:'Realizada', psiTipo:tipo, psiObs:obs, actividades:'', respuesta:'', _creado:nowIso(), _por:P};
+      Object.entries(lv).forEach(([k,v])=>x['psi_'+k]=v); s.sesiones = s.sesiones||[]; s.sesiones.push(x); });
+    s.solicitudes.push({id:uid(), fecha:D(-3), solicitante:(s.apoderados||[])[0]?.nombre||'Apoderada', parentesco:(s.apoderados||[])[0]?.parentesco||'Madre', medio:'Correo electrónico', destinatario:'Dra. Paula Rivas (ficticia)', profesion:'Neuróloga infantil',
+      institucion:'Clínica Los Andes (ficticio)', tipoInst:'Clínica o centro de salud', motivo:'Control neurológico semestral: conocer la evolución en el colegio.', plazo:D(7), consentimiento:true, respaldo:'Correo de la apoderada (ficticio)', estado:'Pendiente', _creado:nowIso(), _por:P}); }
+};
+
 
 /* ---------- íconos ---------- */
 const ICONS = {
@@ -3322,7 +3983,7 @@ const ICONS = {
   print:'M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z'
 };
 const ic = (n, cls='') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${n==='more'?3:1.8}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
-const DOC_IC = {autorizaciones:'doc', medidas:'shield', derechos:'doc', adaptadas:'layers', familia:'users', informes:'print', comunicaciones:'chat', anamnesis:'chat', evaluaciones:'chart', pai:'target', paci:'layers', paec:'heart', sesiones:'activity', dec:'zap', resumen:'home'};
+const DOC_IC = {seguimiento:'heart', autorizaciones:'doc', medidas:'shield', derechos:'doc', adaptadas:'layers', familia:'users', informes:'print', comunicaciones:'chat', anamnesis:'chat', evaluaciones:'chart', pai:'target', paci:'layers', paec:'heart', sesiones:'activity', dec:'zap', resumen:'home'};
 const AREA_AV = a => 'av'+(1+[...String(a||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%6);
 const initials = n => String(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 const nameHTML = n => { const p = String(n||'').split(/\s+/); return esc(p[0])+'<br><b>'+esc(p.slice(1).join(' '))+'</b>'; };
@@ -3414,7 +4075,7 @@ function vEstudiantes(){
 }
 const condChips = s => [...new Set((s.diagnosticos||[]).map(d=>d.condicion).filter(Boolean))].map(c=>`<span class="chip ${c==='Autismo (TEA)'?'tea':''}">${esc(c)}</span>`).join('');
 
-const TABS = [['resumen','Resumen'],['informes','Informes'],['familia','Familia'],['autorizaciones','Autorizaciones'],['anamnesis','Anamnesis'],['evaluaciones','Evaluaciones'],['adaptadas','Evaluaciones adaptadas'],['pai','PAI'],['paci','PACI'],['paec','PAEC'],['sesiones','Intervenciones'],['dec','Registro DEC'],['medidas','Medidas excepcionales']];
+const TABS = [['resumen','Resumen'],['informes','Informes'],['familia','Familia'],['autorizaciones','Autorizaciones'],['anamnesis','Anamnesis'],['evaluaciones','Evaluaciones'],['adaptadas','Evaluaciones adaptadas'],['pai','PAI'],['paci','PACI'],['paec','PAEC'],['sesiones','Intervenciones'],['seguimiento','Seguimiento socioemocional'],['dec','Registro DEC'],['medidas','Medidas excepcionales']];
 function vFicha(){
   const s = stu(S.sid); if(!s){ S.view='estudiantes'; return vEstudiantes(); }
   const stMap = Object.fromEntries(docStatus(s).map(d=>[d[2], d[3]]));
@@ -3422,6 +4083,7 @@ function vFicha(){
   { const ma = medAlerts(s); stMap.medidas = ma.some(a=>a.lvl==='crit') ? 'crit' : ma.length ? 'warn' : (s.medidas||[]).length ? 'ok' : undefined; }
   { const aa = adapAlerts(s); stMap.adaptadas = aa.some(a=>a.lvl==='crit') ? 'crit' : aa.length ? 'warn' : (s.adaptadas||[]).length ? 'ok' : undefined; }
   stMap.autorizaciones = autTabState(s);
+  { const sp = solPend(s); stMap.seguimiento = sp.some(x=>!x.consentimiento || (x.plazo && diffDays(x.plazo)<0)) ? 'crit' : sp.length ? 'warn' : s.psi ? 'ok' : undefined; }
   { const R = respaldo(s); stMap.familia = R.late ? 'crit' : R.partial ? 'warn' : 'ok'; }
   return `<div class="navrow"><button class="iconbtn" data-act="nav" data-view="estudiantes" aria-label="Volver a estudiantes">${ic('back')}</button><h2>Ficha del estudiante</h2></div>
   <header class="fichahead"><div class="left"><p class="eyebrow">${esc(cursoOf(s))} · ${esc(edad(s.fnac))}</p><h1>${nameHTML(s.nombreSocial||s.nombre)}</h1>
@@ -3436,6 +4098,7 @@ function tabBody(s){
   if(S.tab==='resumen') return vResumen(s);
   if(S.tab==='familia') return vFamilia(s);
   if(S.tab==='informes') return vInformes(s);
+  if(S.tab==='seguimiento') return vSeguimiento(s);
   if(S.tab==='adaptadas') return vAdaptadas(s);
   if(DOCS[S.tab]){
     const k = S.tab, doc = s[k];
@@ -3534,10 +4197,10 @@ function vNormativa(){
   const N = [
     {code:'Ley 21.545 · Circular SIE 586/2023', t:'Ley TEA', li:['PAEC anual, individual y específico para cada estudiante autista, elaborado con la familia.','Protocolo de respuesta ante desregulaciones incluido en el Reglamento Interno.','No se sancionan conductas asociadas a la condición sin haber aplicado antes los apoyos del plan.','Capacitación de todo el personal al menos una vez al año, y circular a las familias en los dos primeros meses del año escolar.'], app:'Módulo PAEC, alerta de plazo de dos semanas desde que el colegio recibe el diagnóstico y Registro DEC con aviso cuando la familia no ha sido informada.', link:['Implementación Ley 21.545 · Mineduc','https://especial.mineduc.cl/implementacion-ley-n21-545/']},
     {code:'Orientaciones Mineduc · abril 2025', t:'Estructura del PAEC', li:['Identificación del estudiante (nombre civil y social), apoderados y contactos de emergencia.','Equipo de apoyo con roles y responsabilidades.','Eje preventivo: apoyos, intereses, experiencias de disfrute, habilidades a desarrollar.','Eje reactivo: gatillantes, señales tempranas, formas de malestar, resguardo y respuestas.','Fechas de elaboración y revisión, y firmas del equipo de gestión y la familia (suplente con poder simple).','Documento confidencial. Se recomienda usarlo también con estudiantes no autistas que lo necesiten.'], app:'El formulario PAEC sigue estos apartados y agrega una respuesta por etapa del protocolo DEC.', link:['Orientaciones PAEC (PDF)','https://especial.mineduc.cl/wp-content/uploads/sites/31/2025/05/Orientaciones-PAECOK.pdf']},
-    {code:'Decreto 83/2015', t:'Diversificación de la enseñanza', li:['Criterios de adecuación curricular para educación parvularia y básica.','Adecuaciones de acceso: presentación de la información, formas de respuesta, entorno, organización del tiempo.','Adecuaciones en objetivos: graduación, priorización, temporalización, enriquecimiento, eliminación.','Las decisiones se registran en un PACI.'], app:'Módulo PACI con los tipos de adecuación del decreto y justificación por asignatura.'},
+    {code:'Decreto 83/2015', t:'Diversificación de la enseñanza', li:['Criterios de adecuación curricular para educación parvularia y básica. En enseñanza media no rige: allí las adecuaciones se fundan en el Decreto 67/2018 y en el Reglamento de Evaluación del colegio.','Adecuaciones de acceso: presentación de la información, formas de respuesta, entorno, organización del tiempo.','Adecuaciones en objetivos: graduación, priorización, temporalización, enriquecimiento, eliminación.','Las decisiones se registran en un PACI.'], app:'Módulo PACI con los tipos de adecuación del decreto y justificación por asignatura.'},
     {code:'Decreto 67/2018', t:'Evaluación, calificación y promoción', li:['Los estudiantes con adecuaciones se evalúan según lo establecido en su PACI.','El reglamento de evaluación del colegio debe recoger la diversificación.'], app:'Sección de evaluación y promoción dentro del PACI.'},
     {code:'Decreto 170/2009', t:'Programa de Integración Escolar', li:['Regula la subvención de educación especial y el PIE, con sus formularios (FUDEI) y plazos.','Como la unidad no funciona bajo PIE, este decreto no rige su operación. El PAI se usa como buena práctica de planificación.'], app:'La app no genera formularios PIE. Si en el futuro se postula a PIE, habría que agregar ese módulo.'},
-    {code:'Ley 19.628 reformada por Ley 21.719', t:'Protección de datos personales', li:['Los datos de salud de niñas, niños y adolescentes son datos sensibles y requieren autorización de padres o tutores.','Plena vigencia prevista para el 1 de diciembre de 2026. Hay un proyecto en el Senado que propone postergarla a 2027.','Exige medidas de seguridad, acceso restringido y responder solicitudes de acceso o rectificación.'], app:'Registro de autorización en la anamnesis y en el PAEC, con alerta si falta. Este prototipo guarda los datos solo en el navegador; la versión real necesita usuarios, permisos por rol, cifrado y respaldo en servidor.'},
+    {code:'Ley 19.628 reformada por Ley 21.719', t:'Protección de datos personales', li:['Los datos de salud de niñas, niños y adolescentes son datos sensibles y requieren autorización de padres o tutores.','Plena vigencia prevista para el 1 de diciembre de 2026. Hay un proyecto en el Senado que propone postergarla a 2027.','Exige medidas de seguridad, acceso restringido y responder solicitudes de acceso o rectificación.'], app:'Registro de autorización en la anamnesis y en el PAEC, con alerta si falta. La plataforma guarda los datos en una base compartida del colegio, con ingreso solo por cuenta institucional de Google, permisos por rol (cada profesional ve a sus estudiantes), conexión cifrada, historial de versiones y registro inalterable de cada acceso y cambio.'},
     {code:'Información a la familia', t:'Qué debe recibir la familia y cuándo', li:['Al ingresar: autorización escrita para tratar datos personales y de salud, y para evaluar.','Tras cada evaluación: devolución de resultados con acta (Decreto 67, art. 18 m; plazo interno sugerido de 15 días).','Estudiantes autistas: circular sobre la Ley TEA en los dos primeros meses del año, y PAEC entregado y firmado dentro de dos semanas desde el diagnóstico (Circular 586).','Cada modificación del PAEC, PAI o PACI: informarla y dejar acuse.','Cada episodio de desregulación: aviso el mismo día y entrevista de seguimiento según el Reglamento Interno.','Al cierre de cada semestre: informe de avance (Decreto 67, art. 18 m).','Promoción o repitencia: considerar la visión de la familia; las medidas de acompañamiento requieren su autorización (Decreto 67, arts. 11 y 12).'], app:'La pestaña Familia de cada estudiante calcula estas entregas, sus plazos y si tienen acuse. Las vencidas aparecen como alertas.', wide:1},
     {code:'Evidencia', t:'Qué evidencia conviene conservar', li:['Actas de entrevista firmadas por la familia, con fecha, asistentes, temas y acuerdos.','Citaciones enviadas aunque la familia no asista, y los intentos de contacto telefónico.','Si el apoderado se niega a firmar: dejar constancia con un testigo del colegio.','Registro de cada sesión con objetivo trabajado y respuesta del estudiante.','Registro de cada episodio DEC: gatillante, etapa, adultos que intervinieron, medidas y aviso a la familia.','Informes emitidos con folio, y la copia firmada que devuelve la familia.'], app:'Cada registro guarda quién lo creó y cuándo. Los informes llevan folio y quedan anotados en la ficha. El expediente reúne todo en un solo documento.', wide:1},
     {code:'Ley 20.845 · Ley 20.422', t:'Inclusión escolar y no discriminación', li:['Prohíben discriminar por condición o discapacidad y obligan a realizar ajustes razonables.','Las medidas como reducción de jornada o salida anticipada permanente no pueden usarse para excluir.'], app:'Referencia para los acuerdos del PAEC y del PAI.', wide:1}
@@ -3593,11 +4256,12 @@ function saveForm(){
   const f = S.form, sch = SCHEMA[f.schema], d = f.draft;
   const miss = missingReq(sch, d); if(miss.length){ f.err = miss; render(); return; }
   const s = f.sid ? stu(f.sid) : null;
+  if(f.sid && !s && f.kind!=='student'){ S.form = null; S.modal = null; render(); toast('Este estudiante fue eliminado por otra persona. No se guardaron los cambios.', true); return; }
   switch(f.kind){
-    case 'student': if(f.isNew){ const id = uid(); S.data.students.push(stamp({id, sesiones:[], dec:[], evaluaciones:[], comunicaciones:[], ...d}, true)); S.sid = id; S.view = 'ficha'; S.tab = 'resumen'; logEv(id,'Creó','Ficha del estudiante'); } else { Object.assign(s, stamp(d)); logEv(s.id,'Editó','Datos del estudiante'); } break;
+    case 'student': if(f.isNew){ const id = uid(); S.data.students.push(stamp({id, sesiones:[], dec:[], evaluaciones:[], comunicaciones:[], ...d}, true)); S.sid = id; S.view = 'ficha'; S.tab = 'resumen'; logEv(id,'Creó','Ficha del estudiante'); } else { if(!s){ S.form = null; S.modal = null; render(); toast('Este estudiante fue eliminado por otra persona. No se guardaron los cambios.', true); return; } SCHEMA.student.flatMap(x=>x.fields).forEach(fl=>{ if(fl.k in d) s[fl.k] = d[fl.k]; }); stamp(s); logEv(s.id,'Editó','Datos del estudiante'); } break;
     case 'anamnesis': case 'pai': case 'paci': case 'paec': s[f.kind] = stamp(d, f.isNew); logEv(s.id, f.isNew?'Creó':'Editó', DOC_LONG[f.kind]); break;
     case 'evaluaciones': case 'sesiones': case 'dec': case 'comunicaciones': case 'adaptadas': case 'medidas': case 'derechos': case 'autorizaciones': { s[f.kind] = s[f.kind]||[]; const lbl = COLL[f.kind].label; const desc = x => `${lbl} del ${fmt(x.fecha)}${f.kind==='autorizaciones'?' · '+(AUT[x.tipo]?.c||x.tipo):x.motivo?' · '+x.motivo:x.tipo?' · '+x.tipo:x.modalidad?' · '+x.modalidad:''}`;
-      if(d.id){ const i = s[f.kind].findIndex(x=>x.id===d.id); s[f.kind][i] = stamp(d); logEv(s.id,'Editó',desc(d)); } else { const n = stamp({...d, id:uid()}, true); s[f.kind].push(n); logEv(s.id,'Registró',desc(n)); if(f.kind==='dec') S._openAn = {sid:s.id, did:n.id}; } break; }
+      if(d.id){ const i = s[f.kind].findIndex(x=>x.id===d.id); if(i<0){ s[f.kind].push(stamp(d)); toast('Otra persona había eliminado este registro. Se volvió a guardar con tus cambios.'); } else s[f.kind][i] = stamp(d); logEv(s.id,'Editó',desc(d)); } else { const n = stamp({...d, id:uid()}, true); s[f.kind].push(n); logEv(s.id,'Registró',desc(n)); if(f.kind==='dec') S._openAn = {sid:s.id, did:n.id}; } break; }
     case 'agenda': { const t = stu(d.sid); const {sid, ...rest} = d; t.sesiones = t.sesiones||[]; t.sesiones.push(stamp({...rest, id:uid()}, true)); logEv(t.id,'Registró',`sesión del ${fmt(rest.fecha)} · ${rest.modalidad||''}`); break; }
     case 'grupo': saveGrupo(d, f); break;
     case 'reunion': saveReunion(d); break;
@@ -3735,6 +4399,9 @@ function splitData(d){
 }
 function applyRow(k, data){
   if(k==='dir_snapshot'){ S.snap = data; return; }
+  if(data && typeof data==='object'){
+    if(k.startsWith('st:') && (!SAFE_ID.test(k.slice(3)) || data.id!==k.slice(3))) return; // fila inconsistente: se ignora
+    sanitizeIds(data); }
   if(k==='core'){ Object.keys(data||{}).forEach(x=>{ if(!LOCAL_KEYS.includes(x)) S.data[x] = data[x]; }); return; }
   if(COLL_KEYS.includes(k)){ S.data[k] = data ?? (k==='inst' ? {} : k==='nomina' ? null : []); return; }
   if(k.startsWith('st:')){ const id = k.slice(3), L = S.data.students, i = L.findIndex(s=>s.id===id);
@@ -3745,21 +4412,35 @@ const myRol = () => C.perfil?.rol;
 const canWrite = k => myRol()==='coordinacion' || (myRol()==='profesional' && k!=='core' && k!=='nomina');
 const isTeam = () => TEAM_ROLES.includes(myRol());
 
-/* ---- combinación de cambios simultáneos ---- */
-function mergeVal(r, l){
+/* ---- combinación de cambios simultáneos (3 vías: base conocida, remoto, local) ---- */
+const J = x => JSON.stringify(x);
+const isObj = x => x && typeof x==='object' && !Array.isArray(x);
+const byId = a => Array.isArray(a) && a.every(x=>isObj(x) && x.id);
+function merge3(b, r, l){
+  if(J(l) === J(b)) return r;          // solo cambió el remoto
+  if(J(r) === J(b) || J(r) === J(l)) return l;  // solo cambió lo local
   if(Array.isArray(r) && Array.isArray(l)){
-    const byId = a => a.every(x=>x && typeof x==='object' && x.id);
-    if(byId(r) && byId(l)){ const m = new Map(); r.forEach(x=>m.set(x.id, x)); l.forEach(x=>{ const o = m.get(x.id); m.set(x.id, o ? mergeVal(o, x) : x); }); return [...m.values()]; }
+    if(byId(r) && byId(l) && (b===undefined || byId(b))){
+      const B = new Map((b||[]).map(x=>[x.id,x])), R = new Map(r.map(x=>[x.id,x])), L = new Map(l.map(x=>[x.id,x]));
+      const ids = [...new Set([...r.map(x=>x.id), ...l.map(x=>x.id)])]; const out = [];
+      ids.forEach(id=>{ const bb = B.get(id), rr = R.get(id), ll = L.get(id);
+        if(rr && ll) out.push(merge3(bb, rr, ll));
+        else if(rr){ if(!bb || J(rr)!==J(bb)) out.push(rr); }       // borrado local: se respeta si el remoto no lo editó
+        else if(ll){ if(!bb || J(ll)!==J(bb)) out.push(ll); }       // borrado remoto: se respeta si no lo editaste
+      });
+      return out;
+    }
     return l;
   }
-  if(r && l && typeof r==='object' && typeof l==='object'){
-    const newer = String(l._mod||'') >= String(r._mod||'') ? l : r; const out = {};
-    new Set([...Object.keys(r), ...Object.keys(l)]).forEach(k=>{ const a = r[k], b = l[k];
-      out[k] = (a && b && typeof a==='object' && typeof b==='object') ? mergeVal(a, b) : (k in newer ? newer[k] : (b !== undefined ? b : a)); });
+  if(isObj(r) && isObj(l)){
+    const bo = isObj(b) ? b : {}; const out = {};
+    new Set([...Object.keys(r), ...Object.keys(l), ...Object.keys(bo)]).forEach(k=>{
+      const v = merge3(bo[k], r[k], l[k]); if(v !== undefined) out[k] = v; });
     return out;
   }
   return l;
 }
+const mergeVal = (r, l, b) => merge3(b, r, l);
 
 /* ---- resumen anónimo para Dirección ---- */
 function computeSnap(){
@@ -3773,24 +4454,26 @@ function cloudPersist(){
   savePrefs();
   if(!C.ready) return;
   const parts = splitData(S.data);
-  if(isTeam()){ try{ parts.dir_snapshot = computeSnap(); }catch(e){ console.warn('resumen', e); } }
+  if(C.snap && isTeam()) parts.dir_snapshot = C.snap;
   Object.entries(parts).forEach(([k, v])=>{ const j = JSON.stringify(v); if(C.rows[k]?.json === j) return; if(canWrite(k)) C.dirty.add(k); });
   if(myRol()==='coordinacion') Object.keys(C.rows).filter(k=>k.startsWith('st:') && !(k in parts)).forEach(k=>C.dirty.add(k));
   schedule(300);
 }
-function schedule(ms){ clearTimeout(C.timer); C.timer = setTimeout(flush, ms); if(C.dirty.size) setStatus('saving'); }
+function schedule(ms, keepErr){ clearTimeout(C.timer); C.timer = setTimeout(flush, ms); if(C.dirty.size && !keepErr) setStatus('saving'); }
 async function flush(){
   if(C.saving) return schedule(400);
   C.saving = true;
   try{
     const nl = (S.data.log||[]).filter(l=>!C.sent.has(l));
     for(let i=0; i<nl.length; i+=400){ const chunk = nl.slice(i, i+400);
-      const {error} = await sb.from('auditoria').insert(chunk.map(l=>({sid:l.sid||null, accion:String(l.accion||''), detalle:String(l.detalle||''), ts_cliente:l.ts||null})));
+      const {error} = await sb.from('auditoria').insert(chunk.map(l=>({sid:l.sid||null, accion:String(l.accion||'').slice(0,80), detalle:String(l.detalle||'').slice(0,500), ts_cliente:l.ts||null})));
       if(error) throw error; chunk.forEach(l=>C.sent.add(l)); }
-    const parts = splitData(S.data); if(isTeam()){ try{ parts.dir_snapshot = computeSnap(); }catch(e){} }
+    const parts = splitData(S.data);
+    if(isTeam() && (!C.snapAt || Date.now()-C.snapAt > 20000)){ try{ C.snap = computeSnap(); C.snapAt = Date.now(); if(J(C.snap)!==C.rows.dir_snapshot?.json) C.dirty.add('dir_snapshot'); }catch(e){} }
+    if(C.snap && isTeam()) parts.dir_snapshot = C.snap;
     for(const k of [...C.dirty]) await saveKey(k, parts);
     setStatus(C.dirty.size ? 'saving' : 'ok');
-  }catch(e){ console.error(e); setStatus('error'); C.saving = false; return schedule(8000); }
+  }catch(e){ console.error(e); C.saving = false; setStatus(navigator.onLine===false ? 'error' : 'error'); return schedule(8000, true); }
   C.saving = false; if(C.dirty.size) schedule(300);
 }
 async function saveKey(k, parts){
@@ -3804,13 +4487,15 @@ async function saveKey(k, parts){
   if(!row){
     const {data, error} = await sb.from('app_data').insert({key:k, data:cur}).select('version').single();
     if(error){ if(error.code==='23505') return resolveConflict(k); if(error.code==='42501') return denied(k); throw error; }
-    C.rows[k] = {version:data.version, json}; C.dirty.delete(k); return;
+    C.rows[k] = {version:data.version, json}; doneKey(k, json); return;
   }
   const {data, error} = await sb.from('app_data').update({data:cur, version:row.version+1}).eq('key', k).eq('version', row.version).select('version');
   if(error){ if(error.code==='42501') return denied(k); if(error.code==='40001') return resolveConflict(k); throw error; }
   if(!data.length) return resolveConflict(k);
-  C.rows[k] = {version:data[0].version, json}; C.dirty.delete(k);
+  C.rows[k] = {version:data[0].version, json}; doneKey(k, json);
 }
+// solo se da por guardado si nada cambió mientras viajaba el envío
+function doneKey(k, json){ if(k==='dir_snapshot'){ C.dirty.delete(k); return; } const now = splitData(S.data)[k]; if(now===undefined || J(now)===json) C.dirty.delete(k); else C.dirty.add(k); }
 async function resolveConflict(k){
   const {data, error} = await sb.from('app_data').select('data,version').eq('key', k).maybeSingle();
   if(error) throw error;
@@ -3818,10 +4503,10 @@ async function resolveConflict(k){
     if(k.startsWith('st:')){ applyRow(k, null); delete C.rows[k]; C.dirty.delete(k); toast('La coordinación eliminó este estudiante. Se quitó de tu vista.', true); refreshSoon(); return; }
     delete C.rows[k]; return; }
   if(C.rows[k] && C.rows[k].version === data.version) return denied(k);
-  const local = splitData(S.data)[k];
+  const local = splitData(S.data)[k]; let base; try{ base = C.rows[k] ? JSON.parse(C.rows[k].json) : undefined; }catch(e){}
   C.rows[k] = {version:data.version, json:JSON.stringify(data.data)};
   if(k==='dir_snapshot') return; // se recalcula en el siguiente guardado
-  applyRow(k, local === undefined ? data.data : mergeVal(data.data, local));
+  applyRow(k, local === undefined ? data.data : merge3(base, data.data, local));
   toast('Otro integrante editó lo mismo al mismo tiempo. Se combinaron ambos cambios.');
   refreshSoon();
 }
@@ -3837,11 +4522,42 @@ window.addEventListener('beforeunload', e=>{ if(C.dirty.size || C.saving){ e.pre
 
 /* ---- cambios de otros integrantes en tiempo real ---- */
 function onRemote(p){
-  const k = p.new?.key || p.old?.key; if(!k || C.dirty.has(k)) return;
-  if(p.eventType==='DELETE'){ if(!C.rows[k]) return; delete C.rows[k]; applyRow(k, null); }
-  else { const v = p.new.version; if(C.rows[k] && C.rows[k].version >= v) return; C.rows[k] = {version:v, json:JSON.stringify(p.new.data)}; applyRow(k, p.new.data); if(k==='dir_snapshot') C.snapTs = p.new.updated_at; }
+  const k = p.new?.key || p.old?.key; if(!k) return;
+  if(C.dirty.has(k) || C.saving) { setTimeout(()=>pullKey(k), 1500); return; }
+  if(p.eventType==='DELETE'){ if(!C.rows[k]) return; delete C.rows[k]; applyRow(k, null); refreshSoon(); return; }
+  const v = p.new?.version; if(C.rows[k] && C.rows[k].version >= v) return;
+  if(p.new.data === undefined){ pullKey(k); return; }   // mensaje sobre el límite de tamaño: se pide la fila completa
+  takeRemote(k, p.new.data, v, p.new.updated_at);
   refreshSoon();
 }
+function takeRemote(k, data, v, ts){
+  const local = splitData(S.data)[k]; let base; try{ base = C.rows[k] ? JSON.parse(C.rows[k].json) : undefined; }catch(e){}
+  const pending = local !== undefined && C.rows[k] && J(local) !== C.rows[k].json;
+  C.rows[k] = {version:v, json:J(data)};
+  if(k==='dir_snapshot'){ C.snapTs = ts; applyRow(k, data); return; }
+  if(pending){ applyRow(k, merge3(base, data, local)); C.dirty.add(k); schedule(300); }
+  else applyRow(k, data);
+}
+async function pullKey(k){
+  const {data, error} = await sb.from('app_data').select('data,version,updated_at').eq('key', k).maybeSingle();
+  if(error) return;
+  if(!data){ if(C.rows[k] && !C.dirty.has(k)){ delete C.rows[k]; applyRow(k, null); refreshSoon(); } return; }
+  if(C.rows[k] && C.rows[k].version >= data.version) return;
+  if(C.dirty.has(k) || C.saving){ setTimeout(()=>pullKey(k), 1500); return; }
+  takeRemote(k, data.data, data.version, data.updated_at); refreshSoon();
+}
+// al reconectar o volver a la pestaña: se comparan versiones y se traen las filas que cambiaron
+async function resync(){
+  if(!C.ready) return;
+  const {data, error} = await sb.from('app_data').select('key,version').range(0, 9999);
+  if(error || !data) return;
+  const srv = new Map(data.map(r=>[r.key, r.version]));
+  for(const [k, v] of srv) if(!C.rows[k] || C.rows[k].version < v) await pullKey(k);
+  Object.keys(C.rows).forEach(k=>{ if(!srv.has(k) && !C.dirty.has(k)){ delete C.rows[k]; applyRow(k, null); } });
+  refreshSoon();
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') resync(); });
+window.addEventListener('online', ()=>{ resync(); schedule(200); });
 let refT; function refreshSoon(){ clearTimeout(refT); refT = setTimeout(()=>{ if(S.form || S.modal || S.rep || S.an) return; keepScroll(render); }, 250); }
 
 /* ---- preferencias locales de cada persona (no sensibles) ---- */
@@ -3920,6 +4636,8 @@ function screen(title, body, btns){
   document.getElementById('main').innerHTML = `<section class="glass login"><p class="eyebrow">${esc(CFG.colegio||'Colegio Particular EDUCENTER')}</p><h1>${title}</h1><p class="muted">${body}</p>${btns||''}</section>`;
 }
 function showLogin(msg){
+  let idle = false; try{ idle = !!sessionStorage.getItem('uaa-idle'); sessionStorage.removeItem('uaa-idle'); }catch(e){}
+  if(!msg && idle) msg = 'Tu sesión se cerró después de 30 minutos sin actividad, para proteger los datos de los estudiantes. Todos tus cambios quedaron guardados.';
   screen('Unidad de Apoyo al <b>Aprendizaje</b>', msg || `Ingresa con tu cuenta institucional${CFG.dominio?` (@${esc(CFG.dominio)})`:''}. Solo el equipo de la unidad y la dirección del colegio tienen acceso.`,
     `<button class="btn primary gbtn" data-act="cloud-login">${G_ICON} Ingresar con Google</button><span class="small muted">Los datos de los estudiantes son sensibles (Ley 19.628 y Ley 21.719). No compartas tu sesión y ciérrala al terminar en computadores compartidos.</span>`);
 }
@@ -3927,7 +4645,30 @@ async function cloudLogin(){
   const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: location.origin + location.pathname, queryParams:{prompt:'select_account', ...(CFG.dominio?{hd:CFG.dominio}:{})}}});
   if(error) showLogin('No se pudo iniciar sesión: '+esc(error.message));
 }
-async function cloudLogout(){ await sb.auth.signOut(); location.reload(); }
+async function cloudLogout(){ try{ sessionStorage.removeItem('uaa-gtok'); }catch(e){} await sb.auth.signOut(); location.reload(); }
+/* cierre automático por inactividad (computadores compartidos) */
+const IDLE_MS = 30*60e3; let lastAct = Date.now();
+['pointerdown','keydown','wheel','touchstart'].forEach(ev=>window.addEventListener(ev, ()=>{ lastAct = Date.now(); C.idleWarned = false; }, {passive:true, capture:true}));
+setInterval(()=>{ if(!C.ready) return; const idle = Date.now() - lastAct;
+  if(idle > IDLE_MS){ if(C.dirty.size || C.saving || (S.form && idle < 2*IDLE_MS)){ if(C.dirty.size && !C.saving) flush(); return; }
+    try{ sessionStorage.setItem('uaa-idle','1'); }catch(e){} cloudLogout(); }
+  else if(idle > IDLE_MS - 2*60e3 && !C.idleWarned){ C.idleWarned = true; toast('Por seguridad, la sesión se cerrará en 2 minutos si no hay actividad.'); }
+}, 20e3);
+/* restaurar en la versión compartida: solo agrega lo que falta, nunca borra */
+function cloudRestore(){
+  const ta = document.getElementById('importtxt'); const txt = (ta?.value||'').trim();
+  if(!txt){ toast('Carga un archivo o pega el respaldo primero'); return; }
+  let d; try{ d = JSON.parse(txt); if(!Array.isArray(d.students)) throw 0; }catch(e){ toast('El contenido no es un respaldo válido de esta app', true); return; }
+  if(d.demo || d.students.some(x=>x.id==='s1')){ toast('Ese respaldo tiene datos de ejemplo. No se cargó para no mezclarlos con los reales.', true); return; }
+  const have = new Set(S.data.students.map(x=>x.id)); const nuevos = d.students.filter(x=>x && x.id && !have.has(x.id));
+  const KS = ['reuniones','grupos','refSesiones','bitacora']; const add = {}; let extra = 0;
+  KS.forEach(k=>{ if(!Array.isArray(d[k])) return; const ids = new Set((S.data[k]||[]).map(x=>x.id)); add[k] = d[k].filter(x=>x && x.id && !ids.has(x.id)); extra += add[k].length; });
+  if(S.arm!=='restore'){ S.arm = 'restore'; keepScroll(render); const t2 = document.getElementById('importtxt'); if(t2) t2.value = txt;
+    toast(`Se agregarán ${nuevos.length} ${nuevos.length===1?'estudiante':'estudiantes'} y ${extra} registros que no existen. No se borra ni reemplaza nada. Presiona de nuevo para confirmar.`); return; }
+  nuevos.forEach(x=>S.data.students.push(x)); Object.entries(add).forEach(([k,L])=>{ S.data[k] = (S.data[k]||[]).concat(L); }); S.arm = null;
+  logEv('', 'Restauró respaldo', `${nuevos.length} estudiantes y ${extra} registros agregados desde un respaldo`);
+  persist(); S.view = 'estudiantes'; render(); toast(`Respaldo cargado: ${nuevos.length} estudiantes y ${extra} registros agregados`);
+}
 async function startSession(session){
   const email = String(session.user?.email||'').toLowerCase();
   if(CFG.dominio && !email.endsWith('@'+CFG.dominio.toLowerCase())){ await sb.auth.signOut(); return showLogin(`La cuenta ${esc(email)} no pertenece al colegio. Ingresa con tu correo @${esc(CFG.dominio)}.`); }
@@ -3951,7 +4692,7 @@ async function startSession(session){
   C.ready = true; S.view = 'panel';
   render(); initCloudCaps();
   if(isTeam()) cloudPersist();
-  sb.channel('uaa-datos').on('postgres_changes', {event:'*', schema:'public', table:'app_data'}, onRemote).subscribe();
+  let subs = 0; sb.channel('uaa-datos').on('postgres_changes', {event:'*', schema:'public', table:'app_data'}, onRemote).subscribe(st=>{ if(st==='SUBSCRIBED'){ if(subs++) resync(); } });
 }
 async function cloudBoot(){
   const faltan = [];
@@ -3979,7 +4720,8 @@ document.addEventListener('click', e=>{
     S.modal = {title:'Tu sesión', html:`<ul class="rows"><li class="rowi"><span class="icw avatar md av2">${initials(p.nombre)}</span><div class="main"><span class="t">${esc(p.nombre||C.perfil.nombre)}</span><span class="d">${esc(p.cargo||'')} · ${esc(C.perfil.email)}</span></div></li></ul><p class="small muted" style="margin:12px 0">Todo lo que registres queda firmado con tu nombre y con la hora del servidor.</p><button class="btn" data-act="cloud-logout">Cerrar sesión</button>`}; renderModal(); return; }
   if(act==='setuser'){ stop(); return; }
   if(act==='wipe' || act==='reseed'){ stop(); toast('No disponible en la versión compartida', true); return; }
-  if(act==='restore' && myRol()!=='coordinacion'){ stop(); toast('Solo la coordinación puede restaurar datos', true); return; }
+  if(act==='restore'){ stop(); if(myRol()!=='coordinacion'){ toast('Solo la coordinación puede restaurar datos', true); return; } cloudRestore(); return; }
+  if(act==='copy-dump'){ logEv('', 'Exportó respaldo', 'Copia completa de los datos de la unidad'); persist(); }
 }, true);
 
 /* ================= Google Calendar (versión compartida) ================= */
@@ -4037,7 +4779,7 @@ async function gLoad(force){
       const dt = e.start?.dateTime, d = e.start?.date; const f = dt ? isoOf(new Date(dt)) : d;
       const h = dt ? new Date(dt).toLocaleTimeString('es-CL',{hour:'2-digit', minute:'2-digit', hour12:false, timeZone:TZ}) : '';
       const hf = e.end?.dateTime ? new Date(e.end.dateTime).toLocaleTimeString('es-CL',{hour:'2-digit', minute:'2-digit', hour12:false, timeZone:TZ}) : '';
-      return {g:true, id:e.id, fecha:f, hora:h, horaFin:hf, titulo:e.summary||'(Sin título)', lugar:e.location||'', link:e.htmlLink, meet:e.hangoutLink||'', todoDia:!dt};
+      return {g:true, id:e.id, fecha:f, hora:h, horaFin:hf, titulo:e.summary||'(Sin título)', lugar:e.location||'', link:safeUrl(e.htmlLink), meet:e.hangoutLink ? safeUrl(e.hangoutLink) : '', todoDia:!dt};
     });
     G.range = key; G.ts = Date.now(); G.err = null;
   }catch(e){ if(e.code==='forbidden' && !G.err) G.err = 'api'; }
@@ -4084,6 +4826,12 @@ async function gUpsert(holder, ev, notify){
   const qs = notify ? '?sendUpdates=all' : '';
   let res = null;
   if(cur && cur.by===S.data.usuario && cur.id) res = await gFetch(`${GAPI}/${encodeURIComponent(cur.id)}${qs}`, {method:'PATCH', body:JSON.stringify(ev)});
+  if(!res){ // antes de crear, buscar si ya existe (otro dispositivo o un intento anterior) para no duplicar
+    const ref = ev.extendedProperties?.private?.ref;
+    const found = ref ? await gFetch(`${GAPI}?privateExtendedProperty=${encodeURIComponent('ref='+ref)}&maxResults=2&showDeleted=false`).catch(()=>null) : null;
+    const prev = found?.items?.find(x=>x.status!=='cancelled' && x.extendedProperties?.private?.ref===ref);
+    if(prev) res = await gFetch(`${GAPI}/${encodeURIComponent(prev.id)}${qs}`, {method:'PATCH', body:JSON.stringify(ev)});
+  }
   if(!res) res = await gFetch(GAPI+qs, {method:'POST', body:JSON.stringify(ev)});
   if(res?.id){ holder.gcal = {id:res.id, by:S.data.usuario, h}; return true; }
   return false;
@@ -4095,7 +4843,7 @@ async function gSync(){
     while(G.del.length){ const d = G.del.shift(); await gRemove(d.g, d.n); }
     if(gPref().ses){
       for(const s of S.data.students) for(const x of (s.sesiones||[])){
-        if(x.profesional!==me) continue;
+        if(x.profesional!==me){ if(x.gcal?.by===me){ await gRemove(x.gcal); delete x.gcal; changed = true; } continue; }
         if(x.estado==='Programada' && x.fecha>=from){ if(await gUpsert(x, sesEvent(s, x), false)) changed = true; }
         else if(x.gcal && x.gcal.by===me && x.estado==='Suspendida'){ await gRemove(x.gcal); delete x.gcal; changed = true; }
       }
@@ -4105,6 +4853,16 @@ async function gSync(){
       if(!own) continue;
       if(r.estado==='Programada' && r.fecha>=from){ if(await gUpsert(r, reuEvent(r), !!r.invitarGcal)) { changed = true; } }
       else if(r.gcal && r.estado==='Suspendida'){ await gRemove(r.gcal, !!r.invitarGcal); delete r.gcal; changed = true; }
+    }
+    // limpieza: eventos de la plataforma en mi calendario cuyo registro ya no existe o dejó de estar programado
+    if(!G.cleanAt || Date.now() - G.cleanAt > 10*60e3){ G.cleanAt = Date.now();
+      const ok = new Set(); S.data.students.forEach(s=>(s.sesiones||[]).forEach(x=>{ if(x.profesional===me && x.estado==='Programada' && x.gcal?.id) ok.add(x.gcal.id); }));
+      (S.data.reuniones||[]).forEach(r=>{ if(r.estado==='Programada' && r.gcal?.id) ok.add(r.gcal.id); });
+      for(const tipo of ['ses','reu']){
+        const L = await gFetch(`${GAPI}?privateExtendedProperty=${encodeURIComponent('uaa='+tipo)}&timeMin=${encodeURIComponent(new Date().toISOString())}&maxResults=250&singleEvents=true`).catch(()=>null);
+        for(const ev of (L?.items||[])){ if(ev.status==='cancelled' || ok.has(ev.id) || ev.extendedProperties?.private?.uaa!==tipo) continue;
+          await gFetch(`${GAPI}/${encodeURIComponent(ev.id)}${ev.attendees?.length?'?sendUpdates=all':''}`, {method:'DELETE'}).catch(()=>{}); }
+      }
     }
   }catch(e){ console.warn('gcal', e); }
   G.syncing = false;
