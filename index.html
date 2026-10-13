@@ -2389,7 +2389,7 @@ document.addEventListener('change', e=>{ onRSField(e); if(e.target.id==='bprof')
 
 /* ================= Paneles por rol ================= */
 const COORD_CARGOS = ['Coordinación UAA','Equipo de gestión'];
-const isCoord = pid => COORD_CARGOS.includes((S.data.equipo.find(p=>p.id===pid)||{}).cargo);
+const isCoord = pid => (!!S.admin && !!pid && pid===S.data.usuario && !S.adminDir) || COORD_CARGOS.includes((S.data.equipo.find(p=>p.id===pid)||{}).cargo);
 function myStudents(pid){
   const set = new Set(); if(!pid) return set;
   S.data.students.forEach(s=>{
@@ -2853,7 +2853,7 @@ document.addEventListener('click', e=>{
 const DIR_DEF = [
   {id:'da', nombre:'Danny Abarca Castro', cargo:'Sostenedor y representante legal'},
   {id:'eh', nombre:'Eliseo Herrera Rodríguez', cargo:'Administrador general'}];
-const isDir = pid => !!pid && (S.data.direccion||[]).some(p=>p.id===pid);
+const isDir = pid => !!pid && (S.admin && pid===S.data.usuario ? !!S.adminDir : (S.data.direccion||[]).some(p=>p.id===pid));
 const whoP = pid => S.data.equipo.find(p=>p.id===pid) || (S.data.direccion||[]).find(p=>p.id===pid);
 
 const _migrateM = migrate;
@@ -4384,7 +4384,8 @@ document.addEventListener('change', onField);
 const CFG = window.UAA_CONFIG || {};
 const LOCAL_KEYS = ['usuario','guiaOculta','guiaHecha','log','folio','students'];
 const COLL_KEYS = ['bitacora','grupos','refSesiones','reuniones','inst','nomina'];
-const TEAM_ROLES = ['coordinacion','profesional'];
+const TEAM_ROLES = ['coordinacion','profesional','administrador'];
+const coordRol = () => ['coordinacion','administrador'].includes(C.perfil?.rol);
 let sb = null;
 const C = {rows:{}, dirty:new Set(), saving:false, timer:null, perfil:null, sent:new WeakSet(), ready:false, status:'ok', warned:false};
 S.cloud = true;
@@ -4409,7 +4410,7 @@ function applyRow(k, data){
     else if(i>=0) L[i] = data; else L.push(data); }
 }
 const myRol = () => C.perfil?.rol;
-const canWrite = k => myRol()==='coordinacion' || (myRol()==='profesional' && k!=='core' && k!=='nomina');
+const canWrite = k => coordRol() || (myRol()==='profesional' && k!=='core' && k!=='nomina');
 const isTeam = () => TEAM_ROLES.includes(myRol());
 
 /* ---- combinación de cambios simultáneos (3 vías: base conocida, remoto, local) ---- */
@@ -4456,7 +4457,7 @@ function cloudPersist(){
   const parts = splitData(S.data);
   if(C.snap && isTeam()) parts.dir_snapshot = C.snap;
   Object.entries(parts).forEach(([k, v])=>{ const j = JSON.stringify(v); if(C.rows[k]?.json === j) return; if(canWrite(k)) C.dirty.add(k); });
-  if(myRol()==='coordinacion') Object.keys(C.rows).filter(k=>k.startsWith('st:') && !(k in parts)).forEach(k=>C.dirty.add(k));
+  if(coordRol()) Object.keys(C.rows).filter(k=>k.startsWith('st:') && !(k in parts)).forEach(k=>C.dirty.add(k));
   schedule(300);
 }
 function schedule(ms, keepErr){ clearTimeout(C.timer); C.timer = setTimeout(flush, ms); if(C.dirty.size && !keepErr) setStatus('saving'); }
@@ -4595,7 +4596,7 @@ SCHEMA.equipo[0].fields.push({k:'correo', l:'Correo institucional (para ingresar
 const _saveFormC = saveForm;
 saveForm = function(){ const k = S.form?.kind; const r = _saveFormC.apply(this, arguments); if(k==='equipo') syncPerfiles(); return r; };
 async function syncPerfiles(){
-  if(myRol()!=='coordinacion') return;
+  if(!coordRol()) return;
   const rows = S.data.equipo.filter(p=>p.correo && /@/.test(p.correo)).map(p=>({email:String(p.correo).trim().toLowerCase(), nombre:p.nombre, rol:isCoord(p.id)?'coordinacion':'profesional', equipo_id:p.id, activo:true}));
   if(!rows.length) return;
   const {error} = await sb.from('perfiles').upsert(rows, {onConflict:'equipo_id'});
@@ -4676,7 +4677,7 @@ async function startSession(session){
   const {data:perfil, error:pe} = await sb.from('perfiles').select('*').eq('email', email).maybeSingle();
   if(pe) return screen('No se pudo conectar', 'Revisa tu conexión a internet e intenta de nuevo.', `<button class="btn primary" data-act="cloud-retry">Reintentar</button>`);
   if(!perfil || !perfil.activo) return screen('Tu cuenta aún no tiene acceso', `Ingresaste como <b>${esc(email)}</b>, pero no estás habilitado en la plataforma. Pide a la coordinación de la unidad que te agregue con este correo.`, `<button class="btn" data-act="cloud-logout">Cerrar sesión</button>`);
-  C.perfil = perfil;
+  C.perfil = perfil; S.admin = perfil.rol==='administrador'; S.adminDir = false;
   const {data:rows, error:re} = await sb.from('app_data').select('key,data,version,updated_at').range(0, 9999);
   if(re) return screen('No se pudo cargar la información', esc(re.message), `<button class="btn primary" data-act="cloud-retry">Reintentar</button>`);
   const map = {}; rows.forEach(r=>{ map[r.key] = r.data; C.rows[r.key] = {version:r.version, json:JSON.stringify(r.data)}; if(r.key==='dir_snapshot') C.snapTs = r.updated_at; });
@@ -4720,9 +4721,17 @@ document.addEventListener('click', e=>{
     S.modal = {title:'Tu sesión', html:`<ul class="rows"><li class="rowi"><span class="icw avatar md av2">${initials(p.nombre)}</span><div class="main"><span class="t">${esc(p.nombre||C.perfil.nombre)}</span><span class="d">${esc(p.cargo||'')} · ${esc(C.perfil.email)}</span></div></li></ul><p class="small muted" style="margin:12px 0">Todo lo que registres queda firmado con tu nombre y con la hora del servidor.</p><button class="btn" data-act="cloud-logout">Cerrar sesión</button>`}; renderModal(); return; }
   if(act==='setuser'){ stop(); return; }
   if(act==='wipe' || act==='reseed'){ stop(); toast('No disponible en la versión compartida', true); return; }
-  if(act==='restore'){ stop(); if(myRol()!=='coordinacion'){ toast('Solo la coordinación puede restaurar datos', true); return; } cloudRestore(); return; }
+  if(act==='restore'){ stop(); if(!coordRol()){ toast('Solo la coordinación puede restaurar datos', true); return; } cloudRestore(); return; }
   if(act==='copy-dump'){ logEv('', 'Exportó respaldo', 'Copia completa de los datos de la unidad'); persist(); }
 }, true);
+
+/* ---- Administrador general: acceso completo, vista de dirección opcional y registro de lo que revisa ---- */
+const _renderChromeAdm = renderChrome;
+renderChrome = function(){ _renderChromeAdm(); if(!S.admin || !C.ready) return; const ta = document.getElementById('topactions'); if(!ta) return;
+  ta.insertAdjacentHTML('afterbegin', `<button class="btn sm" data-act="adm-vista" title="Cambiar la vista del administrador">${ic(S.adminDir?'chart':'team','sm')} ${S.adminDir?'Vista dirección':'Vista coordinación'}</button>`); };
+const _renderAdm = render; const admSeen = new Set();
+render = function(){ _renderAdm(); if(S.admin && C.ready && S.view==='ficha' && S.sid && !admSeen.has(S.sid) && stu(S.sid)){ admSeen.add(S.sid); logEv(S.sid, 'Revisó ficha', 'Acceso de administración'); persist(); } };
+document.addEventListener('click', e=>{ const el = e.target.closest('[data-act="adm-vista"]'); if(!el) return; e.stopImmediatePropagation(); S.adminDir = !S.adminDir; S.view = 'panel'; render(); toast(S.adminDir ? 'Ahora ves la plataforma como la dirección' : 'Ahora ves la plataforma como la coordinación'); }, true);
 
 /* ================= Google Calendar (versión compartida) ================= */
 const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
@@ -4747,7 +4756,7 @@ const _startSessionG = startSession;
 startSession = async function(session){
   if(session?.provider_token) gSetTok(session.provider_token);
   await _startSessionG(session);
-  if(C.ready && myRol()==='coordinacion') fillCorreos();
+  if(C.ready && coordRol()) fillCorreos();
   if(C.ready && isTeam()) setTimeout(gSync, 1500);
 };
 async function fillCorreos(){
