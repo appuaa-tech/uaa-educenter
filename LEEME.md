@@ -18,6 +18,7 @@ Tiempo estimado: 1 a 2 horas. Se necesitan tres cuentas. Conviene crearlas con u
 | `vercel.json` | Reglas de seguridad del sitio |
 | `supabase/01_estructura.sql` | Tablas y permisos por rol |
 | `supabase/02_datos_iniciales.sql` | Colegio, equipo y correos de acceso |
+| `supabase/06_seguridad.sql` | Refuerzos de seguridad del lanzamiento (ejecutar después de los anteriores) |
 
 ---
 
@@ -117,3 +118,17 @@ Supabase, Vercel y, si se activa, Anthropic tratan datos por encargo del colegio
 - mantener vigente la autorización de las familias para tratar datos sensibles, que la plataforma controla por estudiante.
 
 Esta guía no reemplaza una revisión legal.
+
+
+---
+
+### Actualización de octubre 2026 (lanzamiento)
+Para un sitio que ya está funcionando:
+1. **GitHub:** reemplaza `index.html` (y sube los demás archivos de esta carpeta si cambiaron). Vercel publica solo en uno o dos minutos.
+2. **Supabase › SQL Editor:** ejecuta, en orden y una sola vez:
+   - `supabase/06_seguridad.sql`: refuerzos de seguridad. Al final debe mostrar 0 filas con problemas.
+   - `07_material_nicolas_mariajose.sql` (se entrega aparte, **no se sube a GitHub**): fichas de los estudiantes de Nicolás y María José.
+3. **Supabase › Authentication › Sign In / Providers:** deja desactivado *Email*; solo Google.
+4. Revisa con cada perfil: coordinación, un profesional, Ninoska (psicología) y dirección.
+
+Los archivos `04`, `05` y `07` contienen datos reales de estudiantes: nunca deben estar en GitHub. Bórralos de tu computador después de ejecutarlos.
