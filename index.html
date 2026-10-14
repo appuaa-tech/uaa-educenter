@@ -3339,11 +3339,10 @@ const DPAL = ['#1646B4','#B58A00','#8B6FD8','#1E9483']; // validada: daltonismo 
 .donut{position:relative;width:100%;aspect-ratio:1}
 .donut svg{width:100%;height:100%;transform:rotate(-90deg)}
 .donut circle.seg{transition:stroke-width .15s;cursor:default}
-.donut circle.seg:hover{stroke-width:15}
-.donut .ctr{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
-.donut .ctr img{width:46px;height:auto;opacity:.95}
-.donut .ctr b{display:block;font-size:1.5rem;line-height:1;margin-top:6px}
-.donut .ctr span{font-size:.75rem;color:var(--muted)}
+.donut circle.seg:hover{stroke-width:12}
+.donut .ctr{position:absolute;inset:0;display:grid;place-items:center;text-align:center;pointer-events:none}
+.donut .ctr b{display:block;font-size:2.1rem;font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.donut .ctr span{display:block;margin-top:4px;font-size:.78rem;color:var(--muted)}
 .dleg h3{font-size:.95rem;color:var(--muted);font-weight:600;margin:0 0 12px}
 .dleg ul{list-style:none;margin:0;padding:0;display:grid;gap:14px}
 .dleg li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center}
@@ -3434,9 +3433,9 @@ function distData(mode){
   return {cats: cats.map(c=>({...c, pct: c.n/tot*100, col: DPAL[c.i%4]})), tot};
 }
 function donutSVG(D_){
-  const r = 42, C = 2*Math.PI*r, gap = D_.cats.length>1 ? 1.4 : 0; let off = 0;
-  const segs = D_.cats.map(c=>{ const len = Math.max(0, C*c.pct/100 - gap); const s = `<circle class="seg" cx="50" cy="50" r="${r}" fill="none" stroke="${c.col}" stroke-width="12" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" stroke-linecap="butt"><title>${esc(c.l)}: ${c.n} (${Math.round(c.pct)}%)</title></circle>`; off += C*c.pct/100; return s; }).join('');
-  return `<svg viewBox="0 0 100 100" role="img" aria-label="Distribución de estudiantes">${D_.tot&&D_.cats.length?'':`<circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--row)" stroke-width="12"/>`}${segs}</svg>`;
+  const r = 42, C = 2*Math.PI*r, gap = D_.cats.length>1 ? 2.2 : 0; let off = 0;
+  const segs = D_.cats.map(c=>{ const len = Math.max(0, C*c.pct/100 - gap); const s = `<circle class="seg" cx="50" cy="50" r="${r}" fill="none" stroke="${c.col}" stroke-width="9" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" stroke-linecap="butt"><title>${esc(c.l)}: ${c.n} (${Math.round(c.pct)}%)</title></circle>`; off += C*c.pct/100; return s; }).join('');
+  return `<svg viewBox="0 0 100 100" role="img" aria-label="Distribución de estudiantes">${D_.tot&&D_.cats.length?'':`<circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--row)" stroke-width="9"/>`}${segs}</svg>`;
 }
 function sideCard(){
   const u = S.data.usuario; const coordView = isCoord(u) && (S.pview||'coord')==='coord';
@@ -3487,7 +3486,7 @@ vPanelCoord = function(){
       ${kpi('doc', resp==null?'—':resp+'%', 'Respaldo documental con familias', 'Promedio de entregas con acuse de recibo')}
     </section>
     <section class="glass dcard"><div class="hd"><div><h2>Distribución</h2><p>${dm==='prof'?'Estudiantes por profesional referente':'Estudiantes por condición diagnosticada'}</p></div><button class="dlink" data-act="nav" data-view="estudiantes">Ver estudiantes</button></div>
-      <div class="bd">${st.length?`<div class="donutwrap"><div class="donut">${donutSVG(DD)}<div class="ctr"><div><img src="${LOGO()}" alt=""><b>${DD.tot}</b><span>${DD.tot===1?'estudiante':'estudiantes'}</span></div></div></div>
+      <div class="bd">${st.length?`<div class="donutwrap"><div class="donut">${donutSVG(DD)}<div class="ctr"><div><b>${DD.tot}</b><span>${DD.tot===1?'estudiante':'estudiantes'}</span></div></div></div>
         <div class="dleg"><h3>${dm==='prof'?'Referentes':'Condiciones'}</h3><ul>${DD.cats.map(c=>`<li><span class="sw" style="background:${c.col}">${esc(c.ini)}</span><div style="min-width:0"><div class="nm" title="${esc(c.l)}">${esc(c.l)}</div><div class="br"><span class="tr"><i style="width:${c.pct}%;background:${c.col}"></i></span><span class="pc">${c.n} · ${Math.round(c.pct)}%</span></div></div></li>`).join('')}</ul></div></div>
         <div class="dtoggle"><nav class="seg" role="tablist"><button role="tab" aria-selected="${dm==='cond'}" data-act="dmode" data-v="cond">Por condición</button><button role="tab" aria-selected="${dm==='prof'}" data-act="dmode" data-v="prof">Por referente</button></nav></div>`:'<p class="empty">Aún no hay estudiantes en la unidad.</p>'}</div></section>
     <section class="glass dcard actcard"><div class="hd"><div><h2>Actividad</h2><p>Últimos 30 días vs. los 30 anteriores</p></div></div>
