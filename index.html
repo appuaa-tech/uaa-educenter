@@ -1148,11 +1148,11 @@ function genRecs(s, kind, desde, hasta){
   fam.push('Mantener actualizados los teléfonos de contacto en el colegio.');
   if(kind==='familia') return fam.join('\n');
   const trab = [];
-  obj.forEach((o,i)=>{ const n = real.filter(x=>String(x.objetivo)===String(i)).length; const area = o.area||'objetivo '+(i+1);
+  obj.forEach((o,i)=>{ const n = real.filter(x=>sesObjIdx(x).includes(String(i))).length; const area = o.area||'objetivo '+(i+1);
     if(o.estado==='Logrado') trab.push(`Objetivo logrado en ${area}: proponer un nuevo objetivo o aumentar el nivel de exigencia.`);
     else if(o.estado==='No iniciado') trab.push(`Objetivo sin iniciar en ${area}: calendarizar sesiones o revisar su pertinencia.`);
     else if(!n) trab.push(`Objetivo de ${area} sin sesiones vinculadas en el período: vincular las sesiones para mostrar el trabajo realizado.`); });
-  const sinObj = real.filter(x=>x.objetivo===''||x.objetivo==null).length; if(sinObj && obj.length) trab.push(`${sinObj} ${sinObj===1?'sesión realizada no está vinculada':'sesiones realizadas no están vinculadas'} a un objetivo del PAI.`);
+  const sinObj = real.filter(x=>!sesObjIdx(x).length && !sesOtros(x).length).length; if(sinObj && obj.length) trab.push(`${sinObj} ${sinObj===1?'sesión realizada no registra':'sesiones realizadas no registran'} el objetivo trabajado (del PAI u otro).`);
   const sinResp = real.filter(x=>!x.respuesta).length; if(sinResp) trab.push(`${sinResp} ${sinResp===1?'sesión no registra':'sesiones no registran'} la respuesta del estudiante. Completar ese campo fortalece la evidencia.`);
   if(!real.length) trab.push('No hay sesiones realizadas en el período. Registrar cada intervención con fecha, objetivo y respuesta del estudiante.');
   if(decs.length>=2) trab.push(`Se registraron ${decs.length} episodios de desregulación en el período. Revisar gatillantes y actualizar el eje reactivo del PAEC con la familia.`);
@@ -1271,7 +1271,7 @@ function buildReport(kind, s, o, meta){
   const obj = s.pai?.objetivos||[];
   const hrs = m => (m/60).toLocaleString('es-CL',{maximumFractionDigits:1});
   const objTable = () => obj.length ? `<table><thead><tr><th>Área</th><th>Objetivo</th><th>Estrategias</th><th>Sesiones</th><th>Estado</th></tr></thead><tbody>${obj.map((b,i)=>`<tr><td>${esc(b.area||'')}</td><td>${esc(b.objetivo||'')}</td><td>${esc(trunc(b.estrategias,120))}</td><td>${real.filter(x=>String(x.objetivo)===String(i)).length}</td><td>${esc(b.estado||'—')}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Sin PAI registrado.</p>';
-  const sesTable = () => ses.length ? `<table><thead><tr><th>Fecha</th><th>Modalidad</th><th>Profesional</th><th>Objetivo</th><th>Actividades y respuesta</th><th>Estado</th></tr></thead><tbody>${ses.map(x=>{ const ob = x.objetivo!==''&&x.objetivo!=null ? obj[+x.objetivo] : null; return `<tr><td>${fmtShort(x.fecha)}${x.hora?'<br>'+esc(x.hora):''}</td><td>${esc(x.modalidad||'')}</td><td>${esc(profName(x.profesional))}</td><td>${esc(ob?ob.area:'—')}</td><td>${esc(x.actividades||'')}${x.respuesta?'<br><i>'+esc(x.respuesta)+'</i>':''}</td><td>${esc(x.estado||'')}</td></tr>`; }).join('')}</tbody></table>` : '<p class="muted">Sin sesiones en el período.</p>';
+  const sesTable = () => ses.length ? `<table><thead><tr><th>Fecha</th><th>Modalidad</th><th>Profesional</th><th>Objetivo</th><th>Actividades y respuesta</th><th>Estado</th></tr></thead><tbody>${ses.map(x=>{ const obL = [...sesObjIdx(x).map(i=>obj[+i]?.area||obj[+i]?.objetivo).filter(Boolean), ...sesOtros(x).map(o=>o.texto)]; return `<tr><td>${fmtShort(x.fecha)}${x.hora?'<br>'+esc(x.hora):''}</td><td>${esc(x.modalidad||'')}</td><td>${esc(profName(x.profesional))}</td><td>${obL.length?obL.map(esc).join('<br>'):'—'}</td><td>${esc(x.actividades||'')}${x.respuesta?'<br><i>'+esc(x.respuesta)+'</i>':''}</td><td>${esc(x.estado||'')}</td></tr>`; }).join('')}</tbody></table>` : '<p class="muted">Sin sesiones en el período.</p>';
   const comTable = () => coms.length ? `<table><thead><tr><th>Fecha</th><th>Medio</th><th>Motivo</th><th>Documentos</th><th>Respuesta</th><th>Verificación</th></tr></thead><tbody>${coms.map(c=>`<tr><td>${fmtShort(c.fecha)}</td><td>${esc(c.tipo)}</td><td>${esc(c.motivo)}</td><td>${esc((c.documentos||[]).join(', ')||'—')}</td><td>${esc(c.respuesta)}${c.testigo?'<br>Testigo: '+esc(c.testigo):''}</td><td>${esc(c.verificacion||'')}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Sin comunicaciones en el período.</p>';
 const refs = (S.data.refSesiones||[]).filter(r=>inR(r.fecha) && r.asis?.[s.id]).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   const refTable = () => refs.length ? `<table><thead><tr><th>Fecha</th><th>Grupo</th><th>Contenido</th><th>Asistencia</th><th>Logro y comentario</th></tr></thead><tbody>${refs.map(r=>{ const a = r.asis[s.id]; return `<tr><td>${fmtShort(r.fecha)}</td><td>${esc(grp(r.gid)?.nombre||'')}</td><td>${esc(r.contenido||'')}</td><td>${({P:'Presente',A:'Ausente',J:'Justificado'})[a.a]}</td><td>${esc(a.l||'—')}${a.c?'<br><i>'+esc(a.c)+'</i>':''}</td></tr>`; }).join('')}</tbody></table>` : '';
@@ -2618,7 +2618,7 @@ function kpiFor(pid, R){
   const agendadas = ses.filter(x=>x.estado!=='Programada' || diffDays(x.fecha)<0);
   const refs = (S.data.refSesiones||[]).filter(r=>inR(r.fecha) && (r.profesional||grp(r.gid)?.profesional)===pid);
   const minDir = real.reduce((t,x)=>t+(+x.duracion||0),0) + refs.reduce((t,r)=>t+(+(r.duracion||grp(r.gid)?.duracion)||0),0);
-  const calidad = real.filter(x=>x.objetivo!=='' && x.objetivo!=null && x.respuesta).length;
+  const calidad = real.filter(x=>(sesObjIdx(x).length || sesOtros(x).length) && x.respuesta).length;
   const coms = S.data.students.flatMap(s=>(s.comunicaciones||[]).filter(c=>c.profesional===pid && inR(c.fecha)));
   const comOk = coms.filter(c=>ACUSE_OK.includes(c.respuesta)).length;
   const resp = studs.length ? Math.round(studs.reduce((t,s)=>t+respaldo(s).pct,0)/studs.length) : null;
@@ -2677,7 +2677,7 @@ function vEquipoCoord(){
   <section class="glass card"><header><h2>Indicadores por profesional</h2><span class="small muted">Toca una fila para ver el detalle</span></header>${kpiTable(rows, false)}${kpiLegend()}</section>
   <section class="glass card" style="margin-top:18px"><header><h2>Cómo se calcula cada indicador</h2></header><dl class="fields">
     <div><dt>Cumplimiento de agenda</dt><dd>Sesiones realizadas sobre las sesiones agendadas cuya fecha ya pasó (incluye suspendidas, ausencias y las que siguen sin actualizar).</dd></div>
-    <div><dt>Calidad del registro</dt><dd>Sesiones realizadas que indican el objetivo del PAI trabajado y la respuesta del estudiante.</dd></div>
+    <div><dt>Calidad del registro</dt><dd>Sesiones realizadas que indican el objetivo trabajado (del PAI u otro) y la respuesta del estudiante.</dd></div>
     <div><dt>Familias</dt><dd>Comunicaciones registradas por la profesional y porcentaje con acuse firmado o confirmación escrita.</dd></div>
     <div><dt>Respaldo familias</dt><dd>Promedio del respaldo documental de sus estudiantes (pestaña Familia).</dd></div>
     <div><dt>Evaluaciones adaptadas</dt><dd>Evaluaciones que adaptó y se aplicaron según lo acordado en el PAEC o PACI.</dd></div>
@@ -4583,6 +4583,82 @@ vEquipo = function(){
 .notice-mini.ok{background:rgba(30,140,80,.12)}
 #am-body{min-height:260px;font-family:inherit}`; document.head.appendChild(st); })();
 
+/* ================= Objetivos de la sesión: del PAI y otros ================= */
+/* El campo "objetivo" se mantiene (primer objetivo del PAI) por compatibilidad con informes antiguos.
+   objetivosPai: índices de objetivos del PAI. otrosObj: [{texto, origen}] para objetivos que surgen de otros antecedentes. */
+const OBJ_ORIGEN = ['Solicitud del docente','Solicitud de la familia','Observación en aula','Resultado de evaluación','Acuerdo del PAEC','Acuerdo de reunión de equipo','Informe de especialista externo','Necesidad que surgió en la sesión','Otro antecedente'];
+function sesObjIdx(x){ if(Array.isArray(x?.objetivosPai)) return x.objetivosPai.map(String); return x?.objetivo!=='' && x?.objetivo!=null ? [String(x.objetivo)] : []; }
+function sesOtros(x){ return (x?.otrosObj||[]).filter(o=>o && String(o.texto||'').trim()); }
+function sesObjTxt(x, s){
+  const P = s?.pai?.objetivos || [];
+  const a = sesObjIdx(x).map(i=>P[+i]).filter(Boolean).map(o=>'PAI · '+(o.area ? o.area+': ' : '')+(o.objetivo||''));
+  const b = sesOtros(x).map(o=>o.texto.trim()+(o.origen ? ` (${o.origen.toLowerCase()})` : ''));
+  return [...a, ...b];
+}
+const isSesForm = () => ['sesion','agendaSesion'].includes(S.form?.schema);
+
+/* formulario: un título con dos secciones desplegables */
+const _inputForX = inputFor;
+inputFor = function(f, path, v, ctx){
+  if(f.k!=='objetivo' || !isSesForm()) return _inputForX(f, path, v, ctx);
+  const d = S.form.draft; const s = ctx?.student || stu(d.sid);
+  if(!Array.isArray(d.objetivosPai)) d.objetivosPai = d.objetivo!=='' && d.objetivo!=null ? [String(d.objetivo)] : [];
+  const P = s?.pai?.objetivos || [];
+  const grupal = typeof isGrp==='function' && isGrp(d);
+  const otros = d.otrosObj || [];
+  const paiPanel = grupal ? '' : `<details class="objpanel" ${P.length?'open':''}><summary><span class="t">${ic('target','sm')} Objetivos del PAI</span><span class="small muted" data-gcount="objetivosPai">${P.length ? `${d.objetivosPai.length} marcados` : 'sin PAI'}</span></summary>
+      ${P.length ? chipField({k:'objetivosPai', l:'Marca los que se trabajaron', chip:1, o:()=>P.map((o,i)=>[String(i), (o.area?o.area+': ':'')+(o.objetivo||'Objetivo '+(i+1))])}, 'objetivosPai', d.objetivosPai, ctx)
+        : `<p class="small muted">${s ? 'Este estudiante aún no tiene objetivos en su PAI. Puedes registrar el objetivo en "Otros objetivos".' : 'Elige primero al estudiante para ver los objetivos de su PAI.'}</p>`}</details>`;
+  const fid = 'f-'+(ctx?.fid||'m')+'-oo';
+  const otrosPanel = `<details class="objpanel" ${otros.length || grupal || !P.length ? 'open' : ''}><summary><span class="t">${ic('plus','sm')} Otros objetivos</span><span class="small muted">según otros antecedentes</span></summary>
+      <div class="objrows">${otros.map((o,i)=>`<div class="objrow">
+        <div class="field"><label for="${fid}-${i}-t">Objetivo</label><input type="text" id="${fid}-${i}-t" data-path="otrosObj.${i}.texto" value="${esc(o?.texto||'')}" placeholder="Ej.: Tolerar la espera de turnos en juegos de mesa"></div>
+        <div class="field"><label for="${fid}-${i}-o">De dónde surge</label><select id="${fid}-${i}-o" data-path="otrosObj.${i}.origen"><option value="">Seleccionar…</option>${OBJ_ORIGEN.map(t=>`<option ${o?.origen===t?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
+        <button type="button" class="iconbtn sm" data-act="list-del" data-path="otrosObj" data-i="${i}" aria-label="Quitar objetivo">${ic('trash')}</button></div>`).join('')}</div>
+      <button type="button" class="btn sm" data-act="list-add" data-path="otrosObj">${ic('plus','sm')} Agregar objetivo</button></details>`;
+  return `<div class="field w2 objbox"><span class="lbl">Objetivos trabajados en la sesión</span>${paiPanel}${otrosPanel}</div>`;
+};
+document.addEventListener('change', e=>{ if(e.target.dataset?.path==='objetivosPai') setTimeout(()=>{ const c = document.querySelector('[data-gcount="objetivosPai"]'); if(c && S.form) c.textContent = `${(S.form.draft.objetivosPai||[]).length} marcados`; }, 0); });
+
+/* guardar: ordena los objetivos y deja "objetivo" con el primero del PAI */
+const _saveFormX = saveForm;
+saveForm = function(){
+  const f = S.form;
+  if(f && ['sesion','agendaSesion'].includes(f.schema)){ const d = f.draft;
+    if(typeof isGrp==='function' && isGrp(d)){ delete d.objetivosPai; d.objetivo = ''; }
+    else { const P = (f.sid ? stu(f.sid) : stu(d.sid))?.pai?.objetivos || [];
+      d.objetivosPai = (d.objetivosPai||[]).map(String).filter(i=>+i < P.length).sort((a,b)=>a-b); d.objetivo = d.objetivosPai[0] ?? ''; }
+    d.otrosObj = sesOtros(d).map(o=>({texto:o.texto.trim(), origen:o.origen||''}));
+    if(!d.otrosObj.length) delete d.otrosObj; }
+  return _saveFormX.apply(this, arguments);
+};
+
+/* ficha: "Objetivos trabajados" en vez del objetivo único */
+const _viewFieldsX = viewFields;
+viewFields = function(fields, x, ctx){
+  const esSesion = x && x.fecha && ('estado' in x) && ('profesional' in x) && !fields.some(f=>f.k==='area') && (fields.some(f=>f.k==='actividades'||f.k==='objetivo') || Array.isArray(x.objetivosPai) || Array.isArray(x.otrosObj));
+  if(!esSesion) return _viewFieldsX(fields, x, ctx);
+  const L = sesObjTxt(x, ctx?.student);
+  const F = fields.filter(f=>f.k!=='objetivo');
+  const h = _viewFieldsX(F, x, ctx);
+  return L.length ? `<div class="w2"><dt>Objetivos trabajados</dt><dd><ul class="objlist">${L.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></dd></div>` + h : h;
+};
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.objbox{display:flex;flex-direction:column;gap:10px}
+.objpanel{border:1px solid var(--line,rgba(0,0,0,.12));border-radius:14px;padding:4px 14px;background:var(--surface,#fff)}
+.objpanel[open]{padding-bottom:14px}
+.objpanel summary{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;padding:10px 0;list-style:none;font-weight:600}
+.objpanel summary::-webkit-details-marker{display:none}
+.objpanel summary .t{display:inline-flex;align-items:center;gap:8px}
+.objpanel summary::after{content:'';width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-left:auto;opacity:.6;transition:transform .15s}
+.objpanel[open] summary::after{transform:rotate(-135deg)}
+.objpanel .chipsel{margin-top:0}
+.objrows{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.objrow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto;gap:10px;align-items:end}
+@media (max-width:640px){.objrow{grid-template-columns:minmax(0,1fr) auto}.objrow .field:first-child{grid-column:1/-1}}
+.objlist{margin:0;padding-left:18px}`; document.head.appendChild(st); })();
+
 
 /* ---------- íconos ---------- */
 const ICONS = {
@@ -4653,7 +4729,7 @@ function vPanelCoord(){
     const o = nx.objetivo!=='' && nx.objetivo!=null ? obj[+nx.objetivo] : null;
     nextCard = `<div class="glass next"><p class="live">${relDay(nx.fecha)}${nx.hora?' · '+esc(nx.hora):''}</p><div><p class="eyebrow">Próxima sesión</p><p class="who">${esc(nx.s.nombre)}</p></div>
       <div class="chips"><span class="chip ico">${ic('activity')}${esc(nx.modalidad||'Sesión')}</span><span class="chip ico">${ic('team')}${esc(profName(nx.profesional))}</span><span class="chip ico">${ic('calendar')}${fmt(nx.fecha)}</span></div>
-      ${o?`<p class="small muted">Objetivo: ${esc(o.objetivo)}</p>`:''}
+      ${o?`<p class="small muted">Objetivo: ${esc(o.objetivo)}</p>`:sesOtros(nx).length?`<p class="small muted">Objetivo: ${esc(sesOtros(nx)[0].texto)}</p>`:''}
       <div class="go"><div class="progress" style="flex:1">${obj.length?`<span class="lbl"><span>Avance del PAI</span><span class="mono">${log}/${obj.length} logrados</span></span><div class="bar"><i style="width:${pct}%"></i><b style="left:${Math.max(pct,4)}%"></b></div>`:'<span class="lbl">Sin PAI registrado</span>'}</div>
       <button class="playbtn" data-act="open" data-sid="${nx.s.id}" data-tab="sesiones" aria-label="Abrir ficha de ${esc(nx.s.nombre)}">${ic('arrow')}</button></div></div>`; }
   const mode = S.loadMode;
