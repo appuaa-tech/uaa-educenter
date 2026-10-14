@@ -2245,7 +2245,7 @@ function refSeed(data){
 function vTrabajo(){
   const tv = S.tv || 'ref';
   return `${demoBanner()}<header class="pagehead"><div><p class="eyebrow">Unidad de Apoyo al Aprendizaje</p><h1>Trabajo del <b>equipo</b></h1></div></header>
-  <nav class="seg" role="tablist" style="margin-bottom:20px"><button role="tab" aria-selected="${tv==='ref'}" data-act="tv" data-v="ref">${ic('users','sm')} Reforzamiento</button><button role="tab" aria-selected="${tv==='reu'}" data-act="tv" data-v="reu">${ic('team','sm')} Reuniones de equipo</button><button role="tab" aria-selected="${tv==='bit'}" data-act="tv" data-v="bit">${ic('doc','sm')} Bitácora semanal</button></nav>
+  <nav class="seg" role="tablist" style="margin-bottom:20px"><button role="tab" aria-selected="${tv==='ref'}" data-act="tv" data-v="ref">${ic('users','sm')} Grupos</button><button role="tab" aria-selected="${tv==='reu'}" data-act="tv" data-v="reu">${ic('team','sm')} Reuniones de equipo</button><button role="tab" aria-selected="${tv==='bit'}" data-act="tv" data-v="bit">${ic('doc','sm')} Bitácora semanal</button></nav>
   ${tv==='ref' ? (S.gid && grp(S.gid) ? vGrupo(grp(S.gid)) : vGrupos()) : tv==='reu' ? vReuniones() : vBitacora()}`;
 }
 function vGrupos(){
@@ -2304,7 +2304,7 @@ function vBitacora(){
     <div class="glass stat"><span class="icw av4">${ic('chat')}</span><div><div class="v">${W.fam}</div><div class="l">Contactos con familias</div></div></div></div>
   ${pctC!=null?`<div class="glass card" style="margin-bottom:18px;padding:16px 22px"><div class="progress"><span class="lbl"><span>Horas registradas frente a horas contratadas</span><span class="mono">${pctC}%</span></span><div class="bar"><i style="width:${pctC}%"></i><b style="left:${Math.max(pctC,3)}%"></b></div></div><p class="small muted" style="margin-top:8px">Solo cuentan con tiempo las sesiones, el reforzamiento y las actividades agregadas a mano. Las comunicaciones, evaluaciones y documentos aparecen sin tiempo: agrégalo como actividad si corresponde.</p></div>`:''}
   <div class="grid2"><section class="glass card"><header><h2>Actividades de la semana</h2>${!closed?`<button class="btn sm primary" data-act="bit-add">${ic('plus','sm')} Agregar actividad</button>`:''}</header>
-    ${byDay.length?`<div class="timeline">${byDay.map(x=>`<div class="tday"><h3>${cap(parse(x.f).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'short'}))}</h3>${x.auto.map(a=>`<div class="tslot"><span class="h">${a.min?hrs(a.min):'—'}</span><div class="tchip"><span class="icw ${AREA_AV(a.tipo)}">${ic(a.directa?'activity':a.tipo.startsWith('Comunic')?'chat':'doc')}</span><div class="main"><span class="t" style="cursor:default">${esc(a.tipo)}</span><div class="d">${esc(a.desc)}</div></div><span class="chip">Registro automático</span></div></div>`).join('')}${x.man.map(i=>`<div class="tslot"><span class="h">${hrs(+i.minutos||0)}</span><div class="tchip"><span class="icw av2">${ic('edit')}</span><div class="main"><span class="t" style="cursor:default">${esc(i.tipo)}</span><div class="d">${esc(i.descripcion)}${i.sid&&stu(i.sid)?' · '+esc(stu(i.sid).nombre):''}</div></div>${!closed?`<button class="iconbtn sm" data-act="bit-edit" data-id="${i.id}" aria-label="Editar">${ic('edit')}</button>${S.arm==='bdel-'+i.id?`<button class="btn sm danger armed" data-act="bit-del" data-id="${i.id}">Confirmar</button>`:`<button class="iconbtn sm" data-act="bit-del" data-id="${i.id}" aria-label="Eliminar">${ic('trash')}</button>`}`:''}</div></div>`).join('')}</div>`).join('')}</div>`:'<p class="empty">No hay actividades registradas esta semana.</p>'}</section>
+    ${byDay.length?`<div class="timeline">${byDay.map(x=>`<div class="tday"><h3>${cap(parse(x.f).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'short'}))}</h3>${x.auto.map(a=>`<div class="tslot"><span class="h">${a.min?hrs(a.min):'—'}</span><div class="tchip"><span class="icw ${AREA_AV(a.tipo)}">${ic(a.directa?'activity':a.tipo.startsWith('Comunic')?'chat':'doc')}</span><div class="main"><span class="t" style="cursor:default">${esc(a.tipo)}</span><div class="d">${esc(a.desc)}</div></div><span class="chip">Registro automático</span></div></div>`).join('')}${x.man.map(i=>`<div class="tslot"><span class="h">${hrs(+i.minutos||0)}</span><div class="tchip"><span class="icw av2">${ic('edit')}</span><div class="main"><span class="t" style="cursor:default">${esc(i.tipo)}</span><div class="d">${esc(bitDesc(i))}${i.sid&&stu(i.sid)?' · '+esc(stu(i.sid).nombre):''}</div></div>${!closed?`<button class="iconbtn sm" data-act="bit-edit" data-id="${i.id}" aria-label="Editar">${ic('edit')}</button>${S.arm==='bdel-'+i.id?`<button class="btn sm danger armed" data-act="bit-del" data-id="${i.id}">Confirmar</button>`:`<button class="iconbtn sm" data-act="bit-del" data-id="${i.id}" aria-label="Eliminar">${ic('trash')}</button>`}`:''}</div></div>`).join('')}</div>`).join('')}</div>`:'<p class="empty">No hay actividades registradas esta semana.</p>'}</section>
   <section class="glass card form"><header><h2>Síntesis de la semana</h2></header>
     <div class="stack" style="gap:12px"><div class="field"><label for="bt-logros">Logros y avances</label><textarea id="bt-logros" ${closed?'readonly':''}>${esc(b?.logros||'')}</textarea></div>
     <div class="field"><label for="bt-dif">Dificultades</label><textarea id="bt-dif" ${closed?'readonly':''}>${esc(b?.dificultades||'')}</textarea></div>
@@ -2330,7 +2330,7 @@ function buildBitacora(o, meta){
   const [prof, mon] = String(o.item).split('|'); const W = weekSummary(prof, mon); const b = W.b; const p = S.data.equipo.find(x=>x.id===prof)||{};
   let h = rHead('Bitácora semanal', `${esc(p.nombre||'')} · ${esc(p.cargo||'')}<br>Semana del ${weekLbl(mon)}`, meta);
   h += `<div class="tiles"><div class="tile"><b>${hrs(W.dir)}</b><span>atención directa y reforzamiento</span></div><div class="tile"><b>${hrs(W.total)}</b><span>total registrado${W.contr?' de '+W.contr+' h contratadas':''}</span></div><div class="tile"><b>${W.est}</b><span>estudiantes atendidos · ${W.fam} contactos con familias</span></div></div>`;
-  const rows = [...W.auto.map(a=>({...a, origen:'Automático'})), ...W.man.map(i=>({fecha:i.fecha, tipo:i.tipo, desc:i.descripcion+(i.sid&&stu(i.sid)?' · '+stu(i.sid).nombre:''), min:+i.minutos||0, origen:'Manual'}))].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const rows = [...W.auto.map(a=>({...a, origen:'Automático'})), ...W.man.map(i=>({fecha:i.fecha, tipo:i.tipo, desc:bitDesc(i)+(i.sid&&stu(i.sid)?' · '+stu(i.sid).nombre:''), min:+i.minutos||0, origen:'Manual'}))].sort((a,b)=>a.fecha.localeCompare(b.fecha));
   h += `<h2>Actividades</h2>${rows.length?`<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Tiempo</th><th>Origen</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fmtShort(r.fecha)}</td><td>${esc(r.tipo)}</td><td>${esc(r.desc)}</td><td>${r.min?hrs(r.min):'—'}</td><td>${r.origen}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">Sin actividades.</p>'}`;
   h += `<h2>Síntesis</h2>${rkv([['Logros y avances',b?.logros,1],['Dificultades',b?.dificultades,1],['Pendientes para la próxima semana',b?.pendientes,1]])}`;
   h += `<p class="note">${b?.estado==='Cerrada'?`Bitácora cerrada el ${esc(fmtTs(b.cerradaEn))} por ${esc(whoName(b.cerradaPor))}.`:'Bitácora en borrador: aún no ha sido cerrada por la profesional.'} Las actividades de origen automático provienen de los registros de la app.</p>`;
@@ -2403,7 +2403,7 @@ const wdName = f => DIAS[(parse(f).getDay()+6)%7];
 function daySchedule(pid, f){
   const out = [];
   S.data.students.forEach(s=>{
-    (s.sesiones||[]).forEach(x=>{ if(x.profesional===pid && x.fecha===f) out.push({hora:x.hora||'', t:s.nombre, d:x.modalidad||'Sesión', estado:x.estado, act:`data-act="open" data-sid="${s.id}" data-tab="sesiones"`, ic:'activity', av:AREA_AV(s.nombre), ini:initials(s.nombre)}); });
+    (s.sesiones||[]).forEach(x=>{ if(x.profesional===pid && x.fecha===f) out.push({hora:x.hora||'', t:s.nombre, d:(x.grupoNombre?x.grupoNombre+' · ':'')+(x.modalidad||'Sesión'), estado:x.estado, act:`data-act="open" data-sid="${s.id}" data-tab="sesiones"`, ic:'activity', av:AREA_AV(s.nombre), ini:initials(s.nombre)}); });
     (s.adaptadas||[]).forEach(x=>{ if(x.adaptadaPor===pid && x.fecha===f) out.push({hora:'', t:`Evaluación adaptada: ${x.asignatura}`, d:s.nombre, estado:x.estado, act:`data-act="open" data-sid="${s.id}" data-tab="adaptadas"`, ic:'layers', av:'av2'}); });
   });
   (S.data.grupos||[]).forEach(g=>{ const wd = wdName(f);
@@ -2434,7 +2434,7 @@ function vPanelPro(pid){
   let hoy = D(0), sched = daySchedule(pid, hoy), when = 'Hoy';
   if(!sched.length){ for(let i=1;i<=7;i++){ const f = D(i); const sc = daySchedule(pid, f); if(sc.length){ hoy = f; sched = sc; when = cap(relDay(f)==='Mañana'?'mañana':parse(f).toLocaleDateString('es-CL',{weekday:'long'}))+' '+parse(f).getDate(); break; } } }
   const week = []; for(let i=1;i<=7;i++){ const f = D(i); if(f===hoy) continue; daySchedule(pid,f).forEach(x=>week.push({...x, f})); }
-  const G = (S.data.grupos||[]).filter(g=>g.profesional===pid);
+  const G = (S.data.grupos||[]).filter(g=>g.profesional===pid && g.clase!=='trabajo');
   const pend = al.filter(a=>a.lvl!=='info').length + T.filter(t=>t.lvl!=='info').length;
   const pct = W.contr ? Math.min(100, Math.round(W.total/60/W.contr*100)) : 0;
   const studs = S.data.students.filter(s=>mine.has(s.id));
@@ -2631,7 +2631,7 @@ function kpiFor(pid, R){
   const bitOk = weeks.filter(w=>bitRec(pid,w)?.estado==='Cerrada').length;
   const W = weekSummary(pid, monday(D(0)));
   const horasPct = W.contr ? Math.round(W.total/60/W.contr*100) : null;
-  const G = (S.data.grupos||[]).filter(g=>g.profesional===pid);
+  const G = (S.data.grupos||[]).filter(g=>g.profesional===pid && g.clase!=='trabajo');
   const gst = G.flatMap(g=>gEst(g).map(e=>gStats(g,e.id,R.from,R.to)));
   const gTot = gst.reduce((t,x)=>t+x.tot,0), gP = gst.reduce((t,x)=>t+x.P,0);
   const RR = (S.data.reuniones||[]).filter(r=>r.estado==='Realizada' && inR(r.fecha));
@@ -3954,6 +3954,636 @@ migrate = function(){ _migrateS();
       institucion:'Clínica Los Andes (ficticio)', tipoInst:'Clínica o centro de salud', motivo:'Control neurológico semestral: conocer la evolución en el colegio.', plazo:D(7), consentimiento:true, respaldo:'Correo de la apoderada (ficticio)', estado:'Pendiente', _creado:nowIso(), _por:P}); }
 };
 
+/* ================= Bitácora: "¿Qué se hizo?" guiado por tipo de actividad ================= */
+/* Cada tipo trae opciones para marcar. El cuadro de texto se mantiene para el detalle. */
+BIT_TIPOS.splice(0, BIT_TIPOS.length,
+  'Atención al estudiante','Entrevista o contacto con familia','Coordinación con docentes','Reunión de equipo','Observación de aula','Codocencia',
+  'Planificación y preparación de material','Elaboración de informes y documentos','Atención de emergencia (DEC)','Capacitación','Trabajo administrativo','Otro');
+const BIT_AT = 'Atención al estudiante', BIT_FAM = 'Entrevista o contacto con familia';
+const BIT_GUIA = {
+  [BIT_AT]: [
+    {k:'bh_mod', l:'¿Cómo se trabajó?', o:['Juego dirigido','Juego con reglas o de mesa','Clase o actividad estructurada','Intervención directa individual','Intervención en grupo pequeño','Apoyo dentro del aula']},
+    {k:'bh_tem', l:'Temas trabajados', o:['Conciencia fonológica','Lectura y comprensión','Escritura','Cálculo y razonamiento matemático','Atención y concentración','Memoria','Planificación y organización','Flexibilidad cognitiva','Motricidad fina','Lenguaje oral','Hábitos de estudio','Regulación emocional','Habilidades sociales','Tolerancia a la frustración']},
+    {k:'bh_mom', l:'Momentos de la sesión', o:['Saludo y anticipación de la sesión','Actividad principal','Pausa activa','Cierre y retroalimentación','Refuerzo positivo','Registro de logros']},
+    {k:'bh_resp', l:'¿Cómo respondió?', one:1, o:['Participó con entusiasmo','Participó con apoyo','Le costó involucrarse','No logró participar']}],
+  [BIT_FAM]: [
+    {k:'bh_quien', l:'¿Con quién?', one:1, o:['Madre','Padre','Ambos padres','Apoderado o apoderada','Otro familiar']},
+    {k:'bh_medio', l:'¿Por qué medio?', one:1, o:['Presencial','Videollamada','Teléfono','Correo o libreta']},
+    {k:'bh_ent', l:'Lo que se hizo en la entrevista', o:['Bienvenida y presentación','Encuadre: objetivo y duración','Encuadre legal y de confidencialidad','Escucha de inquietudes de la familia','Información de avances','Devolución de resultados de evaluación','Revisión del PAEC, PAI o PACI','Orientaciones para el hogar','Acuerdos y compromisos','Firma de acta o registro de asistencia','Entrega de documentos','Próxima entrevista agendada']}],
+  'Coordinación con docentes': [
+    {k:'bh_doc', l:'Lo que se hizo', o:['Revisión de evaluaciones por adaptar','Acuerdo de adecuaciones en aula','Retroalimentación sobre avances','Planificación conjunta','Entrega de sugerencias o material','Seguimiento de acuerdos anteriores']}],
+  'Reunión de equipo': [
+    {k:'bh_reu', l:'Lo que se hizo', o:['Revisión de casos','Análisis de alertas','Acuerdos de equipo','Organización del calendario','Estudio de caso']}],
+  'Observación de aula': [
+    {k:'bh_obs', l:'Lo que se hizo', o:['Registro de participación y conducta','Observación de apoyos implementados','Observación del ambiente y la organización','Retroalimentación al docente','Ajuste de estrategias']}],
+  'Codocencia': [
+    {k:'bh_cod', l:'Lo que se hizo', o:['Planificación previa con el docente','Apoyo a estudiantes durante la clase','Adaptación de material en el momento','Evaluación conjunta de la clase']}],
+  'Planificación y preparación de material': [
+    {k:'bh_mat', l:'Lo que se preparó', o:['Planificación de sesiones','Material concreto o lúdico','Selección o creación de juegos','Apoyos visuales o pictogramas','Adaptación de guías o pruebas']}],
+  'Elaboración de informes y documentos': [
+    {k:'bh_inf', l:'Documento', o:['Informe de avance','Informe de evaluación','PAEC, PAI o PACI','Acta de entrevista','Derivación o interconsulta','Certificado o constancia']}],
+  'Atención de emergencia (DEC)': [
+    {k:'bh_dec', l:'Lo que se hizo', o:['Contención verbal','Acompañamiento al espacio de calma','Retiro de estímulos','Aviso a la familia','Registro del episodio']}]
+};
+const bitGuia = tipo => BIT_GUIA[tipo] || [];
+const BIT_KEYS = [...new Set(Object.values(BIT_GUIA).flat().map(g=>g.k))];
+const bitHecho = i => bitGuia(i.tipo).map(g=>{ const v = i[g.k]; return Array.isArray(v) ? v : (v ? [v] : []); }).flat();
+/* texto de una actividad: lo marcado + el detalle escrito */
+function bitDesc(i){
+  const parts = bitGuia(i.tipo).map(g=>{ const v = i[g.k]; const a = Array.isArray(v) ? v : (v ? [v] : []); return a.length ? (g.one ? a[0] : a.join(', ')) : ''; }).filter(Boolean);
+  return [parts.join(' · '), (i.descripcion||'').trim()].filter(Boolean).join('. ');
+}
+
+SCHEMA.bitItem = [
+  {sec:'Actividad', fields:[
+    {k:'tipo', l:'Tipo de actividad', t:'select', req:1, w:2, o:()=>BIT_TIPOS},
+    {k:'fecha', l:'Fecha', t:'date', req:1},
+    {k:'minutos', l:'Tiempo (minutos)', t:'number', req:1}]},
+  ...Object.entries(BIT_GUIA).map(([tipo, grupos])=>({sec:'¿Qué se hizo?', when:d=>d.tipo===tipo, chipsel:1,
+    note: tipo===BIT_AT ? 'Toca lo que corresponda. Puedes marcar varias opciones.' : 'Toca lo que corresponda. Si falta algo, escríbelo en el detalle.',
+    fields: grupos.map(g=>({k:g.k, l:g.l, t:'checks', w:2, one:g.one, o:()=>g.o}))})),
+  {sec:'Detalle', fields:[
+    {k:'descripcion', l:'Detalle o comentarios', t:'textarea', w:2, ph:'Lo que quieras agregar con tus palabras: qué observaste, qué funcionó, qué queda pendiente.'},
+    {k:'sid', l:'Estudiante relacionado (opcional)', t:'select', w:2, o:()=>S.data.students.map(s=>[s.id, s.nombre+' · '+cursoOf(s)])},
+    {k:'bh_ficha', l:'Guardar también como sesión en la ficha del estudiante', t:'bool', w:2}]}
+];
+/* el estudiante es obligatorio en una atención; la opción de ficha solo aparece en atenciones */
+const _missingReqT = missingReq;
+missingReq = function(schema, draft){
+  const m = _missingReqT(schema, draft);
+  if(schema!==SCHEMA.bitItem) return m;
+  if(draft.tipo===BIT_AT && !draft.sid) m.push('Estudiante atendido');
+  if(!bitHecho(draft).length && empty(draft.descripcion)) m.push(bitGuia(draft.tipo).length ? 'Marca al menos una opción o escribe el detalle' : 'Detalle o comentarios');
+  return m;
+};
+const _inputForT = inputFor;
+inputFor = function(f, path, v, ctx){
+  if(S.form?.schema!=='bitItem') return _inputForT(f, path, v, ctx);
+  const d = S.form.draft;
+  if(f.k==='sid' && d.tipo===BIT_AT) f = {...f, l:'Estudiante atendido', req:1};
+  if(f.k==='bh_ficha' && d.tipo!==BIT_AT) return '';
+  if(f.k==='bh_ficha') return _inputForT(f, path, v, ctx).replace('</span></label>', '</span></label><p class="small muted" style="margin:4px 0 0 30px">Queda en la pestaña Sesiones del estudiante, con las opciones marcadas. No se cuenta dos veces en la bitácora.</p>');
+  if(f.t==='checks' && f.k.startsWith('bh_')){
+    const arr = Array.isArray(v) ? v : (v ? [v] : []);
+    const id = 'f-'+ctx.fid+'-'+path;
+    return `<div class="field w2 chipsel"><span class="lbl">${esc(f.l)}${f.one?' <span class="muted small">· una opción</span>':''}</span><div class="checks">${f.o().map((t,i)=>`<label><input type="checkbox" id="${id}-${i}" data-path="${path}" data-opt="${esc(t)}" ${f.one?'data-one="1"':''} ${arr.includes(t)?'checked':''}><span>${esc(t)}</span></label>`).join('')}</div></div>`;
+  }
+  return _inputForT(f, path, v, ctx);
+};
+/* opciones de una sola elección: desmarca las demás del grupo */
+document.addEventListener('change', e=>{
+  const t = e.target; const f = S.form; if(!f || f.schema!=='bitItem') return;
+  if(t.dataset?.one && t.checked){ const k = t.dataset.path;
+    document.querySelectorAll(`input[data-path="${k}"][data-one]`).forEach(x=>{ if(x!==t && x.checked){ x.checked = false; } });
+    setTimeout(()=>{ f.draft[k] = [t.dataset.opt]; }, 0); }
+  if(t.dataset?.path==='tipo') setTimeout(()=>keepScroll(render), 0);
+});
+
+/* guardar: limpia lo marcado de otros tipos y, si se pidió, deja la sesión en la ficha */
+const _saveBitItemT = saveBitItem;
+saveBitItem = function(d, f){
+  const keep = new Set(bitGuia(d.tipo).map(g=>g.k));
+  BIT_KEYS.forEach(k=>{ if(!keep.has(k)) delete d[k]; });
+  bitGuia(d.tipo).forEach(g=>{ if(g.one && Array.isArray(d[g.k])) d[g.k] = d[g.k].slice(-1); });
+  if(d.tipo!==BIT_AT) delete d.bh_ficha;
+  const prev = d.id ? (bitRec(S.bprof, S.bweek)?.items||[]).find(x=>x.id===d.id) : null;
+  if(!d.id) d.id = uid();
+  const wasNew = !prev;
+  /* sesión vinculada en la ficha */
+  const quitar = (sid, sesId) => { const t = sid && stu(sid); if(t && sesId) t.sesiones = (t.sesiones||[]).filter(x=>x.id!==sesId); };
+  if(prev?.sesId && (!d.bh_ficha || prev.sid!==d.sid)){ quitar(prev.sid, prev.sesId); delete d.sesId; }
+  if(d.bh_ficha && d.sid && stu(d.sid)){
+    const t = stu(d.sid); t.sesiones = t.sesiones||[];
+    const mod = (d.bh_mod||[]);
+    const ses = {fecha:d.fecha, duracion:+d.minutos||0, profesional:S.bprof, estado:'Realizada', bitId:d.id,
+      modalidad: mod.includes('Apoyo dentro del aula') ? 'Apoyo en aula común' : mod.includes('Intervención en grupo pequeño') ? 'Grupal fuera del aula' : 'Individual fuera del aula',
+      actividades: [mod.length?'Modalidad: '+mod.join(', '):'', (d.bh_tem||[]).length?'Temas: '+d.bh_tem.join(', '):'', (d.bh_mom||[]).length?'Momentos: '+d.bh_mom.join(', '):'', d.descripcion||''].filter(Boolean).join('\n'),
+      respuesta: (d.bh_resp||[])[0]||''};
+    const i = d.sesId ? t.sesiones.findIndex(x=>x.id===d.sesId) : -1;
+    if(i>=0) t.sesiones[i] = stamp({...t.sesiones[i], ...ses}); else { const n = stamp({...ses, id:uid()}, true); t.sesiones.push(n); d.sesId = n.id; }
+  }
+  if(wasNew){ const b = bitEnsure(S.bprof, S.bweek); b.items.push(stamp({...d}, true)); stamp(b); logEv(d.sid||'', 'Registró', `bitácora: ${d.tipo} (${d.minutos} min)`); return; }
+  return _saveBitItemT(d, f);
+};
+/* una sesión creada desde la bitácora no se repite como registro automático */
+const _weekAutoT = weekAuto;
+weekAuto = function(prof, mon){
+  const linked = new Set(); (S.data.bitacora||[]).forEach(b=>(b.items||[]).forEach(i=>{ if(i.sesId) linked.add(i.sesId); }));
+  S.data.students.forEach(s=>(s.sesiones||[]).forEach(x=>{ if(x.bitId) linked.add(x.id); }));
+  if(!linked.size) return _weekAutoT(prof, mon);
+  const keep = S.data.students.map(s=>[s, s.sesiones]);
+  S.data.students.forEach(s=>{ if(s.sesiones) s.sesiones = s.sesiones.filter(x=>!linked.has(x.id)); });
+  try { return _weekAutoT(prof, mon); } finally { keep.forEach(([s, L])=>{ s.sesiones = L; }); }
+};
+/* al eliminar la actividad, se elimina también la sesión que creó */
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="bit-del"]'); if(!el || S.arm!=='bdel-'+el.dataset.id) return;
+  const it = (bitRec(S.bprof, S.bweek)?.items||[]).find(i=>i.id===el.dataset.id);
+  if(it?.sesId){ const t = stu(it.sid); if(t) t.sesiones = (t.sesiones||[]).filter(x=>x.id!==it.sesId); }
+}, true);
+/* una sesión vinculada se edita desde la bitácora */
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="bit-tipo"]'); if(!el || S.form?.schema!=='bitItem') return;
+  S.form.draft.tipo = el.dataset.v; keepScroll(render);
+});
+
+/* accesos rápidos al abrir "Agregar actividad": los tipos más usados como botones */
+const _formBodyT = formBody;
+formBody = function(schema, draft, ctx){
+  let h = _formBodyT(schema, draft, ctx);
+  if(schema===SCHEMA.bitItem && !draft.tipo){
+    const top = [BIT_AT, BIT_FAM, 'Coordinación con docentes', 'Planificación y preparación de material'];
+    h = `<section class="sec"><h3>¿Qué quieres registrar?</h3><div class="bitquick">${top.map(t=>`<button type="button" class="btn" data-act="bit-tipo" data-v="${esc(t)}">${ic(t===BIT_AT?'activity':t===BIT_FAM?'chat':t.startsWith('Coord')?'team':'doc','sm')} ${esc(t)}</button>`).join('')}</div><p class="note">O elige otro tipo en la lista de abajo.</p></section>` + h;
+  }
+  return h;
+};
+
+/* estilos: opciones como fichas que se tocan */
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.chipsel .checks{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chipsel .checks label{position:relative;display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;border:1px solid var(--line,rgba(0,0,0,.15));background:var(--surface,#fff);cursor:pointer;font-size:.92em;line-height:1.2;transition:background .15s,border-color .15s,color .15s;user-select:none}
+.chipsel .checks label:hover{border-color:var(--accent,#3b6fd8)}
+.chipsel .checks input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.chipsel .checks label:has(input:checked){background:var(--accent,#3b6fd8);border-color:var(--accent,#3b6fd8);color:#fff}
+.chipsel .checks label:has(input:checked)::before{content:'✓';font-weight:700}
+.chipsel .checks label:has(input:focus-visible){outline:2px solid var(--accent,#3b6fd8);outline-offset:2px}
+.bitquick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.bitquick{grid-template-columns:1fr}}
+.bitquick .btn{justify-content:flex-start;text-align:left;padding:12px 16px;height:auto;min-height:52px;white-space:normal;border-radius:14px}
+.bititems{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.bititems .chip{font-size:.8em}`; document.head.appendChild(st); })();
+
+/* las atenciones y entrevistas registradas a mano también suman en los indicadores de la semana */
+const _weekSummaryT = weekSummary;
+weekSummary = function(prof, mon){
+  const W = _weekSummaryT(prof, mon);
+  W.dir += W.man.filter(i=>i.tipo===BIT_AT).reduce((t,i)=>t+(+i.minutos||0),0);
+  W.fam += W.man.filter(i=>i.tipo===BIT_FAM).length;
+  return W;
+};
+
+/* ================= Grupos de trabajo en las sesiones ================= */
+/* Un grupo de trabajo vive en S.data.grupos con clase:'trabajo' (se sincroniza igual que los de reforzamiento).
+   Al registrar una sesión grupal, cada estudiante recibe la sesión en su ficha; la bitácora la cuenta una sola vez. */
+const GT = 'Grupo de trabajo';
+const isGT = g => g?.clase==='trabajo';
+const gruposT = () => (S.data.grupos||[]).filter(isGT).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+const gtMembers = g => (g?.estudiantes||[]).map(e=>e.sid).filter(sid=>stu(sid));
+const isGrp = d => (d?.gmodo||[])[0]===GT && (S.form?.schema!=='bitItem' || d.tipo===BIT_AT);
+const stOpts = () => S.data.students.slice().sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(s=>[s.id, (s.nombreSocial||s.nombre)+' · '+cursoOf(s)]);
+const gtSesiones = g => { const M = new Map(); S.data.students.forEach(s=>(s.sesiones||[]).forEach(x=>{ if(x.gid===g.id && x.gses){ const r = M.get(x.gses) || {fecha:x.fecha, estado:x.estado, n:0, p:0}; r.n++; if(x.estado==='Realizada') r.p++; M.set(x.gses, r); } })); return [...M.values()].sort((a,b)=>b.fecha.localeCompare(a.fecha)); };
+
+const F_MODO = {k:'gmodo', l:'¿Individual o en grupo?', t:'checks', chip:1, one:1, w:2, o:()=>[['Individual','Individual'],[GT,'Grupo de trabajo']]};
+const F_GRUPO = {k:'grupo', l:'Grupo de trabajo', t:'select', w:2, o:()=>[...gruposT().map(g=>[g.id, `${g.nombre} · ${gtMembers(g).length} estudiantes`]), ['__new','＋ Crear un grupo nuevo']]};
+const F_GNOM = {k:'g_nombre', l:'Nombre del grupo', t:'text', ph:'Ej.: Grupo de juego y habilidades sociales 3° básico'};
+const F_GFOCO = {k:'g_foco', l:'Foco o propósito', t:'text', ph:'Ej.: Turnos, comunicación con pares, tolerancia a la frustración'};
+const F_GEST = {k:'g_est', l:'Estudiantes del grupo', t:'checks', chip:1, w:2, filter:1, o:stOpts};
+const F_GPRES = {k:'g_pres', l:'¿Quiénes asistieron?', t:'checks', chip:1, w:2, o:ctx=>{ const g = grp(S.form?.draft?.grupo); return gtMembers(g).map(sid=>[sid, (stu(sid).nombreSocial||stu(sid).nombre)]); }};
+const SID_AT = {k:'sid', l:'Estudiante atendido', t:'select', w:2, o:()=>S.data.students.map(s=>[s.id, s.nombre+' · '+cursoOf(s)])};
+const G_KEYS = ['gmodo','grupo','g_nombre','g_foco','g_est','g_pres'];
+
+/* formulario de sesión (Agenda › Nueva sesión) */
+SCHEMA.agendaSesion[0].sec = '¿A quién atendiste?';
+SCHEMA.agendaSesion[0].fields = [F_MODO, SCHEMA.agendaSesion[0].fields[0], F_GRUPO, F_GNOM, F_GFOCO, F_GEST, F_GPRES];
+/* bitácora › Atención al estudiante */
+SCHEMA.bitItem.splice(1, 0, {sec:'¿A quién atendiste?', when:d=>d.tipo===BIT_AT, fields:[F_MODO, SID_AT, F_GRUPO, F_GNOM, F_GFOCO, F_GEST, F_GPRES]});
+/* el grupo se ve en la ficha de cada estudiante */
+SCHEMA.sesion[0].fields.push({k:'grupoNombre', l:'Grupo de trabajo', t:'text', w:2});
+SCHEMA.grupoT = [{sec:'Grupo de trabajo', fields:[
+  {k:'nombre', l:'Nombre del grupo', t:'text', req:1, w:2, ph:F_GNOM.ph},
+  {k:'profesional', l:'Profesional a cargo', t:'prof', req:1},
+  {k:'objetivo', l:'Foco o propósito', t:'text', ph:F_GFOCO.ph},
+  {...F_GEST}]}];
+
+/* fichas para tocar, con buscador cuando son muchas */
+function chipField(f, path, v, ctx){
+  const arr = Array.isArray(v) ? v : (v ? [v] : []);
+  const id = 'f-'+ctx.fid+'-'+path;
+  const o = (typeof f.o==='function' ? f.o(ctx) : f.o).map(x=>Array.isArray(x)?x:[x,x]);
+  const many = f.filter && o.length>12;
+  return `<div class="field w2 chipsel${many?' many':''}"><span class="lbl">${esc(f.l)}${f.one?' <span class="muted small">· una opción</span>':''}${f.filter?` <span class="muted small" data-gcount="${path}">· ${arr.length} marcados</span>`:''}</span>
+    ${many?`<input type="search" class="gfilter" data-gfilter="${path}" placeholder="Buscar por nombre o curso…" aria-label="Buscar estudiante">`:''}
+    <div class="checks">${o.length?o.map(([val,t],i)=>`<label data-txt="${esc(String(t).toLowerCase())}"><input type="checkbox" id="${id}-${i}" data-path="${path}" data-opt="${esc(val)}" ${f.one?'data-one="1"':''} ${arr.includes(val)?'checked':''}><span>${esc(t)}</span></label>`).join(''):'<span class="small muted">Este grupo aún no tiene estudiantes.</span>'}</div></div>`;
+}
+const _inputForU = inputFor;
+inputFor = function(f, path, v, ctx){
+  const sch = S.form?.schema, d = S.form?.draft || {};
+  if(f.k==='grupoNombre') return '';
+  if(sch==='agendaSesion' || sch==='bitItem'){
+    const g = isGrp(d);
+    if(f===F_MODO) return chipField(f, path, (v&&v.length)?v:['Individual'], ctx);
+    if(f.k==='sid' && sch==='bitItem' && f!==SID_AT && d.tipo===BIT_AT) return '';
+    if(f.k==='sid' && g) return '';
+    if(f===F_GRUPO && !g) return '';
+    if([F_GNOM,F_GFOCO,F_GEST].includes(f) && !(g && d.grupo==='__new')) return '';
+    if(f===F_GPRES && !(g && d.grupo && d.grupo!=='__new')) return '';
+    if(f.k.startsWith('psi_') && g) return '';
+    if(f===F_GRUPO && !gruposT().length) f = {...f, l:'Grupo de trabajo · aún no hay grupos, crea el primero'};
+    if(f.k==='bh_ficha' && g) return _inputForU(f, path, v, ctx).replace('Guardar también como sesión en la ficha del estudiante', 'Guardar también como sesión en la ficha de cada estudiante');
+  }
+  if(f.chip) return chipField(f, path, v, ctx);
+  return _inputForU(f, path, v, ctx);
+};
+const _missingReqU = missingReq;
+missingReq = function(schema, draft){
+  let m = _missingReqU(schema, draft);
+  if(schema===SCHEMA.grupoT && !(draft.g_est||[]).length) m.push('Estudiantes del grupo');
+  if((schema===SCHEMA.agendaSesion || schema===SCHEMA.bitItem) && isGrp(draft)){
+    m = m.filter(x=>x!=='Estudiante' && x!=='Estudiante atendido');
+    if(!draft.grupo) m.push('Grupo de trabajo');
+    else if(draft.grupo==='__new'){ if(empty(draft.g_nombre)) m.push('Nombre del grupo'); if(!(draft.g_est||[]).length) m.push('Estudiantes del grupo'); }
+    else if(!gtMembers(grp(draft.grupo)).length) m.push('El grupo no tiene estudiantes');
+  }
+  return m;
+};
+/* cambios que reorganizan el formulario */
+document.addEventListener('change', e=>{
+  const t = e.target, f = S.form; if(!f || !['agendaSesion','bitItem','grupoT'].includes(f.schema)) return;
+  const k = t.dataset?.path;
+  if(t.dataset?.one && t.checked && f.schema==='agendaSesion'){ document.querySelectorAll(`input[data-path="${k}"][data-one]`).forEach(x=>{ if(x!==t) x.checked = false; }); }
+  if(k==='gmodo' || k==='grupo'){ setTimeout(()=>{ const d = f.draft;
+    if(k==='gmodo' && t.checked) d.gmodo = [t.dataset.opt];
+    if(k==='gmodo' && !t.checked && !(d.gmodo||[]).length) d.gmodo = ['Individual'];
+    if(isGrp(d)){
+      if(f.schema==='agendaSesion' && (!d.modalidad || d.modalidad==='Individual fuera del aula')) d.modalidad = 'Grupal fuera del aula';
+      if(d.grupo==='__new' && !d.g_est) d.g_est = d.sid ? [d.sid] : [];
+      if(k==='grupo' && d.grupo && d.grupo!=='__new') d.g_pres = gtMembers(grp(d.grupo));
+      if(!d.grupo && !gruposT().length) d.grupo = '__new', d.g_est = d.g_est || (d.sid?[d.sid]:[]);
+    }
+    keepScroll(render); }, 0); }
+  if(k==='g_est' || k==='g_pres'){ setTimeout(()=>{ const c = document.querySelector(`[data-gcount="${k}"]`); if(c) c.textContent = `· ${(f.draft[k]||[]).length} marcados`; }, 0); }
+});
+document.addEventListener('input', e=>{ const p = e.target.dataset?.gfilter; if(!p) return; const q = e.target.value.trim().toLowerCase();
+  e.target.closest('.field').querySelectorAll('.checks label').forEach(l=>{ l.style.display = !q || l.dataset.txt.includes(q) || l.querySelector('input').checked ? '' : 'none'; }); });
+
+/* crear o tomar el grupo elegido en el formulario */
+function gtEnsure(d, prof){
+  if(d.grupo && d.grupo!=='__new') return grp(d.grupo);
+  S.data.grupos = S.data.grupos||[];
+  const g = stamp({id:uid(), clase:'trabajo', nombre:d.g_nombre.trim(), objetivo:d.g_foco||'', profesional:prof, asignatura:GT, estudiantes:(d.g_est||[]).map(sid=>({id:sid, sid}))}, true);
+  S.data.grupos.push(g); logEv('','Creó','Grupo de trabajo '+g.nombre);
+  return g;
+}
+const gtPresentes = (d, g) => d.grupo==='__new' ? gtMembers(g) : (d.g_pres||[]).filter(sid=>gtMembers(g).includes(sid));
+function gtSesionCopias(g, base, pres, extra){
+  const gses = extra.gses || uid(); const ids = [];
+  gtMembers(g).forEach(sid=>{ const t = stu(sid); t.sesiones = t.sesiones||[];
+    const ok = pres.includes(sid);
+    const n = stamp({...base, ...extra, id:uid(), gid:g.id, gses, grupoNombre:g.nombre, estado: ok ? base.estado : (base.estado==='Realizada' ? 'Ausente' : base.estado)}, true);
+    t.sesiones.push(n); ids.push([sid, n.id]); });
+  return ids;
+}
+function saveSesionGrupal(d){
+  const prof = d.profesional || S.data.usuario;
+  const g = gtEnsure(d, prof); const pres = gtPresentes(d, g);
+  const base = {...d}; ['sid','grupoNombre',...G_KEYS].forEach(k=>delete base[k]);
+  PSI_AREAS.forEach(([k])=>delete base['psi_'+k]);
+  gtSesionCopias(g, base, pres, {});
+  logEv('','Registró',`sesión grupal del ${fmt(d.fecha)} · ${g.nombre} · ${pres.length} de ${gtMembers(g).length} estudiantes`);
+}
+const _saveFormU = saveForm;
+saveForm = function(){
+  const f = S.form;
+  if(f && (f.kind==='grupoT' || (f.kind==='agenda' && isGrp(f.draft)))){
+    const miss = missingReq(SCHEMA[f.schema], f.draft); if(miss.length){ f.err = miss; render(); return; }
+    if(f.kind==='grupoT') saveGrupoT(f.draft); else saveSesionGrupal(f.draft);
+    const msg = f.isNew ? 'Guardado' : 'Cambios guardados'; S.form = null; persist(); render(); toast(msg); return;
+  }
+  return _saveFormU.apply(this, arguments);
+};
+function saveGrupoT(d){
+  S.data.grupos = S.data.grupos||[];
+  const est = (d.g_est||[]).map(sid=>({id:sid, sid}));
+  if(d.id){ const i = S.data.grupos.findIndex(x=>x.id===d.id); if(i>=0){ S.data.grupos[i] = stamp({...S.data.grupos[i], nombre:d.nombre, profesional:d.profesional, objetivo:d.objetivo||'', estudiantes:est}); logEv('','Editó','Grupo de trabajo '+d.nombre); return; } }
+  S.data.grupos.push(stamp({id:uid(), clase:'trabajo', asignatura:GT, nombre:d.nombre, profesional:d.profesional, objetivo:d.objetivo||'', estudiantes:est}, true)); logEv('','Creó','Grupo de trabajo '+d.nombre);
+}
+
+/* bitácora: atención grupal */
+const _saveBitItemU = saveBitItem;
+saveBitItem = function(d, f){
+  const prev = d.id ? (bitRec(S.bprof, S.bweek)?.items||[]).find(x=>x.id===d.id) : null;
+  (prev?.sesIds||[]).forEach(([sid, id])=>{ const t = stu(sid); if(t) t.sesiones = (t.sesiones||[]).filter(x=>x.id!==id); });
+  delete d.sesIds;
+  if(isGrp(d)){
+    const g = gtEnsure(d, S.bprof); const pres = gtPresentes(d, g);
+    d.gid = g.id; d.grupoNombre = g.nombre; d.g_pres = pres; d.g_total = gtMembers(g).length; d.sid = '';
+    if(!d.id) d.id = uid();
+    if(d.bh_ficha){
+      const mod = d.bh_mod||[];
+      const base = {fecha:d.fecha, duracion:+d.minutos||0, profesional:S.bprof, estado:'Realizada', bitId:d.id,
+        modalidad: mod.includes('Apoyo dentro del aula') ? 'Apoyo en aula común' : 'Grupal fuera del aula',
+        actividades: [mod.length?'Modalidad: '+mod.join(', '):'', (d.bh_tem||[]).length?'Temas: '+d.bh_tem.join(', '):'', (d.bh_mom||[]).length?'Momentos: '+d.bh_mom.join(', '):'', d.descripcion||''].filter(Boolean).join('\n'),
+        respuesta: (d.bh_resp||[])[0]||''};
+      d.sesIds = gtSesionCopias(g, base, pres, {gses:d.id});
+    }
+    ['grupo','g_nombre','g_foco','g_est'].forEach(k=>delete d[k]);
+  } else { ['gid','grupoNombre','g_pres','g_total',...G_KEYS].forEach(k=>delete d[k]); }
+  return _saveBitItemU(d, f);
+};
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="bit-del"]'); if(!el || S.arm!=='bdel-'+el.dataset.id) return;
+  const it = (bitRec(S.bprof, S.bweek)?.items||[]).find(i=>i.id===el.dataset.id);
+  (it?.sesIds||[]).forEach(([sid, id])=>{ const t = stu(sid); if(t) t.sesiones = (t.sesiones||[]).filter(x=>x.id!==id); });
+}, true);
+/* al editar, el formulario vuelve a mostrar el grupo y la asistencia */
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="bit-edit"]'); if(!el) return;
+  setTimeout(()=>{ const d = S.form?.draft; if(S.form?.schema==='bitItem' && d?.gid){ d.gmodo = [GT]; d.grupo = d.gid; keepScroll(render); } }, 0);
+});
+const _bitDescU = bitDesc;
+bitDesc = function(i){ const t = _bitDescU(i); if(!i.gid) return t; return `${i.grupoNombre} · ${(i.g_pres||[]).length} de ${i.g_total||(i.g_pres||[]).length} asistieron${t?'. '+t:''}`; };
+
+/* la sesión grupal se cuenta una vez en la bitácora */
+const _weekAutoU = weekAuto;
+weekAuto = function(prof, mon){
+  const fin = addDays(mon,6); const G = new Map();
+  const keep = S.data.students.map(s=>[s, s.sesiones]);
+  S.data.students.forEach(s=>{ if(!s.sesiones) return;
+    s.sesiones.forEach(x=>{ if(x.gses && !x.bitId && x.profesional===prof && x.fecha>=mon && x.fecha<=fin){ const r = G.get(x.gses) || {fecha:x.fecha, tipo:'Atención grupal', nombre:x.grupoNombre||'Grupo', min:+x.duracion||0, directa:true, sids:[], tot:0, mod:x.modalidad||''}; r.tot++; if(x.estado==='Realizada') r.sids.push(s.id); G.set(x.gses, r); } });
+    s.sesiones = s.sesiones.filter(x=>!x.gses || x.bitId); });
+  let A; try { A = _weekAutoU(prof, mon); } finally { keep.forEach(([s, L])=>{ s.sesiones = L; }); }
+  G.forEach(r=>{ if(r.sids.length) A.push({fecha:r.fecha, tipo:r.tipo, desc:`${r.nombre} · ${r.sids.length} de ${r.tot} asistieron${r.mod?' · '+r.mod:''}`, min:r.min, directa:true, sids:r.sids}); });
+  return A.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+};
+const _weekSummaryU = weekSummary;
+weekSummary = function(prof, mon){
+  const W = _weekSummaryU(prof, mon); const fin = addDays(mon,6);
+  const est = new Set([...W.auto.flatMap(a=>a.sids || (a.sid?[a.sid]:[])), ...W.man.flatMap(i=>i.gid ? (i.g_pres||[]) : (i.sid?[i.sid]:[]))]);
+  (S.data.refSesiones||[]).forEach(r=>{ const g = grp(r.gid); if(g && (r.profesional||g.profesional)===prof && r.fecha>=mon && r.fecha<=fin) Object.entries(r.asis||{}).forEach(([k,v])=>{ if(v.a==='P') est.add(k); }); });
+  W.est = est.size; return W;
+};
+
+/* Trabajo › Grupos: grupos de trabajo arriba, reforzamiento abajo */
+const _vGruposU = vGrupos;
+vGrupos = function(){
+  const all = S.data.grupos||[]; let ref;
+  S.data.grupos = all.filter(g=>!isGT(g)); try { ref = _vGruposU(); } finally { S.data.grupos = all; }
+  const T = gruposT();
+  const card = g => { const M = gtMembers(g), L = gtSesiones(g), last = L[0];
+    return `<article class="glass member"><div class="hd"><span class="avatar av4">${ic('users')}</span><div style="flex:1;min-width:0"><b>${esc(g.nombre)}</b><div class="small muted">${esc(profName(g.profesional))}${g.objetivo?' · '+esc(g.objetivo):''}</div></div></div>
+      <div class="chips">${M.slice(0,8).map(sid=>`<span class="chip">${esc(firstName(stu(sid).nombreSocial||stu(sid).nombre))}</span>`).join('')}${M.length>8?`<span class="chip">+${M.length-8}</span>`:''}</div>
+      <div class="nums"><div><b>${M.length}</b><span>estudiantes</span></div><div><b>${L.length}</b><span>sesiones</span></div><div><b>${last?fmtShort(last.fecha):'—'}</b><span>última</span></div></div>
+      <div class="quick-actions"><button class="btn sm primary" data-act="gt-ses" data-id="${g.id}">${ic('plus','sm')} Registrar sesión</button><button class="btn sm" data-act="gt-edit" data-id="${g.id}">${ic('edit','sm')} Editar</button>${S.arm==='gtdel-'+g.id?`<button class="btn sm danger armed" data-act="gt-del" data-id="${g.id}">Confirmar</button>`:`<button class="iconbtn sm" data-act="gt-del" data-id="${g.id}" aria-label="Eliminar grupo">${ic('trash')}</button>`}</div></article>`; };
+  return `<section style="margin-bottom:28px"><div class="pagehead" style="margin:0 0 16px"><div><h2 style="margin:0 0 4px">Grupos de trabajo</h2><p class="muted">Grupos para sesiones de la unidad: talleres, juego, habilidades sociales. Cada sesión queda en la ficha de cada estudiante.</p></div><button class="btn primary" data-act="gt-new">${ic('plus')} Nuevo grupo de trabajo</button></div>
+    ${T.length?`<div class="teamgrid">${T.map(card).join('')}</div>`:'<p class="empty">Aún no hay grupos de trabajo. También puedes crearlos al registrar una sesión.</p>'}</section>
+    <h2 style="margin:0 0 4px">Reforzamiento</h2>${ref}`;
+};
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act^="gt-"]'); if(!el) return;
+  const a = el.dataset.act, g = grp(el.dataset.id);
+  if(a==='gt-new') openForm({kind:'grupoT', schema:'grupoT', where:'modal', isNew:true, title:'Nuevo grupo de trabajo', draft:{profesional:S.data.usuario||'', g_est:[]}});
+  if(a==='gt-edit' && g) openForm({kind:'grupoT', schema:'grupoT', where:'modal', title:'Editar grupo de trabajo', draft:{id:g.id, nombre:g.nombre, profesional:g.profesional, objetivo:g.objetivo||'', g_est:gtMembers(g)}});
+  if(a==='gt-ses' && g) openForm({kind:'agenda', schema:'agendaSesion', where:'modal', isNew:true, title:'Sesión de '+g.nombre,
+    draft:{fecha:D(0), estado:'Realizada', duracion:45, profesional:g.profesional||S.data.usuario||'', modalidad:'Grupal fuera del aula', gmodo:[GT], grupo:g.id, g_pres:gtMembers(g)}});
+  if(a==='gt-del' && g){ if(S.arm!=='gtdel-'+g.id){ S.arm = 'gtdel-'+g.id; keepScroll(render); return; }
+    S.data.grupos = S.data.grupos.filter(x=>x.id!==g.id); S.arm = null; logEv('','Eliminó','Grupo de trabajo '+g.nombre); persist(); keepScroll(render); toast('Grupo eliminado. Sus sesiones siguen en las fichas.'); }
+});
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.chipsel.many .checks{max-height:240px;overflow:auto;padding:2px}
+.gfilter{width:100%;margin-top:6px}`; document.head.appendChild(st); })();
+
+/* ================= A quién le corresponde cada instrumento ================= */
+/* Cada instrumento tiene una regla. El equipo puede confirmarla o cambiarla en la ficha (Editar datos).
+   Lo que no corresponde no aparece como pendiente ni en la franja de documentos. */
+const INSTR = [
+  ['anamnesis','Anamnesis'], ['evaluaciones','Evaluación'], ['pai','PAI'], ['paci','PACI'], ['paec','PAEC']];
+const INSTR_REGLA = {
+  anamnesis: 'Todos los estudiantes que ingresan a la unidad: es la entrevista inicial con la familia.',
+  evaluaciones: 'Todos los estudiantes de la unidad: evaluación al ingresar y reevaluación cada año.',
+  pai: 'Estudiantes que reciben apoyos directos de la unidad (sesiones, aula de recursos, codocencia).',
+  paci: 'Solo estudiantes que necesitan adecuaciones curriculares de objetivos o contenidos (Decreto 83/2015).',
+  paec: 'Obligatorio para estudiantes autistas (Ley 21.545). Recomendado para quienes presentan desregulación emocional y conductual.'
+};
+const hasCond = (s, c) => (s.diagnosticos||[]).some(d=>d.condicion===c);
+const docHecho = (s, k) => k==='anamnesis' ? !!s.anamnesis?.fecha : k==='evaluaciones' ? (s.evaluaciones||[]).length>0 : !!s[k]?.fechaElaboracion;
+const lastEval = s => (s.evaluaciones||[]).filter(e=>e.tipo!=='Informe externo recibido').map(e=>e.fecha).filter(Boolean).sort().at(-1) || (s.evaluaciones||[]).map(e=>e.fecha).filter(Boolean).sort().at(-1);
+/* resultado: on (corresponde), why (motivo), fixed (no se puede desmarcar), sug (sugerido sin ser exigido) */
+function aplica(s, k){
+  const m = s['ins_'+k] || '';
+  if(k==='paec' && teaDate(s)) return {on:true, fixed:true, why:'Diagnóstico de autismo: obligatorio por la Ley 21.545.'};
+  if(m==='si') return {on:true, why:'El equipo indicó que le corresponde.'};
+  if(m==='no') return {on:false, why:'El equipo indicó que no le corresponde.'};
+  if(docHecho(s, k) && k!=='anamnesis' && k!=='evaluaciones') return {on:true, why:'Ya tiene el documento elaborado.'};
+  switch(k){
+    case 'anamnesis': return {on:true, why:INSTR_REGLA.anamnesis};
+    case 'evaluaciones': return {on:true, why:INSTR_REGLA.evaluaciones};
+    case 'pai': return {on:true, why:INSTR_REGLA.pai};
+    case 'paci': return hasCond(s,'Discapacidad intelectual') ? {on:true, why:'Discapacidad intelectual: suele requerir adecuaciones curriculares.'} : {on:false, why:INSTR_REGLA.paci};
+    case 'paec': { const dec = (s.dec||[]).filter(x=>diffDays(x.fecha) >= -365).length;
+      return dec ? {on:false, sug:true, why:`Tuvo ${dec} ${dec===1?'episodio':'episodios'} de desregulación en el último año: se recomienda evaluar si necesita un PAEC.`} : {on:false, why:INSTR_REGLA.paec}; }
+  }
+  return {on:true, why:''};
+}
+const instrOff = s => INSTR.filter(([k])=>!aplica(s,k).on);
+
+/* en la ficha del estudiante: elegir qué le corresponde */
+SCHEMA.student.push({sec:'Instrumentos que le corresponden', note:'Por defecto se aplica la regla de cada instrumento. Cámbiala solo si el caso lo requiere: lo que no corresponde deja de aparecer como pendiente.', fields:
+  INSTR.map(([k,l])=>({k:'ins_'+k, l, t:'select', o:()=>{ const d = S.form?.draft || {}; const a = aplica({...d, ['ins_'+k]:''}, k);
+    if(a.fixed) return [['', 'Corresponde (obligatorio por diagnóstico TEA)']];
+    return [['', `Según la regla: ${a.on?'corresponde':'no corresponde'}`], ['si','Sí corresponde'], ['no','No corresponde']]; }}))});
+/* el select de "Según la regla" no deja guardar un valor vacío como texto: limpiamos al guardar */
+const _saveFormV = saveForm;
+saveForm = function(){ const f = S.form; if(f?.kind==='student') INSTR.forEach(([k])=>{ if(!f.draft['ins_'+k]) delete f.draft['ins_'+k]; }); return _saveFormV.apply(this, arguments); };
+/* ayuda bajo cada instrumento en el formulario */
+const _inputForV = inputFor;
+inputFor = function(f, path, v, ctx){
+  const h = _inputForV(f, path, v, ctx);
+  if(S.form?.schema!=='student' || !f.k.startsWith('ins_')) return h;
+  const k = f.k.slice(4); const a = aplica({...(S.form.draft||{}), ['ins_'+k]:''}, k);
+  return h.replace('<option value="">Seleccionar…</option>','').replace(/<\/div>$/, `<p class="small muted" style="margin-top:4px">${esc(a.why || INSTR_REGLA[k])}</p></div>`);
+};
+/* el diagnóstico cambia la regla: refresca el formulario */
+document.addEventListener('change', e=>{ if(S.form?.schema==='student' && /^diagnosticos\.\d+\.condicion$/.test(e.target.dataset?.path||'')) setTimeout(()=>keepScroll(render), 0); });
+
+/* estado de documentos: solo lo que corresponde; evaluación al día = en los últimos 12 meses */
+const _docStatusV = docStatus;
+docStatus = function(s){
+  return _docStatusV(s).filter(([,,k])=>aplica(s,k).on).map(row=>{
+    const [ab,n,k,st] = row;
+    if(k==='evaluaciones'){ const l = lastEval(s); return [ab, n, k, !l ? 'none' : diffDays(l) < -365 ? 'warn' : 'ok']; }
+    if(st==='na') return [ab, n, k, 'none'];
+    return row;
+  });
+};
+/* pendientes: no se alerta por instrumentos que no corresponden */
+const _alertsForV = alertsFor;
+alertsFor = function(s){
+  const off = new Set(instrOff(s).map(([k])=>k));
+  const A = _alertsForV(s).filter(a=>!(off.has(a.tab) && !/autorizaci/i.test(a.t)));
+  if(aplica(s,'pai').on && !docHecho(s,'pai') && (docHecho(s,'evaluaciones'))) A.push({lvl:'info', t:'PAI sin elaborar', d:'Ya tiene evaluación: define objetivos, estrategias y responsables.', tab:'pai', sid:s.id, nombre:s.nombre});
+  if(aplica(s,'paci').on && !docHecho(s,'paci')) A.push({lvl:'info', t:'PACI sin elaborar', d:'Le corresponde por tener adecuaciones curriculares.', tab:'paci', sid:s.id, nombre:s.nombre});
+  if(aplica(s,'evaluaciones').on){ const l = lastEval(s);
+    if(!l) A.push({lvl:'info', t:'Evaluación sin registrar', d:'Registra la evaluación de ingreso para definir los apoyos.', tab:'evaluaciones', sid:s.id, nombre:s.nombre});
+    else if(diffDays(l) < -365) A.push({lvl:'info', t:'Reevaluación pendiente', d:`La última evaluación es del ${fmt(l)}. Corresponde reevaluar cada año.`, tab:'evaluaciones', sid:s.id, nombre:s.nombre}); }
+  return A;
+};
+/* pestañas de la ficha: se ocultan los instrumentos que no corresponden y no tienen información */
+function tabVisible(s, k){
+  if(!INSTR.some(([x])=>x===k)) return true;
+  if(aplica(s,k).on) return true;
+  return k==='evaluaciones' ? (s.evaluaciones||[]).length>0 : !!s[k] && Object.keys(s[k]).length>0;
+}
+/* tarjeta "Documentos" del resumen: muestra también lo que no corresponde, sin marcarlo pendiente */
+function instrNota(s){
+  const off = instrOff(s); if(!off.length) return '';
+  const sug = off.filter(([k])=>aplica(s,k).sug);
+  return `<div class="instr-off"><p class="small muted"><b>No le corresponde:</b> ${off.map(([k,l])=>`<span title="${esc(aplica(s,k).why)}">${esc(l)}</span>`).join(', ')}.</p>
+    ${sug.map(([k,l])=>`<p class="small instr-sug">${ic('info','sm')} ${esc(aplica(s,k).why)}</p>`).join('')}
+    <button class="btn sm" data-act="edit-student" data-focus="ins">${ic('edit','sm')} Ajustar instrumentos</button></div>`;
+}
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="edit-student"][data-focus="ins"]'); if(!el) return;
+  setTimeout(()=>{ const x = document.querySelector('#modal [data-path^="ins_"], [data-path^="ins_"]'); if(x){ x.scrollIntoView({block:'center'}); x.focus({preventScroll:true}); } }, 60); });
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.instr-off{border-top:1px solid var(--line,rgba(0,0,0,.1));margin-top:10px;padding-top:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.instr-off p{margin:0}
+.instr-off span[title]{text-decoration:underline dotted;cursor:help}
+.instr-sug{display:flex;gap:6px;align-items:flex-start;color:var(--warn-ink,#8a5a00)}`; document.head.appendChild(st); })();
+const k_evalTxt = (tab, st) => tab==='evaluaciones' && st==='warn' ? 'Reevaluar' : DOC_PILL[st][1];
+
+/* ================= Evaluaciones adaptadas: comunicación a coordinación ================= */
+/* Prepara el correo que evidencia la adecuación: al docente (si tiene correo), con copia a la coordinación
+   académica del ciclo y a la coordinación de la unidad. Queda registrado cuándo se envió y a quiénes. */
+const CICLOS_DEF = [
+  {ciclo:'Educación parvularia', cursos:['Pre-kínder','Kínder']},
+  {ciclo:'Primer ciclo básico', cursos:['1° básico','2° básico','3° básico','4° básico']},
+  {ciclo:'Segundo ciclo básico', cursos:['5° básico','6° básico','7° básico','8° básico']},
+  {ciclo:'Enseñanza media', cursos:['1° medio','2° medio','3° medio','4° medio']}];
+const okMail = m => /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(String(m||'').trim());
+const coordAcad = () => (S.data.inst?.coordAcad?.length ? S.data.inst.coordAcad : CICLOS_DEF.map(c=>({...c, id:c.ciclo})));
+const cicloDe = s => coordAcad().find(c=>(c.cursos||[]).includes(s.curso));
+const coordUAA = () => S.data.equipo.filter(p=>COORD_CARGOS.includes(p.cargo) && p.cargo!=='Equipo de gestión');
+
+/* correo del equipo también en la versión de demostración */
+if(!SCHEMA.equipo[0].fields.some(f=>f.k==='correo')) SCHEMA.equipo[0].fields.push({k:'correo', l:'Correo institucional', t:'text', w:2});
+/* evaluación adaptada: correo del docente y enlace a la prueba */
+{ const sec = SCHEMA.adap[0]; const i = sec.fields.findIndex(f=>f.k==='docente');
+  sec.fields.splice(i+1, 0, {k:'docenteCorreo', l:'Correo del docente', t:'text', ph:'nombre@colegioeducenter.cl'});
+  SCHEMA.adap[1].note = 'La adecuación se hace sobre el instrumento impreso; aquí queda el registro de lo que se adaptó. Vienen marcadas las acordadas en el PAEC y el PACI: desmarca lo que no se aplicó.';
+  { const det = SCHEMA.adap[1].fields.find(f=>f.k==='detalle'); if(det){ det.l = 'Qué se adaptó en el instrumento'; det.ph = 'Ej.: se amplió la letra, se destacaron palabras clave, se redujeron ítems por página y se agregaron pictogramas en las instrucciones.'; } }
+  SCHEMA.adap[1].fields.push({k:'enlace', l:'Evidencia (opcional): enlace a foto o escaneo de la prueba adaptada', t:'text', w:2, ph:'https://drive.google.com/…'}); }
+/* configuración de coordinaciones académicas */
+SCHEMA.coordAcad = [{sec:'Coordinaciones académicas por ciclo', note:'Indica quién coordina cada ciclo y su correo. Se usa para enviar con copia las evaluaciones adaptadas.', fields:[
+  {k:'coordAcad', l:'Ciclo', t:'list', sub:[
+    {k:'ciclo', l:'Ciclo', t:'text'}, {k:'nombre', l:'Coordinador/a académico/a', t:'text'}, {k:'correo', l:'Correo', t:'text', w:2},
+    {k:'cursos', l:'Cursos del ciclo', t:'checks', w:2, o:()=>CURSOS}]}]}];
+
+/* demostración: datos ficticios con dominio de ejemplo */
+const _migrateW = migrate;
+migrate = function(){ const r = _migrateW.apply(this, arguments); const D_ = S.data;
+  if(D_?.demo){ D_.inst = D_.inst||{};
+    if(!D_.inst.coordAcad) D_.inst.coordAcad = CICLOS_DEF.map((c,i)=>({...c, id:'ca'+i, nombre:['Coordinación Parvularia (ejemplo)','Coordinación Primer Ciclo (ejemplo)','Coordinación Segundo Ciclo (ejemplo)','Coordinación Media (ejemplo)'][i], correo:['parvularia','primerciclo','segundociclo','media'][i]+'@example.com'}));
+    (D_.equipo||[]).forEach(p=>{ if(!p.correo) p.correo = String(p.nombre||'equipo').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]+/g,'.').replace(/^\.|\.$/g,'')+'@example.com'; }); }
+  return r; };
+
+/* texto del correo */
+function adapMail(s, x){
+  const c = cicloDe(s), U = coordUAA(), yo = S.data.equipo.find(p=>p.id===S.data.usuario);
+  const to = okMail(x.docenteCorreo) ? [x.docenteCorreo.trim()] : (c && okMail(c.correo) ? [c.correo.trim()] : []);
+  const cc = [...(c && okMail(c.correo) ? [c.correo.trim()] : []), ...U.map(p=>p.correo).filter(okMail).map(m=>m.trim())].filter(m=>!to.includes(m));
+  const nom = s.nombreSocial || s.nombre;
+  const su = `Evaluación adaptada · ${x.asignatura||''}${x.tipo?' ('+x.tipo+')':''} · ${nom}, ${cursoOf(s)} · ${fmt(x.fecha)}`;
+  const saludo = okMail(x.docenteCorreo) && x.docente ? `Estimado/a ${x.docente}:` : `Estimado/a ${c?.nombre && !/ejemplo/.test(c.nombre) ? c.nombre : 'equipo de coordinación'}:`;
+  const L = [saludo, '',
+    `Junto con saludar, dejo registro del trabajo realizado por la Unidad de Apoyo al Aprendizaje en la adecuación de la siguiente evaluación. La adecuación se hizo directamente sobre el instrumento impreso.`, '',
+    `• Estudiante: ${nom} · ${cursoOf(s)}`,
+    `• Asignatura: ${x.asignatura||'—'}${x.tipo?' · '+x.tipo:''}`,
+    `• Fecha de aplicación: ${fmt(x.fecha)}`,
+    x.docente ? `• Docente: ${x.docente}` : '',
+    x.contenido ? `• Unidad u objetivos evaluados: ${x.contenido}` : '',
+    `• Estado: ${x.estado||'—'}`, '',
+    (x.adaptaciones||[]).length ? 'Adecuaciones realizadas:' : '',
+    ...(x.adaptaciones||[]).map(a=>`  – ${a}`),
+    x.detalle ? `\nQué se adaptó en el instrumento: ${x.detalle}` : '',
+    x.enlace ? `\nEvidencia: ${x.enlace}` : '',
+    x.estado==='Aplicada' && x.cumplimiento ? `\nAplicación: ${x.cumplimiento}${x.nota?' · Resultado: '+x.nota:''}` : '',
+    '', 'Las adecuaciones responden a los acuerdos registrados en el plan de apoyo del estudiante (Decreto 67/2018 y Decreto 83/2015). Quedo atento/a a cualquier consulta o ajuste.', '',
+    'Saludos cordiales,', yo ? `${yo.nombre} · ${yo.cargo}` : '', 'Unidad de Apoyo al Aprendizaje · Colegio Particular EDUCENTER'];
+  const body = L.filter((l,i)=>l!=='' || L[i-1]!=='').join('\n').replace(/\n{3,}/g,'\n\n');
+  return {to, cc, su, body, ciclo:c, U};
+}
+const gmailUrl = m => 'https://mail.google.com/mail/?view=cm&fs=1&tf=1' + `&to=${encodeURIComponent(m.to.join(','))}&cc=${encodeURIComponent(m.cc.join(','))}&su=${encodeURIComponent(m.su)}&body=${encodeURIComponent(m.body)}`;
+const mailtoUrl = m => `mailto:${m.to.map(encodeURIComponent).join(',')}?cc=${encodeURIComponent(m.cc.join(','))}&subject=${encodeURIComponent(m.su)}&body=${encodeURIComponent(m.body)}`;
+
+function adapActions(s, x){
+  const c = x.comunicacion;
+  if(x.estado==='Por adaptar') return '';
+  return c?.enviado ? `<button class="btn sm" data-act="adap-mail" data-sid="${s.id}" data-id="${x.id}" title="Enviado el ${esc(fmtTs(c.ts))} a ${esc([...c.to,...c.cc].join(', '))}">${ic('check','sm')} Comunicada ${fmtShort(c.ts.slice(0,10))}</button>`
+    : `<button class="btn sm primary" data-act="adap-mail" data-sid="${s.id}" data-id="${x.id}">${ic('chat','sm')} Comunicar a coordinación</button>`;
+}
+function adapMailModal(s, x){
+  const m = adapMail(s, x), miss = [];
+  if(!m.ciclo || !okMail(m.ciclo.correo)) miss.push(`el correo de la coordinación académica de ${m.ciclo?.ciclo || 'su ciclo'}`);
+  if(!m.U.some(p=>okMail(p.correo))) miss.push('el correo de la coordinación de la unidad');
+  const prev = x.comunicacion;
+  S.adapMail = {sid:s.id, id:x.id};
+  S.modal = {title:'Comunicar evaluación adaptada', html:`
+    ${prev?.enviado?`<p class="notice-mini ok">${ic('check','sm')} Enviada el ${esc(fmtTs(prev.ts))} por ${esc(whoName(prev.por))} a ${esc([...prev.to,...prev.cc].join(', '))}. Puedes enviarla de nuevo si hubo cambios.</p>`:''}
+    ${miss.length?`<p class="notice-mini warn">${ic('alert','sm')} Falta ${miss.join(' y ')}. ${isCoord(S.data.usuario)?'Agrégalo en Equipo › Coordinaciones académicas o en la ficha de cada integrante.':'Pide a coordinación que lo agregue en Equipo.'}</p>`:''}
+    <div class="form"><div class="fields">
+      <div class="field w2"><label for="am-to">Para</label><input id="am-to" type="text" value="${esc(m.to.join(', '))}" placeholder="Correo del docente"></div>
+      <div class="field w2"><label for="am-cc">Con copia</label><input id="am-cc" type="text" value="${esc(m.cc.join(', '))}"><span class="small muted">${esc([m.ciclo?.nombre ? 'Coordinación académica: '+m.ciclo.nombre : '', ...m.U.map(p=>'Coordinación UAA: '+p.nombre)].filter(Boolean).join(' · '))}</span></div>
+      <div class="field w2"><label for="am-su">Asunto</label><input id="am-su" type="text" value="${esc(m.su)}"></div>
+      <div class="field w2"><label for="am-body">Mensaje</label><textarea id="am-body" rows="14">${esc(m.body)}</textarea></div></div>
+    <p class="small muted">El mensaje no incluye diagnósticos. Revisa el texto antes de enviarlo.</p>
+    <div class="quick-actions" style="margin-top:12px"><button class="btn primary" data-act="am-gmail">${ic('chat','sm')} Abrir en Gmail</button><button class="btn" data-act="am-mailto">Abrir en mi aplicación de correo</button><button class="btn" data-act="am-copy">Copiar texto</button></div>
+    <div id="am-confirm" hidden class="notice-mini" style="margin-top:12px"><span>¿Enviaste el correo?</span> <button class="btn sm primary" data-act="am-sent">${ic('check','sm')} Sí, registrar envío</button></div></div>`};
+  render();
+}
+const amRead = () => { const g = id => document.getElementById(id)?.value || ''; const sp = v => v.split(/[,;\s]+/).map(t=>t.trim()).filter(Boolean);
+  return {to:sp(g('am-to')), cc:sp(g('am-cc')), su:g('am-su'), body:g('am-body')}; };
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act^="adap-mail"],[data-act^="am-"],[data-act="coord-acad"]'); if(!el) return;
+  const a = el.dataset.act;
+  if(a==='adap-mail'){ const s = stu(el.dataset.sid), x = (s?.adaptadas||[]).find(y=>y.id===el.dataset.id); if(x) adapMailModal(s, x); return; }
+  if(a==='coord-acad'){ openForm({kind:'coordAcad', schema:'coordAcad', where:'modal', title:'Coordinaciones académicas', draft:{coordAcad:clone(coordAcad()).map(c=>({...c, id:c.id||uid()}))}}); return; }
+  const m = amRead();
+  if(a==='am-gmail' || a==='am-mailto'){
+    if(!m.to.length && !m.cc.length){ toast('Agrega al menos un destinatario', true); return; }
+    const bad = [...m.to, ...m.cc].filter(x=>!okMail(x)); if(bad.length){ toast('Revisa estos correos: '+bad.join(', '), true); return; }
+    window.open(a==='am-gmail' ? gmailUrl(m) : mailtoUrl(m), '_blank', 'noopener');
+    const c = document.getElementById('am-confirm'); if(c) c.hidden = false; return; }
+  if(a==='am-copy'){ doCopy(`Para: ${m.to.join(', ')}\nCC: ${m.cc.join(', ')}\nAsunto: ${m.su}\n\n${m.body}`, 'Correo de la evaluación adaptada'); const c = document.getElementById('am-confirm'); if(c) c.hidden = false; return; }
+  if(a==='am-sent'){ const r = S.adapMail, s = r && stu(r.sid), x = s && (s.adaptadas||[]).find(y=>y.id===r.id); if(!x) return;
+    x.comunicacion = {ts:nowIso(), por:S.data.usuario||'', to:m.to, cc:m.cc, asunto:m.su, enviado:true}; stamp(x);
+    logEv(s.id, 'Comunicó', `evaluación adaptada de ${x.asignatura} a coordinación (${[...m.to,...m.cc].length} destinatarios)`);
+    S.modal = null; S.adapMail = null; persist(); render(); toast('Envío registrado'); }
+});
+/* guardar configuración de ciclos */
+const _saveFormW = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f?.kind==='coordAcad'){ const L = (f.draft.coordAcad||[]).filter(c=>c && (c.ciclo||c.nombre||c.correo));
+    const bad = L.filter(c=>c.correo && !okMail(c.correo)); if(bad.length){ f.err = ['Correo no válido en '+(bad[0].ciclo||'un ciclo')]; render(); return; }
+    S.data.inst = S.data.inst||{}; S.data.inst.coordAcad = L.map(c=>({id:c.id||uid(), ciclo:c.ciclo||'', nombre:c.nombre||'', correo:(c.correo||'').trim(), cursos:c.cursos||[]}));
+    logEv('','Editó','coordinaciones académicas por ciclo'); S.form = null; persist(); render(); toast('Coordinaciones guardadas'); return; }
+  if(f?.kind==='adaptadas' && f.draft.docenteCorreo && !okMail(f.draft.docenteCorreo)){ f.err = ['Correo del docente no válido']; render(); return; }
+  return _saveFormW.apply(this, arguments); };
+
+/* pendiente: evaluación adaptada sin comunicar */
+const _alertsForW = alertsFor;
+alertsFor = function(s){ const A = _alertsForW(s);
+  (s.adaptadas||[]).filter(x=>x.estado!=='Por adaptar' && !x.comunicacion?.enviado && diffDays(x.fecha) >= -30).forEach(x=>
+    A.push({lvl:'info', t:`Evaluación adaptada sin comunicar: ${x.asignatura}`, d:`${fmt(x.fecha)}. Deja registro por correo al docente, con copia a la coordinación académica y a la coordinación de la unidad.`, tab:'adaptadas', sid:s.id, nombre:s.nombre}));
+  return A; };
+
+/* Equipo: tarjeta de coordinaciones académicas */
+const _vEquipoW = vEquipo;
+vEquipo = function(){
+  const h = _vEquipoW(); const L = coordAcad(); const can = isCoord(S.data.usuario);
+  const card = `<section class="glass card" style="margin-top:20px"><header><h2>Coordinaciones académicas</h2>${can?`<button class="btn sm" data-act="coord-acad">${ic('edit','sm')} Editar</button>`:''}</header>
+    <p class="small muted" style="margin:-4px 0 10px">Reciben copia de las evaluaciones adaptadas de su ciclo, junto con la coordinación de la unidad.</p>
+    <ul class="rows">${L.map(c=>`<li class="rowi"><span class="icw av2">${ic('team')}</span><div class="main"><span class="t">${esc(c.ciclo)}</span><span class="d">${esc(c.nombre||'Sin nombre')} · ${okMail(c.correo)?esc(c.correo):'<b>sin correo</b>'}</span></div><span class="chip">${(c.cursos||[]).length} cursos</span></li>`).join('')}
+    ${coordUAA().map(p=>`<li class="rowi"><span class="icw av3">${ic('team')}</span><div class="main"><span class="t">Coordinación de la unidad</span><span class="d">${esc(p.nombre)} · ${okMail(p.correo)?esc(p.correo):'<b>sin correo</b>'}</span></div></li>`).join('')}</ul></section>`;
+  return h + card;
+};
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.notice-mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-radius:12px;background:var(--soft,rgba(0,0,0,.04));margin:0 0 10px;font-size:.92em}
+.notice-mini.warn{background:rgba(214,150,0,.12)}
+.notice-mini.ok{background:rgba(30,140,80,.12)}
+#am-body{min-height:260px;font-family:inherit}`; document.head.appendChild(st); })();
+
 
 /* ---------- íconos ---------- */
 const ICONS = {
@@ -4089,8 +4719,8 @@ function vFicha(){
   <header class="fichahead"><div class="left"><p class="eyebrow">${esc(cursoOf(s))} · ${esc(edad(s.fnac))}</p><h1>${nameHTML(s.nombreSocial||s.nombre)}</h1>
     <div class="meta">${condChips(s)}${s.nombreSocial?`<span class="chip">Nombre civil: ${esc(s.nombre)}</span>`:''}<span class="chip ico">${ic('team')}Referente: ${esc(profName(s.referente))}</span></div></div>
     <div class="right"><button class="btn" data-act="edit-student">${ic('edit','sm')} Editar datos</button><span class="avatar lg ${AREA_AV(s.nombre)}">${initials(s.nombreSocial||s.nombre)}</span></div></header>
-  <label class="tabsel-wrap mob-only"><span class="small muted">Sección</span><select id="tabsel" class="selpill tabsel" aria-label="Sección de la ficha">${TABS.map(([k,l])=>`<option value="${k}" ${S.tab===k?'selected':''}>${l}${stMap[k]==='crit'?' · urgente':stMap[k]==='warn'?' · revisar':''}</option>`).join('')}</select></label>
-  <nav class="seg tabs-ficha" role="tablist" style="margin-bottom:20px">${TABS.map(([k,l])=>`<button role="tab" aria-selected="${S.tab===k}" data-act="tab" data-tab="${k}">${stMap[k]?`<span class="dot ${stMap[k]}"></span>`:''}${l}</button>`).join('')}</nav>
+  <label class="tabsel-wrap mob-only"><span class="small muted">Sección</span><select id="tabsel" class="selpill tabsel" aria-label="Sección de la ficha">${TABS.filter(([k])=>tabVisible(s,k)).map(([k,l])=>`<option value="${k}" ${S.tab===k?'selected':''}>${l}${stMap[k]==='crit'?' · urgente':stMap[k]==='warn'?' · revisar':''}</option>`).join('')}</select></label>
+  <nav class="seg tabs-ficha" role="tablist" style="margin-bottom:20px">${TABS.filter(([k])=>tabVisible(s,k)).map(([k,l])=>`<button role="tab" aria-selected="${S.tab===k}" data-act="tab" data-tab="${k}">${stMap[k]?`<span class="dot ${stMap[k]}"></span>`:''}${l}</button>`).join('')}</nav>
   <div id="tabbody">${tabBody(s)}</div>`;
 }
 function tabBody(s){
@@ -4145,8 +4775,8 @@ function vResumen(s){
     <section class="glass card"><header><h2>Últimas intervenciones</h2><button class="iconbtn sm" data-act="tab" data-tab="sesiones" aria-label="Ver todas las intervenciones">${ic('more')}</button></header>
       ${ses.length?`<ul class="rows">${ses.map(x=>`<li class="rowi"><span class="icw ${AREA_AV(x.modalidad)}">${ic('activity')}</span><div class="main"><span class="t">${esc(x.modalidad||'Sesión')}</span><div class="meta"><span class="chip ico">${ic('calendar')}${fmtShort(x.fecha)}</span>${x.hora?`<span class="chip ico">${ic('clock')}${esc(x.hora)}</span>`:''}<span class="chip ico">${esc(firstName(profName(x.profesional)))}</span></div></div><span class="pill ${estadoCls(x.estado)}">${esc(x.estado||'')}</span></li>`).join('')}</ul>`:'<p class="empty">Sin sesiones.</p>'}</section>
   </div><div class="stack">
-    <section class="glass card"><header><h2>Documentos</h2></header><ul class="rows">${docStatus(s).map(([ab,n,tab,st])=>`<li class="rowi click" data-act="tab" data-tab="${tab}"><span class="icw ${AREA_AV(n)}">${ic(DOC_IC[tab])}</span><div class="main"><span class="t">${n}</span><span class="d">${esc(DOC_LONG[tab]||'Informes y reevaluaciones')}</span></div><span class="pill ${DOC_PILL[st][0]}">${DOC_PILL[st][1]}</span></li>`).join('')}</ul></section>
-    ${(()=>{ const G = (S.data.grupos||[]).filter(g=>(g.estudiantes||[]).some(e=>e.sid===s.id)); return G.length?`<section class="glass card"><header><h2>Reforzamiento</h2></header><ul class="rows">${G.map(g=>{ const st = gStats(g,s.id); return `<li class="rowi click" data-act="go-grupo" data-id="${g.id}"><span class="icw">${ic('users')}</span><div class="main"><span class="t">${esc(g.nombre)}</span><span class="d">${esc((g.dias||[]).join(', '))}${g.hora?' · '+esc(g.hora):''} · ${esc(profName(g.profesional))}${st.ultimoLogro?' · último logro: '+esc(st.ultimoLogro):''}</span></div><span class="pill ${st.pct==null?'none':st.pct>=85?'ok':st.pct>=70?'warn':'crit'}">${st.pct==null?'Sin sesiones':st.pct+'%'}</span></li>`; }).join('')}</ul></section>`:''; })()}
+    <section class="glass card"><header><h2>Documentos</h2></header><ul class="rows">${docStatus(s).map(([ab,n,tab,st])=>`<li class="rowi click" data-act="tab" data-tab="${tab}"><span class="icw ${AREA_AV(n)}">${ic(DOC_IC[tab])}</span><div class="main"><span class="t">${n}</span><span class="d">${esc(DOC_LONG[tab]||'Informes y reevaluaciones')}</span></div><span class="pill ${DOC_PILL[st][0]}">${k_evalTxt(tab,st)}</span></li>`).join('')}</ul>${instrNota(s)}</section>
+    ${(()=>{ const G = (S.data.grupos||[]).filter(g=>g.clase!=='trabajo' && (g.estudiantes||[]).some(e=>e.sid===s.id)); return G.length?`<section class="glass card"><header><h2>Reforzamiento</h2></header><ul class="rows">${G.map(g=>{ const st = gStats(g,s.id); return `<li class="rowi click" data-act="go-grupo" data-id="${g.id}"><span class="icw">${ic('users')}</span><div class="main"><span class="t">${esc(g.nombre)}</span><span class="d">${esc((g.dias||[]).join(', '))}${g.hora?' · '+esc(g.hora):''} · ${esc(profName(g.profesional))}${st.ultimoLogro?' · último logro: '+esc(st.ultimoLogro):''}</span></div><span class="pill ${st.pct==null?'none':st.pct>=85?'ok':st.pct>=70?'warn':'crit'}">${st.pct==null?'Sin sesiones':st.pct+'%'}</span></li>`; }).join('')}</ul></section>`:''; })()}
     <section class="glass card"><header><h2>Contactos</h2></header>${(s.apoderados||[]).length?`<ul class="rows">${s.apoderados.map(a=>`<li class="rowi"><span class="icw">${ic('phone')}</span><div class="main"><span class="t">${esc(a.nombre)}</span><span class="d">${esc(a.parentesco||'')} · ${esc(a.tipo||'')}</span></div><span class="mono small" style="font-weight:600">${esc(a.telefono||'')}</span></li>`).join('')}</ul>`:'<p class="empty">Sin contactos.</p>'}</section>
     <section class="glass card"><header><h2>Diagnósticos</h2></header>${(s.diagnosticos||[]).length?`<ul class="rows">${s.diagnosticos.map(d=>`<li class="rowi"><span class="icw">${ic('shield')}</span><div class="main"><span class="t">${esc(d.condicion)}</span><span class="d">Recibido el ${fmt(d.fecha)} · ${esc(d.emisor||'')}</span></div></li>`).join('')}</ul>`:'<p class="empty">Sin diagnósticos registrados.</p>'}</section>
   </div></div>`;
@@ -4160,7 +4790,7 @@ function vColl(s, key, embedded){
   const intro = {medidas:'Reducción de jornada, ingresos o salidas diferidas, acompañamiento en aula por el apoderado. Solo excepcionales, fundadas, temporales y acordadas; nunca como sanción (Circular 586).', evaluaciones:'Evaluaciones de ingreso, reevaluaciones e informes externos recibidos.', sesiones:'Sesiones individuales, grupales, en aula y reuniones con familia o docentes.', dec:'Episodios de desregulación emocional y conductual y la respuesta del equipo.'}[key];
   return `${embedded?'':`<div class="pagehead" style="margin:0 0 16px"><p class="muted">${intro}</p><button class="btn primary" data-act="add-item" data-coll="${key}">${ic('plus')} Agregar ${c.label}</button></div>`}
   ${items.length?`<div class="items">${items.map(x=>`<article class="glass item"><header><div class="t"><span class="avatar md ${key==='dec'?'av4':AREA_AV(titleOf(x))}">${ic(DOC_IC[key])}</span><div><h3>${titleOf(x)}</h3><div class="chips"><span class="chip ico">${ic('calendar')}${fmt(x.fecha||x.fechaInicio)}</span>${x.hora?`<span class="chip ico">${ic('clock')}${esc(x.hora)}</span>`:''}${x.profesional?`<span class="chip ico">${ic('team')}${esc(firstName(profName(x.profesional)))}</span>`:''}${badge(x)}</div></div></div>
-    <div class="actions">${key==='dec'?`<button class="btn sm ${x.analisis?'':'primary'}" data-act="analyze" data-id="${x.id}">${ic('heart','sm')} ${x.analisis?'Ver análisis':'Analizar frente al PAEC'}</button>`:''}${key==='comunicaciones'||key==='dec'?`<button class="btn sm" data-act="report-item" data-kind="${key==='dec'?'decr':'acta'}" data-id="${x.id}">${ic('print','sm')} ${key==='dec'?'Imprimir bitácora':'Imprimir acta'}</button>`:''}${key==='dec'&&x.concurrencia?`<button class="btn sm" data-act="report-item" data-kind="cert" data-id="${x.id}">${ic('doc','sm')} Certificado</button>`:''}${key==='sesiones'&&x.estado==='Programada'?`<button class="btn sm" data-act="mark-done" data-sid="${s.id}" data-id="${x.id}">${ic('check','sm')} Realizada</button>`:''}<button class="iconbtn sm" data-act="edit-item" data-coll="${key}" data-id="${x.id}" aria-label="Editar">${ic('edit')}</button>${(isCoord(S.data.usuario)||!x._por||x._por===S.data.usuario)?S.arm==='del-'+x.id?`<button class="btn sm danger armed" data-act="del-item" data-coll="${key}" data-id="${x.id}">Confirmar</button>`:`<button class="iconbtn sm" data-act="del-item" data-coll="${key}" data-id="${x.id}" aria-label="Eliminar">${ic('trash')}</button>`:''}</div></header>
+    <div class="actions">${key==='dec'?`<button class="btn sm ${x.analisis?'':'primary'}" data-act="analyze" data-id="${x.id}">${ic('heart','sm')} ${x.analisis?'Ver análisis':'Analizar frente al PAEC'}</button>`:''}${key==='comunicaciones'||key==='dec'?`<button class="btn sm" data-act="report-item" data-kind="${key==='dec'?'decr':'acta'}" data-id="${x.id}">${ic('print','sm')} ${key==='dec'?'Imprimir bitácora':'Imprimir acta'}</button>`:''}${key==='dec'&&x.concurrencia?`<button class="btn sm" data-act="report-item" data-kind="cert" data-id="${x.id}">${ic('doc','sm')} Certificado</button>`:''}${key==='sesiones'&&x.estado==='Programada'?`<button class="btn sm" data-act="mark-done" data-sid="${s.id}" data-id="${x.id}">${ic('check','sm')} Realizada</button>`:''}${key==='adaptadas'?adapActions(s,x):''}<button class="iconbtn sm" data-act="edit-item" data-coll="${key}" data-id="${x.id}" aria-label="Editar">${ic('edit')}</button>${(isCoord(S.data.usuario)||!x._por||x._por===S.data.usuario)?S.arm==='del-'+x.id?`<button class="btn sm danger armed" data-act="del-item" data-coll="${key}" data-id="${x.id}">Confirmar</button>`:`<button class="iconbtn sm" data-act="del-item" data-coll="${key}" data-id="${x.id}" aria-label="Eliminar">${ic('trash')}</button>`:''}</div></header>
     <div class="body">${viewFields(SCHEMA[c.schema].flatMap(sec=>sec.fields).filter(f=>!['fecha','hora','tipo','modalidad','estado','etapa','lugar','profesional','motivo','respuesta','asignatura','cumplimiento','nota'].includes(f.k) && !(empty(x[f.k]) && f.t!=='bool')), x, ctx)}${key==='medidas'?medBody(x):''}${key==='adaptadas'?(()=>{ const g = adapGap(s,x); return (g.falta.length&&x.estado!=='Por adaptar')?`<p class="gapnote">${ic('alert','sm inl3')} Acordadas en el PAEC/PACI y no marcadas: ${esc(g.falta.join(', '))}</p>`:''; })()+(x.motivo?`<dl class="fields" style="margin-top:10px"><div class="w2"><dt>Motivo</dt><dd>${esc(x.motivo)}</dd></div></dl>`:'')+(x.respuesta?`<dl class="fields" style="margin-top:10px"><div class="w2"><dt>Cómo respondió</dt><dd>${esc(x.respuesta)}</dd></div></dl>`:''):''}${x._creado?`<p class="audit">Registrado ${esc(fmtTs(x._creado))} por ${esc(whoName(x._por))}${x._mod&&x._mod!==x._creado?` · modificado ${esc(fmtTs(x._mod))} por ${esc(whoName(x._modPor))}`:''}</p>`:''}</div></article>`).join('')}</div>`:`<p class="empty">Sin registros todavía.</p>`}`;
 }
 
@@ -4592,7 +5222,7 @@ vRespaldo = function(){
   h = h.replace('Reemplaza todos los datos actuales.', 'Sirve para traer los datos registrados en la versión de prueba. Reemplaza los datos actuales de la base del colegio.');
   return h;
 };
-SCHEMA.equipo[0].fields.push({k:'correo', l:'Correo institucional (para ingresar)', t:'text', w:2});
+{ const f = SCHEMA.equipo[0].fields.find(x=>x.k==='correo'); if(f) f.l = 'Correo institucional (para ingresar)'; else SCHEMA.equipo[0].fields.push({k:'correo', l:'Correo institucional (para ingresar)', t:'text', w:2}); }
 const _saveFormC = saveForm;
 saveForm = function(){ const k = S.form?.kind; const r = _saveFormC.apply(this, arguments); if(k==='equipo') syncPerfiles(); return r; };
 async function syncPerfiles(){
