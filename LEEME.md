@@ -132,3 +132,12 @@ Para un sitio que ya está funcionando:
 4. Revisa con cada perfil: coordinación, un profesional, Ninoska (psicología) y dirección.
 
 Los archivos `04`, `05` y `07` contienen datos reales de estudiantes: nunca deben estar en GitHub. Bórralos de tu computador después de ejecutarlos.
+
+## Instalar la app en el celular
+
+La plataforma se puede instalar como app, con el logo de la unidad en la pantalla de inicio. Requiere los archivos `manifest.webmanifest`, `sw.js` y la carpeta `icons/`.
+
+- **Android (Chrome):** abrir la plataforma › menú ⋮ › **Instalar app** (o "Agregar a la pantalla principal").
+- **iPhone (Safari):** abrir la plataforma › botón Compartir › **Agregar a pantalla de inicio**.
+
+La primera vez dentro de la app hay que ingresar con la cuenta de Google del colegio. La app no guarda datos de estudiantes en el teléfono: siempre los pide a la base, y sin internet muestra un aviso.
