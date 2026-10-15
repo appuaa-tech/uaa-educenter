@@ -5514,6 +5514,46 @@ vEstudiantes = function(){ const h = _vEstudiantesAE(); return conLista(S.data.u
 const _vEquipoAE = vEquipo;
 vEquipo = function(){ let h = _vEquipoAE(); (S.data.equipo||[]).filter(p=>p.alcanceModo==='lista').forEach(p=>{ const i = h.indexOf(`<b>${esc(p.nombre)}</b>`); if(i<0) return; const j = h.indexOf('</div>', i); h = h.slice(0, j) + ` <span class="chip" title="Acceso solo a estudiantes seleccionados">${ic('shield','sm')} ${(p.alcance||[]).length} fichas</span>` + h.slice(j); }); return h; };
 
+/* ================= Directorio de estudiantes (nombre y curso) para elegir estudiantes en grupos ================= */
+/* Lo arman las cuentas del equipo a partir de las fichas de la unidad y de la nómina del colegio.
+   Quien hace solo reforzamiento lo usa para crear grupos sin acceder a fichas ni a la nómina completa (SQL 11). */
+const dirHash = t => { let h = 2166136261; for(const c of String(t)){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h>>>0).toString(36); };
+const puedeDir = () => typeof snapOk==='function' ? (C.ready ? snapOk() : false) : !meRef();
+function dirBuild(){
+  const L = []; const ruts = new Set();
+  S.data.students.forEach(s=>{ L.push({id:s.id, nombre:s.nombreSocial||s.nombre, curso:cursoOf(s), uaa:true}); if(rutKey(s.rut)) ruts.add(rutKey(s.rut)); });
+  (S.data.nomina?.lista||[]).forEach(n=>{ if(!n?.nombre || (rutKey(n.rut) && ruts.has(rutKey(n.rut)))) return;
+    L.push({id:'n-'+dirHash(rutKey(n.rut)||n.nombre), nombre:n.nombreSocial||n.nombre, curso:(n.curso||'')+(n.letra?' '+n.letra:'')}); });
+  return L.sort((a,b)=>(CURSOS.indexOf(a.curso.replace(/ [A-Z]$/,''))-CURSOS.indexOf(b.curso.replace(/ [A-Z]$/,''))) || a.nombre.localeCompare(b.nombre));
+}
+function dirSync(){ if(!puedeDir()) return; const D_ = dirBuild(); if(JSON.stringify(D_)!==JSON.stringify(S.data.directorio||[])) S.data.directorio = D_; }
+const directorio = () => S.data.directorio?.length ? S.data.directorio : dirBuild();
+const _persistAF = persist;
+persist = function(){ try{ dirSync(); }catch(e){} return _persistAF.apply(this, arguments); };
+const _migrateAF = migrate;
+migrate = function(){ const r = _migrateAF.apply(this, arguments); try{ dirSync(); }catch(e){} return r; };
+
+/* formulario de grupo: una sola lista con buscador (unidad + nómina del colegio) */
+{ const f = SCHEMA.grupo[1].fields.find(x=>x.k==='uaa');
+  f.l = 'Estudiantes del grupo'; f.chip = 1; f.filter = 1;
+  f.o = () => directorio().map(e=>[e.id, `${e.nombre} · ${e.curso}${e.uaa?' · UAA':''}`]);
+  SCHEMA.grupo[1].note = 'Busca y marca a los estudiantes: aparecen los de la unidad (UAA) y los matriculados del colegio. Si alguien no aparece, agrégalo abajo con su nombre y curso.'; }
+const _grupoDraftAF = grupoDraft;
+grupoDraft = function(g){ const d = _grupoDraftAF(g); const ids = new Set(directorio().map(e=>e.id));
+  const mov = (d.otros||[]).filter(o=>ids.has(o.id)); d.uaa = [...(d.uaa||[]), ...mov.map(o=>o.id)]; d.otros = (d.otros||[]).filter(o=>!ids.has(o.id));
+  (g.estudiantes||[]).filter(e=>e.sid && !stu(e.sid)).forEach(e=>{ if(!d.uaa.includes(e.sid)) d.uaa.push(e.sid); });
+  return d; };
+const _saveGrupoAF = saveGrupo;
+saveGrupo = function(d, f){
+  const D_ = directorio(); const byId = Object.fromEntries(D_.map(e=>[e.id, e]));
+  const sel = d.uaa||[]; const nomSel = sel.filter(id=>id.startsWith('n-')); d.uaa = sel.filter(id=>!id.startsWith('n-'));
+  d.otros = [...(d.otros||[]).filter(o=>o?.nombre && !nomSel.includes(o.id)), ...nomSel.map(id=>({id, nombre:byId[id]?.nombre||'', curso:byId[id]?.curso||''}))];
+  delete d._uaaKeep;
+  _saveGrupoAF(d, f);
+  const g = d.id ? grp(d.id) : grp(S.gid);
+  if(g) (g.estudiantes||[]).forEach(e=>{ if(e.sid && !stu(e.sid) && byId[e.sid]){ e.nombre = byId[e.sid].nombre; e.curso = byId[e.sid].curso; } });
+};
+
 
 /* ---------- íconos ---------- */
 const ICONS = {
@@ -5943,7 +5983,7 @@ document.addEventListener('change', onField);
 /* ================= Versión compartida: Supabase + inicio de sesión con Google ================= */
 const CFG = window.UAA_CONFIG || {};
 const LOCAL_KEYS = ['usuario','guiaOculta','guiaHecha','log','folio','students'];
-const COLL_KEYS = ['bitacora','grupos','refSesiones','reuniones','inst','nomina'];
+const COLL_KEYS = ['bitacora','grupos','refSesiones','reuniones','inst','nomina','directorio'];
 const TEAM_ROLES = ['coordinacion','profesional','administrador'];
 const coordRol = () => ['coordinacion','administrador'].includes(C.perfil?.rol);
 let sb = null;
@@ -5970,7 +6010,7 @@ function applyRow(k, data){
     else if(i>=0) L[i] = data; else L.push(data); }
 }
 const myRol = () => C.perfil?.rol;
-const canWrite = k => coordRol() || (myRol()==='profesional' && k!=='core' && k!=='nomina') || (myRol()==='reforzamiento' && ['grupos','refSesiones','bitacora'].includes(k));
+const canWrite = k => coordRol() || (myRol()==='profesional' && k!=='core' && k!=='nomina' && !(C.perfil?.alcance && ['directorio','dir_snapshot'].includes(k))) || (myRol()==='reforzamiento' && ['grupos','refSesiones','bitacora'].includes(k));
 const isTeam = () => TEAM_ROLES.includes(myRol());
 const snapOk = () => isTeam() && !(C.perfil?.alcance);
 
@@ -6015,6 +6055,7 @@ function computeSnap(){
 function cloudPersist(){
   savePrefs();
   if(!C.ready) return;
+  try{ dirSync(); }catch(e){}
   const parts = splitData(S.data);
   if(C.snap && snapOk()) parts.dir_snapshot = C.snap;
   Object.entries(parts).forEach(([k, v])=>{ const j = JSON.stringify(v); if(C.rows[k]?.json === j) return; if(canWrite(k)) C.dirty.add(k); });
