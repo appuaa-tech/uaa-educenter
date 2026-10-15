@@ -5149,6 +5149,371 @@ document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act
 .paecfirma{margin-bottom:16px;padding:14px 18px}.paecfirma .pf-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.paecfirma .main{flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px}
 .paecfirma.warn{border-left:4px solid var(--warn,#c98a00)}.paecfirma.ok{border-left:4px solid var(--ok,#1e8c4e)}`; document.head.appendChild(st); })();
 
+/* ================= Lanzamiento: autorizaciones ya firmadas e información entregada en la matrícula ================= */
+
+/* ---------- 1. Enlace al documento firmado en cada autorización ---------- */
+{ const sec = SCHEMA.autorizacion[0]; const i = sec.fields.findIndex(f=>f.k==='verificacion');
+  sec.fields.splice(i+1, 0, {k:'enlace', l:'Enlace al documento firmado (Drive)', t:'text', w:2, ph:'https://drive.google.com/…'}); }
+const _missingReqAC = missingReq;
+missingReq = function(schema, draft){ const m = _missingReqAC(schema, draft);
+  if(schema===SCHEMA.autorizacion && draft.enlace && !linkOk(draft.enlace)) m.push('El enlace debe comenzar con https://'); return m; };
+const _viewValAC = viewVal;
+viewVal = function(f, v, ctx){ if((f.k==='enlace' || f.k==='docFirmado') && linkOk(v)){ const u = typeof safeUrl==='function' ? safeUrl(v) : v; return u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${ic('doc','sm')} Ver documento firmado</a>` : esc(v); } return _viewValAC(f, v, ctx); };
+
+/* ---------- 2. Carga masiva de autorizaciones de ingreso firmadas antes de usar la plataforma ---------- */
+const sinIngreso = () => S.data.students.filter(s=>autState(s,'ingreso').st!=='ok').sort((a,b)=>CURSOS.indexOf(a.curso)-CURSOS.indexOf(b.curso) || a.nombre.localeCompare(b.nombre));
+function bulkAutModal(){
+  const L = sinIngreso(); const B = S.bulkAut = S.bulkAut || {fecha:'', medio:AUT_MEDIO[0], vigencia:'Año escolar en curso', verificacion:'Carpeta de autorizaciones en el Drive de la unidad', datos:true, salud:false, sel:{}, links:{}, fechas:{}};
+  S.modal = {title:'Autorizaciones de ingreso ya firmadas', html:`
+    <p class="muted">Para las autorizaciones firmadas antes de usar la plataforma. Marca a los estudiantes cuya autorización está firmada y archivada; puedes dejar el enlace a cada documento en Drive.</p>
+    ${L.length?`<div class="form"><div class="fields">
+      <div class="field"><label for="ba-fecha">Fecha de firma (si es la misma para todos)</label><input type="date" id="ba-fecha" value="${esc(B.fecha)}"></div>
+      <div class="field"><label for="ba-medio">Forma de firma</label><select id="ba-medio">${AUT_MEDIO.map(m=>`<option ${B.medio===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
+      <div class="field"><label for="ba-vig">Vigencia</label><select id="ba-vig">${['Año escolar en curso','Hasta que la familia la revoque'].map(m=>`<option ${B.vigencia===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
+      <div class="field"><label for="ba-ver">Dónde está el respaldo</label><input type="text" id="ba-ver" value="${esc(B.verificacion)}"></div>
+      <div class="field w2"><label class="bool"><input type="checkbox" id="ba-datos" ${B.datos?'checked':''}><span>El formulario firmado autoriza tratar datos personales y de salud</span></label></div>
+      <div class="field w2"><label class="bool"><input type="checkbox" id="ba-salud" ${B.salud?'checked':''}><span>Autoriza intercambiar información con profesionales de salud tratantes</span></label></div></div>
+      <div class="ba-head"><label class="bool"><input type="checkbox" id="ba-all"><span><b>Seleccionar todos</b> (${L.length} sin autorización vigente)</span></label></div>
+      <div class="ba-list">${L.map(s=>`<div class="ba-row"><label class="bool"><input type="checkbox" data-ba="${s.id}" ${B.sel[s.id]?'checked':''}><span><b>${esc(s.nombreSocial||s.nombre)}</b> <span class="small muted">${esc(cursoOf(s))}</span></span></label>
+        <input type="date" data-baf="${s.id}" value="${esc(B.fechas[s.id]||'')}" aria-label="Fecha de firma de ${esc(s.nombre)}" title="Solo si es distinta a la fecha común">
+        <input type="url" data-bal="${s.id}" value="${esc(B.links[s.id]||'')}" placeholder="Enlace Drive (opcional)" aria-label="Enlace al documento de ${esc(s.nombre)}"></div>`).join('')}</div>
+      <div class="quick-actions" style="margin-top:14px"><button class="btn" data-act="ba-no">Cancelar</button><button class="btn primary" data-act="ba-ok">${ic('check','sm')} Registrar autorizaciones</button></div></div>`
+    : '<p class="empty">Todos los estudiantes tienen su autorización de ingreso vigente.</p>'}`};
+  render();
+}
+document.addEventListener('change', e=>{ const B = S.bulkAut; if(!B || !S.modal) return; const t = e.target;
+  if(t.id==='ba-all'){ document.querySelectorAll('[data-ba]').forEach(x=>{ x.checked = t.checked; B.sel[x.dataset.ba] = t.checked; }); return; }
+  if(t.dataset.ba) B.sel[t.dataset.ba] = t.checked;
+  if(t.dataset.baf) B.fechas[t.dataset.baf] = t.value;
+  if(t.dataset.bal){ B.links[t.dataset.bal] = t.value.trim(); if(t.value.trim()){ B.sel[t.dataset.bal] = true; const c = document.querySelector(`[data-ba="${t.dataset.bal}"]`); if(c) c.checked = true; } }
+  if(t.dataset.baf && t.value){ B.sel[t.dataset.baf] = true; const c = document.querySelector(`[data-ba="${t.dataset.baf}"]`); if(c) c.checked = true; }
+  const v = id => document.getElementById(id); B.fecha = v('ba-fecha')?.value||''; B.medio = v('ba-medio')?.value||B.medio; B.vigencia = v('ba-vig')?.value||B.vigencia; B.verificacion = v('ba-ver')?.value||''; B.datos = !!v('ba-datos')?.checked; B.salud = !!v('ba-salud')?.checked; });
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="ba-open"],[data-act="ba-ok"],[data-act="ba-no"]'); if(!el) return; const a = el.dataset.act;
+  if(a==='ba-open'){ S.bulkAut = null; bulkAutModal(); return; }
+  if(a==='ba-no'){ S.modal = null; S.bulkAut = null; render(); return; }
+  const B = S.bulkAut; const ids = Object.keys(B.sel).filter(k=>B.sel[k] && stu(k));
+  if(!ids.length){ toast('Marca al menos un estudiante', true); return; }
+  const sinF = ids.filter(id=>!(B.fechas[id] || B.fecha)); if(sinF.length){ toast(`Falta la fecha de firma de ${sinF.length} ${sinF.length===1?'estudiante':'estudiantes'}: indica la fecha común o la de cada uno`, true); return; }
+  const badL = ids.filter(id=>B.links[id] && !linkOk(B.links[id])); if(badL.length){ toast('Revisa los enlaces: deben comenzar con https://', true); return; }
+  const fut = ids.filter(id=>(B.fechas[id]||B.fecha) > D(0)); if(fut.length){ toast('La fecha de firma no puede ser futura', true); return; }
+  ids.forEach(id=>{ const s = stu(id); s.autorizaciones = s.autorizaciones||[];
+    s.autorizaciones.push(stamp({id:uid(), tipo:'ingreso', fecha:B.fechas[id]||B.fecha, decision:'Autoriza', medio:B.medio, vigencia:B.vigencia, verificacion:B.verificacion, enlace:B.links[id]||'', datos:B.datos, salud:B.salud, recibe:S.data.usuario||'', apoyos:[], origen:'Firmada antes de usar la plataforma'}, true));
+    logEv(id, 'Registró', `autorización de ingreso firmada el ${fmt(B.fechas[id]||B.fecha)} (carga inicial)`); });
+  S.modal = null; S.bulkAut = null; persist(); render(); toast(`${ids.length} ${ids.length===1?'autorización registrada':'autorizaciones registradas'}`);
+});
+/* botón para coordinación en Estudiantes */
+const _vEstudiantesAC = vEstudiantes;
+vEstudiantes = function(){ const h = _vEstudiantesAC(); if(!isCoord(S.data.usuario)) return h; const n = sinIngreso().length; if(!n) return h;
+  return h.replace('<button class="btn primary" data-act="new-student">', `<button class="btn" data-act="ba-open">${ic('doc','sm')} Autorizaciones ya firmadas (${n})</button><button class="btn primary" data-act="new-student">`); };
+
+/* ---------- 3. Información entregada en el proceso de matrícula ---------- */
+const MAT_ITEMS = [['leyTEA','Derechos de los estudiantes autistas (Ley 21.545) y Circular 586'],['protocoloDEC','Protocolo de desregulación emocional y conductual del Reglamento Interno, incluida la contención física como último recurso'],['reglamento','Reglamento Interno y Reglamento de Evaluación']];
+SCHEMA.matricula = [{sec:'Información a las familias en la matrícula', note:'Al firmar el contrato de prestación de servicios educacionales, la familia declara conocer lo que se marca aquí. La plataforma da por cumplida esa información para todos los estudiantes del año indicado.', fields:[
+  {k:'anio', l:'Año escolar', t:'number', req:1},
+  {k:'fecha', l:'Fecha de inicio del proceso de matrícula', t:'date', req:1},
+  {k:'documento', l:'Documento', t:'text', w:2, req:1},
+  {k:'incluye', l:'La familia queda informada de', t:'checks', w:2, o:()=>MAT_ITEMS},
+  {k:'clausulaDatos', l:'El contrato incluye una cláusula expresa que autoriza a la unidad a tratar datos de salud del estudiante', t:'bool', w:2},
+  {k:'enlace', l:'Enlace al modelo de contrato (Drive)', t:'text', w:2, ph:'https://drive.google.com/…'}]}];
+const matri = () => { const M = S.data.inst?.matricula; return M && String(M.anio)===String(TODAY.getFullYear()) ? M : null; };
+const matInc = k => !!matri()?.incluye?.includes(k);
+const matTxt = () => { const M = matri(); return `Informada en el proceso de matrícula ${M.anio} (${M.documento})`; };
+const _saveFormAC = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f?.kind==='matricula'){ const m = missingReq(SCHEMA.matricula, f.draft); if(f.draft.enlace && !linkOk(f.draft.enlace)) m.push('El enlace debe comenzar con https://'); if(m.length){ f.err = m; render(); return; }
+    S.data.inst = S.data.inst||{}; S.data.inst.matricula = stamp({...f.draft, anio:+f.draft.anio}); logEv('','Registró',`información entregada en la matrícula ${f.draft.anio}`); S.form = null; persist(); render(); toast('Información de matrícula registrada'); return; }
+  return _saveFormAC.apply(this, arguments); };
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="mat-edit"]'); if(!el) return; const M = S.data.inst?.matricula;
+  openForm({kind:'matricula', schema:'matricula', where:'modal', title:'Información entregada en la matrícula', draft: M ? clone(M) : {anio:TODAY.getFullYear(), fecha:'', documento:'Contrato de prestación de servicios educacionales', incluye:MAT_ITEMS.map(x=>x[0]), clausulaDatos:false}}); });
+/* obligaciones por estudiante */
+const _obligationsAC = obligations;
+obligations = function(s){ const L = _obligationsAC(s); if(!matri()) return L;
+  L.forEach(o=>{ if(o.st==='ok') return;
+    if(o.id==='circtea' && matInc('leyTEA')){ o.st = 'ok'; o.ev = matTxt(); }
+    if(o.id==='datos' && matri().clausulaDatos){ o.st = 'ok'; o.ev = matTxt()+': cláusula de autorización de datos de salud'; } });
+  return L; };
+/* alertas: el protocolo DEC se dio a conocer en la matrícula */
+const _alertsForAC = alertsFor;
+alertsFor = function(s){ const A = _alertsForAC(s); if(!matInc('protocoloDEC')) return A; return A.filter(a=>a.t!=='Contención física: falta registrar que se explicó el protocolo'); };
+/* obligaciones del establecimiento */
+const _instItemsAC = instItems;
+instItems = function(){ const L = _instItemsAC(); const M = matri(); if(!M) return L;
+  return L.map(o=>{ if(o.id==='circ' && o.st!=='ok' && matInc('leyTEA')) return {...o, st:'ok', d:`${matTxt()}, desde el ${fmt(M.fecha)}.`};
+    if(o.id==='datos' && o.st!=='ok' && M.clausulaDatos) return {...o, st:'ok', d:`Cláusula de autorización en el ${M.documento} ${M.anio}.`};
+    return o; }); };
+const _vInstAC = vInst;
+vInst = function(){ const h = _vInstAC(); const M = matri(); const can = isCoord(S.data.usuario);
+  const card = `<div class="matcard ${M?'ok':''}"><div><b>${M?'Información entregada en la matrícula '+esc(M.anio):'¿El colegio informa en la matrícula?'}</b>
+    <span class="small muted">${M?`${esc(M.documento)}, desde el ${esc(fmt(M.fecha))}: ${esc((M.incluye||[]).map(k=>(MAT_ITEMS.find(x=>x[0]===k)||[])[1]).filter(Boolean).join('; ')||'sin temas marcados')}.${M.clausulaDatos?' Incluye autorización de datos de salud.':''}`:'Si la familia queda informada de la Ley TEA y del protocolo DEC al firmar el contrato de prestación de servicios, regístralo una vez al año y deja de aparecer como pendiente para cada estudiante.'}</span>
+    ${M && linkOk(M.enlace)?`<a class="small" href="${esc(typeof safeUrl==='function'?safeUrl(M.enlace):M.enlace)}" target="_blank" rel="noopener noreferrer">Ver modelo de contrato</a>`:''}</div>${can?`<button class="btn sm ${M?'':'primary'}" data-act="mat-edit">${ic('edit','sm')} ${M?'Editar':'Registrar'}</button>`:''}</div>`;
+  return h.replace('<ul class="rows">', card + '<ul class="rows">'); };
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.ba-head{margin:14px 0 6px;padding-top:12px;border-top:1px solid var(--line,rgba(0,0,0,.1))}
+.ba-list{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;padding-right:4px}
+.ba-row{display:grid;grid-template-columns:minmax(0,1.4fr) 150px minmax(0,1fr);gap:8px;align-items:center;padding:6px 8px;border-radius:10px;background:var(--row,rgba(0,0,0,.03))}
+@media (max-width:640px){.ba-row{grid-template-columns:1fr}}
+.matcard{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 14px;margin:6px 0 12px;border-radius:14px;background:rgba(22,70,180,.07)}
+.matcard.ok{background:rgba(30,140,80,.09)}.matcard>div{display:flex;flex-direction:column;gap:3px;flex:1;min-width:220px}`; document.head.appendChild(st); })();
+
+/* ================= Informe psicopedagógico completo: cargar, importar desde Word, cerrar y emitir ================= */
+const PSICO_TIPOS = ['Psicopedagógica','Reevaluación'];
+const isPsico = d => PSICO_TIPOS.includes(d?.tipo);
+const MOTIVO_DEF = 'La presente evaluación psicopedagógica se realiza con el objetivo de determinar el nivel de desempeño actual del estudiante en las áreas de lectoescritura, matemática y habilidades cognitivas, con el fin de identificar fortalezas y dificultades que orienten el proceso de apoyo pedagógico.';
+const ROMAN = ['I','II','III','IV','V','VI','VII','VIII'];
+const norm = t => String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+const lines = t => String(t||'').split('\n').map(l=>l.trim().replace(/^[-•·]\s*/,'')).filter(Boolean);
+function edadEn(fnac, f){ if(!fnac || !f) return ''; const b = parse(fnac), d = parse(f); let y = d.getFullYear()-b.getFullYear(), m = d.getMonth()-b.getMonth(); if(d.getDate()<b.getDate()) m--; if(m<0){ y--; m+=12; } return `${y} ${y===1?'año':'años'}${m?` y ${m} ${m===1?'mes':'meses'}`:''}`; }
+
+/* datos de firma de cada profesional */
+SCHEMA.equipo[0].fields.push({k:'tituloFirma', l:'Título para firmar informes', t:'text', ph:'Ej.: Educadora Diferencial'}, {k:'run', l:'RUN (para firmar informes)', t:'text', ph:'12.345.678-9'}, {k:'registro', l:'N° de registro Secreduc', t:'text'});
+const firmaDe = pid => { const p = S.data.equipo.find(x=>x.id===pid) || {}; return {nombre:p.nombre||'', cargo:p.tituloFirma||p.cargo||'', run:p.run||'', registro:p.registro||''}; };
+
+/* ---------- formulario ---------- */
+{ const i = SCHEMA.eval.findIndex(s=>s.sec==='Resultados por subtest');
+  SCHEMA.eval.splice(i, 0, {sec:'Informe psicopedagógico', when:isPsico, note:'Completa el informe con el mismo orden del documento del equipo. Puedes guardarlo como borrador y cerrarlo cuando esté listo.', fields:[
+    {k:'instrOtros', l:'Otros instrumentos o procedimientos aplicados', t:'text', w:2, ph:'Ej.: Observación en aula, revisión de cuadernos'},
+    {k:'motivo', l:'3. Motivo de la evaluación', t:'textarea', w:2},
+    {k:'conducta', l:'4. Descripción de la conducta observada', t:'textarea', w:2, ph:'Disposición, atención, necesidad de pausas o apoyos durante la evaluación.'}]});
+  SCHEMA.eval.push({sec:'5. Análisis cualitativo', when:isPsico, note:'Un texto por área de la prueba. Puedes partir de la redacción que propone la plataforma a partir de la tabla y ajustarla.', fields:[{k:'cual', l:'Análisis por área', t:'cualgrid', w:2}]});
+  SCHEMA.eval.push({sec:'Síntesis y sugerencias', when:isPsico, fields:[
+    {k:'sintesis', l:'6. Síntesis diagnóstica', t:'textarea', w:2},
+    {k:'sugFam', l:'7. Sugerencias a la familia (una por línea)', t:'textarea', w:2},
+    {k:'sugEst', l:'8. Sugerencias al establecimiento (una por línea)', t:'textarea', w:2}]}); }
+const areasDe = d => { const P = pruebas().find(p=>p.id===d.pruebaId); if(P) return P.areas.map(a=>a.area); return (d.tabulacion?.areas||[]).map(a=>a.area); };
+function cualSugerencia(d, ai){
+  const P = pruebas().find(p=>p.id===d.pruebaId); if(!P) return ''; const o = d.tabObt||{};
+  const A = tabCalc({U:umbrales(), areas:P.areas.map((a,i)=>({area:a.area, filas:a.subtests.map((st,si)=>({n:st.n, max:st.max, obt:o[tabKey(i,si)]??''}))}))})[ai]; if(!A || A.pct==null) return '';
+  const nom = (S.form?.sid && stu(S.form.sid)) ? firstName(stu(S.form.sid).nombreSocial||stu(S.form.sid).nombre) : 'El estudiante';
+  const lvl = k => ({L:'logrado', ML:'medianamente logrado', PL:'por lograr'})[k];
+  const by = k => A.filas.filter(f=>f.niv===k).map(f=>f.n.toLowerCase());
+  const lista = L => L.length<2 ? L.join('') : L.slice(0,-1).join(', ')+' y '+L.at(-1);
+  let t = `En el ${A.area.replace(/^Área/i,'área')}, ${nom} presenta un desempeño ${lvl(A.niv)} (${Math.round(A.pct)}% de logro).`;
+  if(by('L').length) t += ` Alcanza un nivel logrado en ${lista(by('L'))}.`;
+  if(by('ML').length) t += ` En ${lista(by('ML'))} presenta un nivel medianamente logrado, por lo que se sugiere continuar fortaleciendo estas habilidades.`;
+  if(by('PL').length) t += ` En ${lista(by('PL'))} se encuentra en nivel por lograr, lo que requiere apoyo focalizado.`;
+  return t;
+}
+const _inputForAD = inputFor;
+inputFor = function(f, path, v, ctx){
+  if(S.form?.schema==='eval'){ const d = S.form.draft;
+    if(isPsico(d) && (f.k==='resultados' || f.k==='sugerencias')) return '';
+    if(f.k==='motivo' && isPsico(d) && empty(d.motivo)) d.motivo = MOTIVO_DEF, v = MOTIVO_DEF;
+    if(f.t==='cualgrid'){ const A = areasDe(d); const c = d.cual || (d.cual = {});
+      if(!A.length) return `<div class="field w2"><p class="small muted">Elige la prueba aplicada en "Resultados por subtest" para escribir el análisis de cada área.</p></div>`;
+      return `<div class="field w2 cualgrid">${A.map((a,i)=>`<div class="cg-area"><label for="cg-${i}">${ROMAN[i]||i+1}.- ${esc(a)}</label><textarea id="cg-${i}" data-path="cual.a${i}" rows="5">${esc(c['a'+i]||'')}</textarea></div>`).join('')}
+        <div><button type="button" class="btn sm" data-act="cual-sug">${ic('edit','sm')} Proponer redacción desde la tabla</button> <span class="small muted">Solo completa las áreas vacías.</span></div></div>`; }
+  }
+  return _inputForAD(f, path, v, ctx);
+};
+document.addEventListener('change', e=>{ if(S.form?.schema==='eval' && e.target.dataset?.path==='tipo') setTimeout(()=>keepScroll(render), 0); });
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="cual-sug"]'); if(!el || S.form?.schema!=='eval') return; const d = S.form.draft; d.cual = d.cual||{}; let n = 0;
+  areasDe(d).forEach((a,i)=>{ if(empty(d.cual['a'+i])){ const t = cualSugerencia(d, i); if(t){ d.cual['a'+i] = t; n++; } } });
+  keepScroll(render); toast(n ? `Redacción propuesta en ${n} ${n===1?'área':'áreas'}: revísala y ajústala` : 'Completa primero los puntajes de la tabla', !n); });
+/* al guardar: síntesis y sugerencias alimentan el resto de la plataforma */
+const _saveFormAD = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f?.schema==='eval' && isPsico(f.draft)){ const d = f.draft;
+    if(d.sintesis) d.resultados = d.sintesis;
+    const sf = lines(d.sugFam), se = lines(d.sugEst); if(sf.length || se.length) d.sugerencias = [sf.length?'Familia: '+sf.join('; '):'', se.length?'Establecimiento: '+se.join('; '):''].filter(Boolean).join('\n');
+    if(!d.firma) d.firma = firmaDe(d.profesional || S.data.usuario);
+    const tiene = !empty(d.conducta) || !empty(d.sintesis) || lines(d.sugFam).length || lines(d.sugEst).length || Object.values(d.cual||{}).some(v=>!empty(v));
+    if(tiene) d.informe = d.informe || {estado:'Borrador'}; }
+  return _saveFormAD.apply(this, arguments); };
+
+/* ---------- informe imprimible ---------- */
+RKINDS.psicoped = {t:'Informe psicopedagógico', d:'', ic:'doc', norecs:1};
+const parr = t => lines(t).map(l=>`<p>${esc(l)}</p>`).join('') || '<p class="muted">—</p>';
+const vin = t => { const L = lines(t); return L.length ? `<ul>${L.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>` : '<p class="muted">—</p>'; };
+function buildPsicoped(s, o, meta){
+  const x = (s.evaluaciones||[]).find(e=>e.id===o.item); if(!x) return '<div class="rpt"><p>Informe no encontrado.</p></div>';
+  const F = x.firma || firmaDe(x.profesional); const Y = String(x.fecha||'').slice(0,4); const borr = x.informe?.estado!=='Cerrado';
+  let h = rHead('Informe psicopedagógico', `Año ${esc(Y)}${borr?' · <b style="color:#b3261e">BORRADOR</b>':''}<br>${esc(s.nombre)} · ${esc(cursoOf(s))}`, meta) + rConf();
+  h += `<h2>1. Identificación del estudiante</h2>${rkv([['Nombre estudiante', s.nombre],['RUN', s.rut],['Fecha de nacimiento', s.fnac?fmt(s.fnac):''],['Edad', edadEn(s.fnac, x.fecha)],['Curso', cursoOf(s)],['Evaluador', F.nombre],['Fecha de informe', fmt(x.fecha)],['Establecimiento', S.data.estab.nombre]])}`;
+  h += `<h2>2. Instrumentos aplicados</h2><ul>${[x.tabulacion?.prueba || x.instrumento, x.instrOtros].filter(Boolean).map(i=>`<li>${esc(i)}</li>`).join('') || '<li>—</li>'}</ul>`;
+  h += `<h2>3. Motivo de la evaluación</h2>${parr(x.motivo)}<h2>4. Descripción de la conducta observada</h2>${parr(x.conducta)}`;
+  h += `<h2>5. Análisis de tareas</h2><h3>Análisis cuantitativo</h3>${x.tabulacion ? tabTable(x.tabulacion) : '<p class="muted">Sin tabulación registrada.</p>'}`;
+  const A = (x.tabulacion?.areas||[]).map(a=>a.area);
+  h += `<h3>Análisis cualitativo</h3>${A.map((a,i)=>`<h4>${ROMAN[i]||i+1}.- ${esc(a.toUpperCase())}</h4>${parr(x.cual?.['a'+i])}`).join('') || parr(x.resultados)}`;
+  h += `<h2>6. Síntesis diagnóstica</h2>${parr(x.sintesis || x.resultados)}<h2>7. Sugerencias a la familia</h2>${vin(x.sugFam)}<h2>8. Sugerencias al establecimiento</h2>${vin(x.sugEst)}`;
+  h += `<div class="psi-firma"><div class="ln"></div><b>${esc((F.nombre||'').toUpperCase())}</b><span>${esc((F.cargo||'').toUpperCase())}</span>${F.run?`<span>RUN: ${esc(F.run)}</span>`:''}${F.registro?`<span>REGISTRO SECREDUC N°: ${esc(F.registro)}</span>`:''}</div>`;
+  if(!borr) h += `<p class="small" style="margin-top:14px">Informe cerrado el ${esc(fmtTs(x.informe.cerradoEn))} por ${esc(whoName(x.informe.cerradoPor))}.</p>`;
+  return `<div class="rpt"><style>.psi-firma{margin:48px auto 0;text-align:center;display:flex;flex-direction:column;gap:2px;max-width:320px}.psi-firma .ln{border-top:1px solid #111a33;margin-bottom:6px}.rpt h4{margin:12px 0 4px;font-size:10.5pt}</style>${h}${rFoot(meta)}</div>`;
+}
+const _buildReportAD = buildReport;
+buildReport = function(kind, s, o, meta){ if(kind==='psicoped') return buildPsicoped(s, o, meta); return _buildReportAD.apply(this, arguments); };
+
+/* ---------- cerrar y reabrir ---------- */
+function faltaInforme(x){ const m = [];
+  if(empty(x.motivo)) m.push('Motivo de la evaluación'); if(empty(x.conducta)) m.push('Descripción de la conducta observada');
+  if(!x.tabulacion) m.push('Tabla de resultados (prueba aplicada y puntajes)');
+  else { if(x.tabulacion.areas.some(a=>a.filas.some(f=>f.obt===''||f.obt==null))) m.push('Puntajes de todos los subtests');
+    x.tabulacion.areas.forEach((a,i)=>{ if(empty(x.cual?.['a'+i])) m.push('Análisis cualitativo: '+a.area); }); }
+  if(empty(x.sintesis)) m.push('Síntesis diagnóstica'); if(!lines(x.sugFam).length && !lines(x.sugEst).length) m.push('Sugerencias a la familia o al establecimiento');
+  const F = x.firma || firmaDe(x.profesional); if(!F.nombre) m.push('Profesional que firma');
+  return m; }
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="psi-ver"],[data-act="psi-cerrar"],[data-act="psi-cerrar-ok"],[data-act="psi-reabrir-ok"],[data-act="psi-no"]'); if(!el) return;
+  const a = el.dataset.act; if(a==='psi-no'){ S.modal = null; S.psiX = null; render(); return; }
+  const r = a.endsWith('-ok') ? S.psiX : {sid:el.dataset.sid, id:el.dataset.id}; const s = r && stu(r.sid), x = s && (s.evaluaciones||[]).find(y=>y.id===r.id); if(!x) return;
+  if(a==='psi-ver'){ openReport('psicoped', s.id, x.id); return; }
+  if(a==='psi-cerrar'){ const m = faltaInforme(x); S.psiX = r;
+    S.modal = m.length ? {title:'Falta completar el informe', html:`<p>Para cerrar el informe completa:</p><ul>${m.map(t=>`<li>${esc(t)}</li>`).join('')}</ul><div class="quick-actions"><button class="btn primary" data-act="psi-no">Entendido</button></div>`}
+      : {title:'Cerrar informe psicopedagógico', html:`<p>Al cerrarlo, el informe queda como documento final con tu nombre y la fecha. Para modificarlo después habrá que reabrirlo indicando el motivo, y queda registrado.</p><div class="quick-actions"><button class="btn" data-act="psi-no">Cancelar</button><button class="btn primary" data-act="psi-cerrar-ok">${ic('check','sm')} Cerrar informe</button></div>`};
+    render(); return; }
+  if(a==='psi-cerrar-ok'){ x.informe = {...(x.informe||{}), estado:'Cerrado', cerradoEn:nowIso(), cerradoPor:S.data.usuario||''}; stamp(x); logEv(s.id,'Cerró informe',`psicopedagógico del ${fmt(x.fecha)}`); S.modal = null; S.psiX = null; persist(); render(); toast('Informe cerrado. Ya puedes emitirlo con folio.'); return; }
+  if(a==='psi-reabrir-ok'){ const mot = (document.getElementById('psi-mot')?.value||'').trim(); if(!mot){ toast('Escribe el motivo para reabrir', true); return; }
+    x.informe = {...x.informe, estado:'Borrador', reaperturas:[...(x.informe?.reaperturas||[]), {ts:nowIso(), por:S.data.usuario||'', motivo:mot}]}; stamp(x);
+    logEv(s.id,'Reabrió informe',`psicopedagógico del ${fmt(x.fecha)} · ${mot}`.slice(0,480)); S.modal = null; S.psiX = null; persist();
+    openForm({kind:'evaluaciones', schema:'eval', where:'modal', sid:s.id, draft:clone(x), title:'Editar informe psicopedagógico'});
+    setTimeout(()=>{ const d = S.form?.draft; if(d?.tabulacion){ d.pruebaId = d.tabulacion.pruebaId; d.tabObt = {}; const P = pruebas().find(p=>p.id===d.pruebaId); d.tabulacion.areas.forEach((ar,ai)=>ar.filas.forEach((f,si)=>{ const pa = P ? P.areas.findIndex(z=>z.area===ar.area) : ai; const ps = P && pa>=0 ? P.areas[pa].subtests.findIndex(z=>z.n===f.n) : si; d.tabObt[tabKey(pa>=0?pa:ai, ps>=0?ps:si)] = f.obt; })); keepScroll(render); } }, 0); }
+});
+/* un informe cerrado no se edita directo: se reabre con motivo */
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="edit-item"][data-coll="evaluaciones"]'); if(!el) return;
+  const s = stu(S.sid), x = (s?.evaluaciones||[]).find(y=>y.id===el.dataset.id); if(!x || x.informe?.estado!=='Cerrado') return;
+  e.stopImmediatePropagation(); e.preventDefault(); S.psiX = {sid:s.id, id:x.id};
+  S.modal = {title:'Reabrir informe cerrado', html:`<p>Este informe está cerrado desde el ${esc(fmtTs(x.informe.cerradoEn))}. Para modificarlo, indica el motivo; queda registrado junto al informe.</p><div class="form"><div class="field w2"><label for="psi-mot">Motivo <span class="req">*</span></label><textarea id="psi-mot" placeholder="Ej.: Se corrige el puntaje de exactitud lectora."></textarea></div></div><div class="quick-actions" style="margin-top:12px"><button class="btn" data-act="psi-no">Cancelar</button><button class="btn primary" data-act="psi-reabrir-ok">Reabrir y editar</button></div>`};
+  render(); }, true);
+
+/* ---------- ficha: estado del informe y acciones ---------- */
+const _vCollAD = vColl;
+vColl = function(s, key, embedded){
+  let h = _vCollAD(s, key, embedded); if(key!=='evaluaciones') return h;
+  (s.evaluaciones||[]).forEach(x=>{ if(!isPsico(x) || !(x.motivo || x.conducta || x.cual || x.sintesis || x.informe)) return;
+    const mark = `data-act="edit-item" data-coll="evaluaciones" data-id="${x.id}"`; const i = h.indexOf(mark); if(i<0) return;
+    const ce = x.informe?.estado==='Cerrado';
+    const btns = `<span class="pill ${ce?'ok':'warn'}">${ce?'Informe cerrado':'Informe en borrador'}</span><button class="btn sm" data-act="psi-ver" data-sid="${s.id}" data-id="${x.id}">${ic('print','sm')} Ver informe</button>${ce?'':`<button class="btn sm primary" data-act="psi-cerrar" data-sid="${s.id}" data-id="${x.id}">${ic('check','sm')} Cerrar informe</button>`}`;
+    const j = h.lastIndexOf('<div class="actions">', i); if(j<0) return; const k = j + '<div class="actions">'.length; h = h.slice(0, k) + btns + h.slice(k); });
+  if(!embedded) h = h.replace(/(<button class="btn primary" data-act="add-item" data-coll="evaluaciones">)/, `<button class="btn" data-act="docx-imp">${ic('doc','sm')} Importar informe desde Word</button><input type="file" id="docx-in" accept=".docx" hidden>$1`);
+  return h;
+};
+/* pendiente: informe en borrador */
+const _alertsForAD = alertsFor;
+alertsFor = function(s){ const A = _alertsForAD(s);
+  (s.evaluaciones||[]).filter(x=>x.informe && x.informe.estado!=='Cerrado').forEach(x=>A.push({lvl:'info', t:'Informe psicopedagógico en borrador', d:`Evaluación del ${fmt(x.fecha)}. Complétalo y ciérralo para emitirlo.`, tab:'evaluaciones', sid:s.id, nombre:s.nombre}));
+  return A; };
+
+/* ---------- importar desde Word (.docx) en el navegador: el archivo no sale del equipo ---------- */
+async function unzipEntry(buf, name){
+  const dv = new DataView(buf); let eocd = -1; for(let i = buf.byteLength-22; i >= Math.max(0, buf.byteLength-66000); i--){ if(dv.getUint32(i, true)===0x06054b50){ eocd = i; break; } }
+  if(eocd<0) throw new Error('El archivo no es un documento de Word válido.');
+  let p = dv.getUint32(eocd+16, true); const n = dv.getUint16(eocd+10, true); const dec = new TextDecoder();
+  for(let k=0; k<n; k++){ const method = dv.getUint16(p+10, true), csize = dv.getUint32(p+20, true), nl = dv.getUint16(p+28, true), el = dv.getUint16(p+30, true), cl = dv.getUint16(p+32, true), off = dv.getUint32(p+42, true);
+    const fn = dec.decode(new Uint8Array(buf, p+46, nl));
+    if(fn===name){ const ln = dv.getUint16(off+26, true), le = dv.getUint16(off+28, true); const data = new Uint8Array(buf, off+30+ln+le, csize);
+      if(method===0) return dec.decode(data);
+      if(method===8){ const st = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw')); return await new Response(st).text(); }
+      throw new Error('Formato de compresión no soportado.'); }
+    p += 46 + nl + el + cl; }
+  throw new Error('No se encontró el texto del documento.');
+}
+function docxBlocks(xml){
+  const doc = new DOMParser().parseFromString(xml, 'application/xml'); const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+  const txt = el => { let t = ''; el.querySelectorAll('*').forEach(n=>{ if(n.namespaceURI!==W) return; if(n.localName==='t') t += n.textContent; else if(n.localName==='tab') t += '\t'; else if(n.localName==='br' || n.localName==='cr') t += '\n'; }); return t; };
+  const body = doc.getElementsByTagNameNS(W, 'body')[0]; const out = [];
+  [...(body?.children||[])].forEach(c=>{
+    if(c.localName==='p'){ const t = txt(c).trim(); if(t) out.push({p:t}); }
+    if(c.localName==='tbl'){ const rows = [...c.children].filter(r=>r.localName==='tr').map(r=>[...r.children].filter(x=>x.localName==='tc').map(tc=>[...tc.children].filter(x=>x.localName==='p').map(txt).join('\n').trim())); out.push({t:rows}); } });
+  return out;
+}
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function fechaTxt(t){ t = String(t||'').toLowerCase(); let m = t.match(/(\d{1,2})\s+de\s+([a-zé]+)\s+(?:de|del)\s+(\d{4})/); if(m){ const mi = MESES.indexOf(m[2].replace('setiembre','septiembre')); if(mi>=0) return `${m[3]}-${String(mi+1).padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
+  m = t.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/); if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; return ''; }
+function parseInforme(B){
+  const R = {ident:{}, instr:[], motivo:[], conducta:[], cual:[], sintesis:[], sugFam:[], sugEst:[], tabla:null, firma:[]};
+  let sec = '', area = -1, firmaOn = false;
+  const head = t => { const n = norm(t);
+    if(n.length>70) return null;
+    if(/^(\d+\s*)?IDENTIFICACION/.test(n)) return 'ident'; if(/^(\d+\s*)?INSTRUMENTOS?( APLICADOS)?$/.test(n) || /^\d+\s*INSTRUMENTO/.test(n)) return 'instr'; if(/^(\d+\s*)?MOTIVO DE (LA )?(EVALUACION|DERIVACION|CONSULTA)/.test(n)) return 'motivo';
+    if(/^(\d+\s*)?(DESCRIPCION DE LA CONDUCTA|CONDUCTA OBSERVADA|OBSERVACION CONDUCTUAL)/.test(n)) return 'conducta'; if(/^(\d+\s*)?ANALISIS DE (TAREAS|RESULTADOS)/.test(n)) return 'analisis';
+    if(/^(\d+\s*)?SINTESIS/.test(n)) return 'sintesis'; if(/^(\d+\s*)?SUGERENCIAS (A LA |PARA LA )?FAMILIA/.test(n)) return 'sugFam'; if(/^(\d+\s*)?SUGERENCIAS (AL |PARA EL )?(ESTABLECIMIENTO|COLEGIO|DOCENTE)/.test(n)) return 'sugEst';
+    return null; };
+  B.forEach(b=>{
+    if(b.t){ const flat = b.t.map(r=>r.map(c=>norm(c)));
+      if(flat.some(r=>r.includes('SUBTEST')) || flat.some(r=>r.some(c=>c.includes('PUNTAJE')))){ R.tabla = b.t; return; }
+      if(sec==='ident' || b.t.some(r=>norm(r[0]).startsWith('NOMBRE'))){ b.t.forEach(r=>{ if(r.length>=2) R.ident[norm(r[0])] = r[1].replace(/^[:\s]+/,'').trim(); }); if(sec!=='ident' && !R.ident.__) R.ident.__ = 1; return; }
+      if(sec==='instr'){ b.t.forEach(r=>r.forEach(c=>{ if(c.trim()) R.instr.push(c.trim().replace(/\.$/,'')); })); return; }
+      return; }
+    const t = b.p; if(/^_{5,}/.test(t)){ firmaOn = true; return; } if(firmaOn){ R.firma.push(t); return; }
+    const h = head(t); if(h){ sec = h; area = -1; return; }
+    const n = norm(t);
+    if(sec==='analisis'){ if(/^ANALISIS (CUANTITATIVO|CUALITATIVO)/.test(n)) return; if(/^(I|II|III|IV|V|VI|VII|VIII)\s+AREA|^AREA /.test(n)){ area++; R.cual[area] = {titulo:t.replace(/^[IVX]+\s*[.\-–]*\s*/,''), txt:[]}; return; } if(area>=0) R.cual[area].txt.push(t); return; }
+    if(sec==='instr'){ R.instr.push(t.replace(/\.$/,'')); return; }
+    if(R[sec] && Array.isArray(R[sec])) R[sec].push(t);
+  });
+  return R;
+}
+function tablaToPrueba(rows, nombre){
+  const areas = []; let cur = null;
+  rows.forEach(r=>{ if(r.length<4) return; const max = parseInt(String(r[2]).replace(/\D/g,''),10), obt = parseInt(String(r[3]).replace(/[^\d]/g,''),10); if(isNaN(max)) return;
+    const a = r[0].trim() || cur?.area; if(!cur || cur.area!==a){ cur = {area:a, subtests:[], obt:[]}; areas.push(cur); }
+    cur.subtests.push({n:r[1].trim(), max}); cur.obt.push(isNaN(obt) ? '' : obt); });
+  return {nombre, areas};
+}
+document.addEventListener('click', e=>{ if(!e.target.closest?.('[data-act="docx-imp"]')) return; document.getElementById('docx-in')?.click(); });
+document.addEventListener('change', async e=>{ if(e.target.id!=='docx-in') return; const file = e.target.files?.[0]; e.target.value = ''; if(!file) return;
+  const s = stu(S.sid); if(!s) return;
+  try{
+    const xml = await unzipEntry(await file.arrayBuffer(), 'word/document.xml'); const R = parseInforme(docxBlocks(xml));
+    if(!R.tabla && !R.motivo.length && !R.sintesis.length){ toast('El documento no tiene la estructura del informe psicopedagógico (secciones numeradas y tabla de subtests).', true); return; }
+    const avisos = [];
+    const nomDoc = R.ident['NOMBRE ESTUDIANTE'] || R.ident['NOMBRE'] || '';
+    if(nomDoc){ const a = norm(nomDoc).split(' '), b = norm(s.nombre).split(' '); if(a.filter(w=>w.length>2 && b.includes(w)).length < 2) avisos.push(`El informe es de "${nomDoc}" y estás en la ficha de ${s.nombre}. Revisa que corresponda.`); }
+    const fecha = fechaTxt(R.ident['FECHA DE INFORME'] || R.ident['FECHA'] || '') || D(0);
+    const evNom = R.ident['EVALUADOR'] || R.ident['EVALUADORA'] || R.firma[0] || ''; const pm = S.data.equipo.find(p=>{ const a = norm(p.nombre).split(' '); return a.length && a.filter(w=>w.length>2 && norm(evNom).includes(w)).length>=2; });
+    const draft = {fecha, tipo:'Psicopedagógica', profesional: pm?.id || S.data.usuario || s.referente, motivo:R.motivo.join('\n'), conducta:R.conducta.join('\n'), sintesis:R.sintesis.join('\n'), sugFam:R.sugFam.join('\n'), sugEst:R.sugEst.join('\n'), cual:{}, origen:'Importado desde '+file.name.slice(0,80)};
+    if(R.firma.length) draft.firma = {nombre: R.firma[0].replace(/\s+/g,' ').trim().split(' ').map(w=>w ? w[0].toUpperCase()+w.slice(1).toLowerCase() : w).join(' '), cargo: R.firma[1]||'', run:(R.firma.find(l=>/RUN|RUT/i.test(l))||'').replace(/^.*?:\s*/,''), registro:(R.firma.find(l=>/REGISTRO/i.test(l))||'').replace(/^.*?:\s*/,'').replace(/^N[°º]?\s*/,'')};
+    const instr = R.instr.filter(Boolean);
+    if(R.tabla){ const T = tablaToPrueba(R.tabla, instr[0] || 'Prueba importada');
+      const sig = x => x.areas.map(a=>a.subtests.map(t=>norm(t.n)+':'+t.max).join('|')).join('||');
+      let P = pruebas().find(p=>sig(p)===sig(T));
+      if(!P && T.areas.length){ P = {id:'pr-'+uid(), nombre:T.nombre, nivel:'', areas:T.areas.map(a=>({area:a.area, subtests:a.subtests}))}; S.data.inst = S.data.inst||{}; S.data.inst.pruebas = [...(S.data.inst.pruebas||pruebas()), P]; logEv('','Creó','prueba de tabulación '+P.nombre+' (desde informe importado)'); avisos.push(`Se agregó la prueba "${P.nombre}" a Pruebas y tabulación, con la estructura de la tabla del informe.`); }
+      if(P){ draft.pruebaId = P.id; draft.tabObt = {}; T.areas.forEach((a,ai)=>a.obt.forEach((v,si)=>{ draft.tabObt[tabKey(ai,si)] = v; }));
+        R.cual.forEach((c,i)=>{ const ai = P.areas.findIndex(a=>norm(a.area)===norm(c.titulo) || norm(c.titulo).includes(norm(a.area).replace(/^AREA /,''))); draft.cual['a'+(ai>=0?ai:i)] = c.txt.join('\n'); }); } }
+    else R.cual.forEach((c,i)=>{ draft.cual['a'+i] = c.txt.join('\n'); });
+    draft.instrumento = instr[0] || ''; draft.instrOtros = instr.slice(1).join('; ');
+    openForm({kind:'evaluaciones', schema:'eval', where:'modal', sid:s.id, isNew:true, draft, title:'Informe importado desde Word · revisa y guarda'});
+    if(avisos.length) setTimeout(()=>{ const b = document.querySelector('#modal .dialog .body, #modal form'); if(b) b.insertAdjacentHTML('afterbegin', `<div class="notice-mini warn" style="margin:12px">${avisos.map(esc).join('<br>')}</div>`); }, 30);
+    persist(); toast('Informe leído. Revisa cada sección antes de guardar.');
+  }catch(err){ console.error(err); toast('No se pudo leer el archivo: '+(err.message||'formato no reconocido'), true); }
+});
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.cualgrid{display:flex;flex-direction:column;gap:12px}.cg-area{display:flex;flex-direction:column;gap:6px}.cg-area label{font-weight:700}`; document.head.appendChild(st); })();
+
+/* la tarjeta de la ficha muestra lo esencial; el informe completo está en "Ver informe" */
+const PSI_OCULTOS = ['cual','motivo','conducta','sintesis','sugFam','sugEst','instrOtros','sugerencias','firma','origen'];
+const _viewFieldsAD = viewFields;
+viewFields = function(fields, x, ctx){ if(x && isPsico(x) && (x.informe || x.cual || x.conducta)) fields = fields.filter(f=>!PSI_OCULTOS.includes(f.k)); return _viewFieldsAD(fields, x, ctx); };
+
+/* ================= Acceso a fichas por profesional ================= */
+/* En la versión con base de datos lo asegura Supabase (SQL 10): quien tiene lista solo recibe esas fichas. */
+SCHEMA.equipo[0].fields.push(
+  {k:'alcanceModo', l:'Acceso a fichas de estudiantes', t:'select', w:2, o:()=>[['todos','Todos los estudiantes de la unidad'],['lista','Solo los estudiantes seleccionados']]},
+  {k:'alcance', l:'Estudiantes con acceso', t:'checks', chip:1, filter:1, w:2, o:()=>S.data.students.slice().sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(s=>[s.id, s.nombre+' · '+cursoOf(s)])});
+const _inputForAE = inputFor;
+inputFor = function(f, path, v, ctx){
+  if(S.form?.schema==='equipo'){ const d = S.form.draft;
+    if(f.k==='alcanceModo' && !d.alcanceModo) d.alcanceModo = 'todos', v = 'todos';
+    if(f.k==='alcanceModo') return _inputForAE(f, path, v, ctx).replace('<option value="">Seleccionar…</option>','');
+    if(f.k==='alcance' && d.alcanceModo!=='lista') return '';
+    if(f.k==='alcance'){ const h = _inputForAE(f, path, v, ctx); const ocultos = (d.alcance||[]).filter(id=>!stu(id)).length;
+      return h + (ocultos?`<p class="small muted">${ocultos} ${ocultos===1?'ficha seleccionada no está':'fichas seleccionadas no están'} en tu vista.</p>`:'') + '<p class="small muted">La persona solo verá estas fichas, sus registros y su historial. Para agregar a un estudiante nuevo, créalo primero y luego márcalo aquí.</p>'; } }
+  return _inputForAE(f, path, v, ctx); };
+document.addEventListener('change', e=>{ if(S.form?.schema==='equipo' && e.target.dataset?.path==='alcanceModo') setTimeout(()=>keepScroll(render), 0); });
+const _saveFormAE = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f?.schema==='equipo'){ const d = f.draft; if(d.alcanceModo==='lista' && !(d.alcance||[]).length){ f.err = ['Selecciona al menos un estudiante o elige "Todos los estudiantes"']; render(); return; }
+    if(d.alcanceModo!=='lista') delete d.alcance; }
+  return _saveFormAE.apply(this, arguments); };
+const conLista = pid => (S.data.equipo||[]).find(p=>p.id===pid)?.alcanceModo==='lista';
+/* quien tiene lista no crea fichas nuevas (las crea coordinación) */
+const _vEstudiantesAE = vEstudiantes;
+vEstudiantes = function(){ const h = _vEstudiantesAE(); return conLista(S.data.usuario) ? h.replace(/<button class="btn primary" data-act="new-student">[\s\S]*?<\/button>/, '<span class="small muted">Ves solo los estudiantes asignados por coordinación.</span>') : h; };
+/* tarjeta del integrante: se ve que tiene acceso restringido */
+const _vEquipoAE = vEquipo;
+vEquipo = function(){ let h = _vEquipoAE(); (S.data.equipo||[]).filter(p=>p.alcanceModo==='lista').forEach(p=>{ const i = h.indexOf(`<b>${esc(p.nombre)}</b>`); if(i<0) return; const j = h.indexOf('</div>', i); h = h.slice(0, j) + ` <span class="chip" title="Acceso solo a estudiantes seleccionados">${ic('shield','sm')} ${(p.alcance||[]).length} fichas</span>` + h.slice(j); }); return h; };
+
 
 /* ---------- íconos ---------- */
 const ICONS = {
@@ -5607,6 +5972,7 @@ function applyRow(k, data){
 const myRol = () => C.perfil?.rol;
 const canWrite = k => coordRol() || (myRol()==='profesional' && k!=='core' && k!=='nomina') || (myRol()==='reforzamiento' && ['grupos','refSesiones','bitacora'].includes(k));
 const isTeam = () => TEAM_ROLES.includes(myRol());
+const snapOk = () => isTeam() && !(C.perfil?.alcance);
 
 /* ---- combinación de cambios simultáneos (3 vías: base conocida, remoto, local) ---- */
 const J = x => JSON.stringify(x);
@@ -5650,7 +6016,7 @@ function cloudPersist(){
   savePrefs();
   if(!C.ready) return;
   const parts = splitData(S.data);
-  if(C.snap && isTeam()) parts.dir_snapshot = C.snap;
+  if(C.snap && snapOk()) parts.dir_snapshot = C.snap;
   Object.entries(parts).forEach(([k, v])=>{ const j = JSON.stringify(v); if(C.rows[k]?.json === j) return; if(canWrite(k)) C.dirty.add(k); });
   if(coordRol()) Object.keys(C.rows).filter(k=>k.startsWith('st:') && !(k in parts)).forEach(k=>C.dirty.add(k));
   schedule(300);
@@ -5665,8 +6031,8 @@ async function flush(){
       const {error} = await sb.from('auditoria').insert(chunk.map(l=>({sid:l.sid||null, accion:String(l.accion||'').slice(0,80), detalle:String(l.detalle||'').slice(0,500), ts_cliente:l.ts||null})));
       if(error) throw error; chunk.forEach(l=>C.sent.add(l)); }
     const parts = splitData(S.data);
-    if(isTeam() && (!C.snapAt || Date.now()-C.snapAt > 20000)){ try{ C.snap = computeSnap(); C.snapAt = Date.now(); if(J(C.snap)!==C.rows.dir_snapshot?.json) C.dirty.add('dir_snapshot'); }catch(e){} }
-    if(C.snap && isTeam()) parts.dir_snapshot = C.snap;
+    if(snapOk() && (!C.snapAt || Date.now()-C.snapAt > 20000)){ try{ C.snap = computeSnap(); C.snapAt = Date.now(); if(J(C.snap)!==C.rows.dir_snapshot?.json) C.dirty.add('dir_snapshot'); }catch(e){} }
+    if(C.snap && snapOk()) parts.dir_snapshot = C.snap;
     for(const k of [...C.dirty]) await saveKey(k, parts);
     setStatus(C.dirty.size ? 'saving' : 'ok');
   }catch(e){ console.error(e); C.saving = false; setStatus(navigator.onLine===false ? 'error' : 'error'); return schedule(8000, true); }
@@ -5792,7 +6158,7 @@ const _saveFormC = saveForm;
 saveForm = function(){ const k = S.form?.kind; const r = _saveFormC.apply(this, arguments); if(k==='equipo') syncPerfiles(); return r; };
 async function syncPerfiles(){
   if(!coordRol()) return;
-  const rows = S.data.equipo.filter(p=>p.correo && /@/.test(p.correo)).map(p=>({email:String(p.correo).trim().toLowerCase(), nombre:p.nombre, rol:p.perfil==='reforzamiento'?'reforzamiento':isCoord(p.id)?'coordinacion':'profesional', equipo_id:p.id, activo:true}));
+  const rows = S.data.equipo.filter(p=>p.correo && /@/.test(p.correo)).map(p=>({email:String(p.correo).trim().toLowerCase(), nombre:p.nombre, rol:p.perfil==='reforzamiento'?'reforzamiento':isCoord(p.id)?'coordinacion':'profesional', equipo_id:p.id, activo:true, alcance: p.alcanceModo==='lista' ? (p.alcance||[]).map(id=>'st:'+id) : null}));
   if(!rows.length) return;
   const {error} = await sb.from('perfiles').upsert(rows, {onConflict:'equipo_id'});
   if(error){ console.error(error); toast('El integrante quedó guardado, pero no se pudo habilitar su acceso: '+(error.code==='23505'?'ese correo ya está en uso.':'revisa el correo.'), true); }

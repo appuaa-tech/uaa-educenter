@@ -145,3 +145,7 @@ La primera vez dentro de la app hay que ingresar con la cuenta de Google del col
 ## Perfil "Solo reforzamiento"
 
 Para asistentes dedicadas a reforzamiento (SQL 09). Ven sus grupos, registran asistencia y logro, y llevan su bitácora. La base no les entrega las fichas de los estudiantes. Coordinación lo asigna en Equipo › integrante › "Acceso en la plataforma", y asigna cada grupo en Trabajo › Grupos › Editar grupo › Profesional a cargo.
+
+## Acceso a fichas por profesional (SQL 10)
+
+Coordinación puede limitar las fichas que ve cada profesional en Equipo › integrante › "Acceso a fichas de estudiantes". La base de datos solo entrega esas fichas y su auditoría. Quien tiene lista no crea estudiantes nuevos: los crea coordinación y luego los marca en su lista.
