@@ -141,3 +141,7 @@ La plataforma se puede instalar como app, con el logo de la unidad en la pantall
 - **iPhone (Safari):** abrir la plataforma › botón Compartir › **Agregar a pantalla de inicio**.
 
 La primera vez dentro de la app hay que ingresar con la cuenta de Google del colegio. La app no guarda datos de estudiantes en el teléfono: siempre los pide a la base, y sin internet muestra un aviso.
+
+## Perfil "Solo reforzamiento"
+
+Para asistentes dedicadas a reforzamiento (SQL 09). Ven sus grupos, registran asistencia y logro, y llevan su bitácora. La base no les entrega las fichas de los estudiantes. Coordinación lo asigna en Equipo › integrante › "Acceso en la plataforma", y asigna cada grupo en Trabajo › Grupos › Editar grupo › Profesional a cargo.

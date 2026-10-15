@@ -2160,7 +2160,7 @@ SCHEMA.bitItem = [{sec:'Actividad', fields:[
 
 /* ---------- reforzamiento: datos ---------- */
 const grp = id => (S.data.grupos||[]).find(g=>g.id===id);
-const gEst = g => (g.estudiantes||[]).map(e=>{ const s = e.sid ? stu(e.sid) : null; return {...e, nombre: s ? (s.nombreSocial||s.nombre) : e.nombre, curso: s ? cursoOf(s) : e.curso, uaa: !!s}; }).filter(e=>e.nombre);
+const gEst = g => (g.estudiantes||[]).map(e=>{ const s = e.sid ? stu(e.sid) : null; return {...e, nombre: s ? (s.nombreSocial||s.nombre) : e.nombre, curso: s ? cursoOf(s) : e.curso, uaa: !!(s || e.sid)}; }).filter(e=>e.nombre);
 const gSes = gid => (S.data.refSesiones||[]).filter(r=>r.gid===gid).sort((a,b)=>b.fecha.localeCompare(a.fecha));
 function gStats(g, key, desde, hasta){
   const L = gSes(g.id).filter(r=>(!desde||r.fecha>=desde) && (!hasta||r.fecha<=hasta) && r.asis?.[key]);
@@ -4673,6 +4673,89 @@ viewFields = function(fields, x, ctx){
 @media (max-width:640px){.objrow{grid-template-columns:minmax(0,1fr) auto}.objrow .field:first-child{grid-column:1/-1}}
 .objlist{margin:0;padding-left:18px}`; document.head.appendChild(st); })();
 
+/* ================= Perfil "Solo reforzamiento" ================= */
+/* Para asistentes dedicadas a reforzamiento: Inicio, sus grupos con asistencia y su bitácora.
+   Sin acceso a fichas de estudiantes. En la nube lo asegura la base (rol "reforzamiento", SQL 09). */
+SCHEMA.equipo[0].fields.push({k:'perfil', l:'Acceso en la plataforma', t:'select', w:2, o:()=>[['completo','Equipo de la unidad (fichas de sus estudiantes)'],['reforzamiento','Solo reforzamiento (grupos, asistencia y bitácora; sin fichas)']]});
+function isRef(pid){ const p = (S.data?.equipo||[]).find(x=>x.id===pid); return !!p && p.perfil==='reforzamiento'; }
+const meRef = () => isRef(S.data?.usuario);
+const REF_VIEWS = ['panel','trabajo','normativa'];
+
+/* nombres y cursos de los estudiantes de la unidad quedan en el grupo, para quien no accede a las fichas */
+function gSnap(){ let ch = false;
+  (S.data.grupos||[]).forEach(g=>(g.estudiantes||[]).forEach(e=>{ const s = e.sid && stu(e.sid); if(!s) return;
+    const n = s.nombreSocial||s.nombre, c = cursoOf(s); if(e.nombre!==n || e.curso!==c){ e.nombre = n; e.curso = c; ch = true; } }));
+  return ch; }
+const _migrateY = migrate;
+migrate = function(){ const r = _migrateY.apply(this, arguments);
+  if(S.data?.demo && !S.data.equipo.some(p=>p.id==='mv')){
+    S.data.equipo.push({id:'mv', nombre:'Marcela Vera', cargo:'Asistente de la educación', horas:44, perfil:'reforzamiento', correo:'marcela.vera@example.com'});
+    const g = (S.data.grupos||[]).find(x=>x.clase!=='trabajo');
+    if(g){ g.profesional = 'mv'; (S.data.refSesiones||[]).filter(x=>x.gid===g.id).forEach(x=>{ x.profesional = 'mv'; x._por = 'mv'; }); } }
+  if(S.data?.students?.length) gSnap();
+  return r; };
+
+/* navegación reducida */
+const _renderY = render;
+render = function(){ if(meRef()){ if(!REF_VIEWS.includes(S.view)) S.view = 'panel'; if(S.view==='trabajo'){ if(!['ref','bit'].includes(S.tv)) S.tv = 'ref'; S.bprof = S.data.usuario; } } return _renderY.apply(this, arguments); };
+const _renderChromeY = renderChrome;
+renderChrome = function(){ const r = _renderChromeY.apply(this, arguments);
+  if(meRef()){ const dk = document.getElementById('dock');
+    dk.innerHTML = [['panel','Inicio','home'],['trabajo','Reforzamiento','users'],['normativa','Normativa','book']].map(([k,l,i])=>`<button data-act="nav" data-view="${k}" ${S.view===k?'aria-current="page"':''} aria-label="${l}" title="${l}">${ic(i)}<span class="lbl">${l}</span></button>`).join('');
+    const b = document.querySelector('#topactions [data-view="panel"]'); if(b) b.outerHTML = ''; }
+  return r; };
+const _vTrabajoY = vTrabajo;
+vTrabajo = function(){
+  if(!meRef()) return _vTrabajoY();
+  const tv = S.tv==='bit' ? 'bit' : 'ref';
+  const all = S.data.grupos||[]; let body;
+  if(tv==='ref'){ S.data.grupos = all.filter(g=>g.clase!=='trabajo'); try { body = S.gid && grp(S.gid) ? vGrupo(grp(S.gid)) : _vGruposU(); } finally { S.data.grupos = all; } }
+  else body = vBitacora();
+  return `${demoBanner()}<header class="pagehead"><div><p class="eyebrow">Unidad de Apoyo al Aprendizaje</p><h1>Mi <b>reforzamiento</b></h1></div></header>
+  <nav class="seg" role="tablist" style="margin-bottom:20px"><button role="tab" aria-selected="${tv==='ref'}" data-act="tv" data-v="ref">${ic('users','sm')} Grupos y asistencia</button><button role="tab" aria-selected="${tv==='bit'}" data-act="tv" data-v="bit">${ic('doc','sm')} Mi bitácora</button></nav>${body}`;
+};
+/* la bitácora es solo la propia */
+document.addEventListener('change', e=>{ if(meRef() && S.bprof!==S.data.usuario){ S.bprof = S.data.usuario; } }, true);
+
+/* Inicio */
+const _vPanelY = vPanel;
+vPanel = function(){
+  if(!meRef()) return _vPanelY();
+  const me = S.data.usuario, p = S.data.equipo.find(x=>x.id===me);
+  const G = (S.data.grupos||[]).filter(g=>g.clase!=='trabajo' && g.profesional===me);
+  const mes = D(0).slice(0,7);
+  const L = (S.data.refSesiones||[]).filter(r=>G.some(g=>g.id===r.gid));
+  const delMes = L.filter(r=>r.fecha.startsWith(mes));
+  const asis = delMes.flatMap(r=>Object.values(r.asis||{})); const pres = asis.filter(a=>a.a==='P').length;
+  const hoy = G.filter(g=>nextDate(g)===D(0));
+  const pend = G.filter(g=>{ for(let i=-7;i<0;i++){ const f = D(i); const wd = (parse(f).getDay()+6)%7; if(wd<5 && (g.dias||[]).includes(DIAS[wd]) && (!g.fechaInicio||f>=g.fechaInicio) && (!g.fechaFin||f<=g.fechaFin) && !L.some(r=>r.gid===g.id && r.fecha===f)) return true; } return false; });
+  const card = g => { const nx = nextDate(g), E = gEst(g);
+    return `<li class="rowi click" data-act="go-grupo" data-id="${g.id}"><span class="icw av3">${ic('users')}</span><div class="main"><span class="t">${esc(g.nombre)}</span><span class="d">${E.length} estudiantes · ${esc((g.dias||[]).join(', ')||'sin días')}${g.hora?' · '+esc(g.hora):''}${g.sala?' · '+esc(g.sala):''}</span></div>${nx===D(0)?'<span class="pill info">Hoy</span>':nx?`<span class="chip">${esc(relDay(nx))}</span>`:''}</li>`; };
+  return `${demoBanner()}<div class="stack">
+    <section class="glass welcome"><div class="arcs" aria-hidden="true"><i></i><i></i><i></i></div><p class="eyebrow">${esc(cap(parse(D(0)).toLocaleDateString('es-CL',{weekday:'long', day:'numeric', month:'long'})))}</p><h1>Hola, <b>${esc(firstName(p?.nombre||''))}</b></h1><p>${hoy.length ? `Hoy tienes ${hoy.length===1?'el grupo':'los grupos'} ${hoy.map(g=>esc(g.nombre)).join(' y ')}.` : 'Hoy no tienes grupos programados.'}</p></section>
+    ${bitNotice()}
+    ${pend.length?`<div class="notice glass"><span class="icw av4">${ic('clock')}</span><div class="main"><b>Sesiones de la última semana sin registrar</b><span class="small muted">${pend.map(g=>esc(g.nombre)).join(', ')}. Registra la asistencia para que quede la evidencia.</span></div><button class="btn sm primary" data-act="go-grupo" data-id="${pend[0].id}">Registrar</button></div>`:''}
+    <section class="stats">
+      <div class="glass stat"><span class="icw av3">${ic('users')}</span><div><div class="v">${G.length}</div><div class="l">Grupos a tu cargo</div></div></div>
+      <div class="glass stat"><span class="icw av2">${ic('activity')}</span><div><div class="v">${delMes.length}</div><div class="l">Sesiones este mes</div></div></div>
+      <div class="glass stat"><span class="icw av1">${ic('check')}</span><div><div class="v">${asis.length?Math.round(pres/asis.length*100)+'%':'—'}</div><div class="l">Asistencia este mes</div></div></div></section>
+    <section class="glass card"><header><h2>Mis grupos</h2><button class="btn sm" data-act="nav" data-view="trabajo">Ver todos</button></header>
+      ${G.length?`<ul class="rows">${G.map(card).join('')}</ul>`:'<p class="empty">Aún no tienes grupos asignados. La coordinación te asigna como profesional a cargo de cada grupo.</p>'}</section></div>`;
+};
+/* sin acceso a fichas desde los grupos */
+document.addEventListener('click', e=>{ if(!meRef()) return; const el = e.target.closest?.('[data-act="open"],[data-act="tab"],[data-act="add-grupo"]'); if(!el) return;
+  if(el.dataset.act==='open'){ e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+
+/* editar grupo: si no hay acceso a fichas, conserva a los estudiantes de la unidad que ya estaban */
+const _grupoDraftY = grupoDraft;
+grupoDraft = function(g){ const d = _grupoDraftY(g); if(meRef()) d._uaaKeep = (g.estudiantes||[]).filter(e=>e.sid && !stu(e.sid)); return d; };
+const _saveGrupoY = saveGrupo;
+saveGrupo = function(d, f){ const keep = d._uaaKeep || []; delete d._uaaKeep;
+  _saveGrupoY(d, f);
+  const g = d.id ? grp(d.id) : grp(S.gid);
+  if(g){ keep.forEach(e=>{ if(!g.estudiantes.some(x=>x.id===e.id)) g.estudiantes.push(e); }); if(S.data.students.length) gSnap(); }
+};
+
 
 /* ---------- íconos ---------- */
 const ICONS = {
@@ -5129,7 +5212,7 @@ function applyRow(k, data){
     else if(i>=0) L[i] = data; else L.push(data); }
 }
 const myRol = () => C.perfil?.rol;
-const canWrite = k => coordRol() || (myRol()==='profesional' && k!=='core' && k!=='nomina');
+const canWrite = k => coordRol() || (myRol()==='profesional' && k!=='core' && k!=='nomina') || (myRol()==='reforzamiento' && ['grupos','refSesiones','bitacora'].includes(k));
 const isTeam = () => TEAM_ROLES.includes(myRol());
 
 /* ---- combinación de cambios simultáneos (3 vías: base conocida, remoto, local) ---- */
@@ -5316,7 +5399,7 @@ const _saveFormC = saveForm;
 saveForm = function(){ const k = S.form?.kind; const r = _saveFormC.apply(this, arguments); if(k==='equipo') syncPerfiles(); return r; };
 async function syncPerfiles(){
   if(!coordRol()) return;
-  const rows = S.data.equipo.filter(p=>p.correo && /@/.test(p.correo)).map(p=>({email:String(p.correo).trim().toLowerCase(), nombre:p.nombre, rol:isCoord(p.id)?'coordinacion':'profesional', equipo_id:p.id, activo:true}));
+  const rows = S.data.equipo.filter(p=>p.correo && /@/.test(p.correo)).map(p=>({email:String(p.correo).trim().toLowerCase(), nombre:p.nombre, rol:p.perfil==='reforzamiento'?'reforzamiento':isCoord(p.id)?'coordinacion':'profesional', equipo_id:p.id, activo:true}));
   if(!rows.length) return;
   const {error} = await sb.from('perfiles').upsert(rows, {onConflict:'equipo_id'});
   if(error){ console.error(error); toast('El integrante quedó guardado, pero no se pudo habilitar su acceso: '+(error.code==='23505'?'ese correo ya está en uso.':'revisa el correo.'), true); }
