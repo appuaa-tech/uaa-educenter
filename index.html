@@ -1311,7 +1311,7 @@ const adap = (s.adaptadas||[]).filter(x=>inR(x.fecha)).sort((a,b)=>a.fecha.local
     h += `<h2>9. Episodios de desregulación</h2>${decs.length?decs.map(x=>`<div class="block"><h3>${fmt(x.fecha)}${x.hora?' · '+esc(x.hora):''} · ${esc(etapaTxt(x.etapa))}${x.lugar?' · '+esc(x.lugar):''}</h3>${rkv([['Gatillante',x.gatillante,1],['Descripción',x.descripcion,1],['Acciones',x.acciones,1],['Adultos que intervinieron',x.responsables],['Familia informada', x.apoderadoInformado?'Sí'+(x.fechaInforme?', el '+fmt(x.fechaInforme):''):'No'],['Ajustes al PAEC',x.ajustePAEC,1]])}</div>`).join(''):'<p class="muted">Sin episodios en el período.</p>'}`;
     const meds = (s.medidas||[]).filter(x=>inR(x.fechaInicio)||inR(x.fechaTermino));
     if(meds.length) h += `<h3>Medidas excepcionales</h3><table><thead><tr><th>Medida</th><th>Período</th><th>Fundamento</th><th>Requisitos</th><th>Estado</th></tr></thead><tbody>${meds.map(x=>{ const c = medCheck(x); return `<tr><td>${esc(x.tipo)}<br><span class="muted">${esc(x.finalidad||'')}</span></td><td>${fmtShort(x.fechaInicio)} al ${fmtShort(x.fechaTermino)}</td><td>${esc(x.fundamento||'')}${x.planReintegro?'<br><i>Reincorporación: '+esc(x.planReintegro)+'</i>':''}</td><td>${c.falta.length||c.graves.length?'Faltan: '+esc([...c.graves,...c.falta].join(', ')):'Completos'}</td><td>${esc(x.estado||'')}</td></tr>`; }).join('')}</tbody></table>`;
-    h += `<h2>10. Evaluaciones</h2>${evs.length?evs.map(e=>`<div class="block"><h3>${esc(e.tipo)} · ${fmt(e.fecha)}</h3>${rkv([['Profesional',profName(e.profesional)],['Instrumentos',e.instrumento],['Resultados',e.resultados,1],['Sugerencias',e.sugerencias,1],['Devolución a la familia',e.devolucion?fmt(e.devolucion):(e.informado?'Sí':'No')]])}</div>`).join(''):'<p class="muted">Sin evaluaciones en el período.</p>'}`;
+    h += `<h2>10. Evaluaciones</h2>${evs.length?evs.map(e=>`<div class="block"><h3>${esc(e.tipo)} · ${fmt(e.fecha)}</h3>${tabHTML(e,true)}${rkv([['Profesional',profName(e.profesional)],['Instrumentos',e.instrumento],['Resultados',e.resultados,1],['Sugerencias',e.sugerencias,1],['Devolución a la familia',e.devolucion?fmt(e.devolucion):(e.informado?'Sí':'No')]])}</div>`).join(''):'<p class="muted">Sin evaluaciones en el período.</p>'}`;
     h += `<h2>11. Documentos vigentes</h2>`;
     ['anamnesis','pai','paci','paec'].forEach(k=>{ const d = s[k]; const f = k==='anamnesis'?d?.fecha:d?.fechaElaboracion;
       if(!f){ h += `<p><b>${DOC_LONG[k]}:</b> <span class="muted">no registrado.</span></p>`; return; }
@@ -1346,7 +1346,7 @@ const adap = (s.adaptadas||[]).filter(x=>inR(x.fecha)).sort((a,b)=>a.fecha.local
     h += `<h2>Sesiones del período</h2>${sesTable()}`;
     h += `<h2>Evaluaciones adaptadas</h2>${adTable(false)}`;
     if(refs.length) h += `<h2>Reforzamiento</h2>${refTable()}`;
-    if(evs.length) h += `<h2>Evaluaciones del período</h2>${evs.map(e=>`<div class="block"><h3>${esc(e.tipo)} · ${fmt(e.fecha)}</h3>${rkv([['Resultados',e.resultados,1],['Sugerencias',e.sugerencias,1]])}</div>`).join('')}`;
+    if(evs.length) h += `<h2>Evaluaciones del período</h2>${evs.map(e=>`<div class="block"><h3>${esc(e.tipo)} · ${fmt(e.fecha)}</h3>${tabHTML(e,true)}${rkv([['Resultados',e.resultados,1],['Sugerencias',e.sugerencias,1]])}</div>`).join('')}`;
     h += `<h2>Recomendaciones</h2>${rRecs(o.recs)}`;
     h += signs([[whoName(S.data.usuario),'Emite'],['Coordinación UAA',''],['Jefatura técnica','']]);
   }
@@ -2274,7 +2274,7 @@ function vGrupos(){
 function vGrupo(g){
   const E = gEst(g), L = gSes(g.id);
   return `<div class="navrow" style="margin-bottom:16px"><button class="iconbtn" data-act="close-grupo" aria-label="Volver a los grupos">${ic('back')}</button><div style="flex:1;min-width:0"><p class="eyebrow">${esc(g.asignatura)} · ${esc(profName(g.profesional))}${g.docente?' · '+esc(g.docente):''}</p><h2 style="font-size:1.4rem">${esc(g.nombre)}</h2></div></div>
-  <div class="quick-actions" style="margin-bottom:16px"><button class="btn primary" data-act="rs-new">${ic('plus')} Registrar sesión</button><button class="btn" data-act="edit-grupo">${ic('edit','sm')} Editar grupo</button><button class="btn" data-act="rep-grupo">${ic('print','sm')} Informe del grupo</button></div>
+  <div class="quick-actions" style="margin-bottom:16px"><button class="btn primary" data-act="rs-new">${ic('plus')} Registrar sesión</button><button class="btn" data-act="edit-grupo">${ic('edit','sm')} Editar grupo</button><button class="btn" data-act="rep-grupo">${ic('print','sm')} Informe del grupo</button><button class="btn" data-act="asis-lista" data-id="${g.id}">${ic('doc','sm')} Lista de asistencia</button></div>
   ${g.objetivo?`<section class="glass card" style="margin-bottom:16px"><p class="eyebrow">Objetivo</p><p>${esc(g.objetivo)}</p><div class="chips" style="margin-top:10px"><span class="chip ico">${ic('calendar')}${esc((g.dias||[]).join(', '))}${g.hora?' · '+esc(g.hora):''}${g.duracion?' · '+esc(g.duracion)+' min':''}</span>${g.sala?`<span class="chip">${esc(g.sala)}</span>`:''}${g.fechaInicio?`<span class="chip">${fmtShort(g.fechaInicio)} al ${fmtShort(g.fechaFin)}</span>`:''}</div></section>`:''}
   <section class="glass card" style="margin-bottom:16px"><header><h2>Estudiantes</h2><span class="chip">${E.length}</span></header>
     <ul class="rows">${E.map(e=>{ const st = gStats(g,e.id); return `<li class="rowi ${e.uaa?'click':''}" ${e.uaa?`data-act="open" data-sid="${e.sid}"`:''}><span class="icw avatar md ${AREA_AV(e.nombre)}">${initials(e.nombre)}</span><div class="main"><span class="t">${esc(e.nombre)}</span><div class="meta"><span class="chip">${esc(e.curso||'')}</span>${e.uaa?'<span class="chip tea">Unidad de apoyo</span>':''}${st.ultimoLogro?`<span class="chip">Último logro: ${esc(st.ultimoLogro)}</span>`:''}</div></div><div class="end col"><span class="pill ${st.pct==null?'none':st.pct>=85?'ok':st.pct>=70?'warn':'crit'}">${st.pct==null?'Sin sesiones':st.pct+'% asistencia'}</span><span class="small muted">${st.P} P · ${st.A} A · ${st.J} J</span></div></li>`; }).join('')}</ul></section>
@@ -4153,7 +4153,7 @@ const F_GFOCO = {k:'g_foco', l:'Foco o propósito', t:'text', ph:'Ej.: Turnos, c
 const F_GEST = {k:'g_est', l:'Estudiantes del grupo', t:'checks', chip:1, w:2, filter:1, o:stOpts};
 const F_GPRES = {k:'g_pres', l:'¿Quiénes asistieron?', t:'checks', chip:1, w:2, o:ctx=>{ const g = grp(S.form?.draft?.grupo); return gtMembers(g).map(sid=>[sid, (stu(sid).nombreSocial||stu(sid).nombre)]); }};
 const SID_AT = {k:'sid', l:'Estudiante atendido', t:'select', w:2, o:()=>S.data.students.map(s=>[s.id, s.nombre+' · '+cursoOf(s)])};
-const G_KEYS = ['gmodo','grupo','g_nombre','g_foco','g_est','g_pres'];
+const G_KEYS = ['gmodo','grupo','g_nombre','g_foco','g_est','g_pres','g_asis'];
 
 /* formulario de sesión (Agenda › Nueva sesión) */
 SCHEMA.agendaSesion[0].sec = '¿A quién atendiste?';
@@ -4237,7 +4237,7 @@ function gtEnsure(d, prof){
   S.data.grupos.push(g); logEv('','Creó','Grupo de trabajo '+g.nombre);
   return g;
 }
-const gtPresentes = (d, g) => d.grupo==='__new' ? gtMembers(g) : (d.g_pres||[]).filter(sid=>gtMembers(g).includes(sid));
+function gtPresentes(d, g){ const M = gtMembers(g); if(d.g_asis) return M.filter(sid=>(d.g_asis[sid]||'P')==='P'); return d.grupo==='__new' ? M : (d.g_pres||[]).filter(sid=>M.includes(sid)); }
 function gtSesionCopias(g, base, pres, extra){
   const gses = extra.gses || uid(); const ids = [];
   gtMembers(g).forEach(sid=>{ const t = stu(sid); t.sesiones = t.sesiones||[];
@@ -4755,6 +4755,399 @@ saveGrupo = function(d, f){ const keep = d._uaaKeep || []; delete d._uaaKeep;
   const g = d.id ? grp(d.id) : grp(S.gid);
   if(g){ keep.forEach(e=>{ if(!g.estudiantes.some(x=>x.id===e.id)) g.estudiantes.push(e); }); if(S.data.students.length) gSnap(); }
 };
+
+/* ================= Asistencia en grupos e historial del registro DEC ================= */
+
+/* ---------- 1. Grupos de trabajo: asistencia por estudiante (Presente / Ausente / Justificado) ---------- */
+const ASIS_OPT = [['P','Presente'],['A','Ausente'],['J','Justificado']];
+const ASIS_TXT = {P:'Presente', A:'Ausente', J:'Justificado'};
+const gtAsisMembers = d => d.grupo==='__new' ? (d.g_est||[]).filter(sid=>stu(sid)) : gtMembers(grp(d.grupo));
+F_GPRES.l = 'Asistencia';
+const _inputForZ = inputFor;
+inputFor = function(f, path, v, ctx){
+  if(f!==F_GPRES || !['agendaSesion','bitItem'].includes(S.form?.schema)) return _inputForZ(f, path, v, ctx);
+  const d = S.form.draft; if(!isGrp(d) || !d.grupo) return '';
+  const M = gtAsisMembers(d); d.g_asis = d.g_asis || {};
+  M.forEach(sid=>{ if(!d.g_asis[sid]) d.g_asis[sid] = (d.g_pres && !d.g_pres.includes(sid)) ? 'A' : 'P'; });
+  if(!M.length) return `<div class="field w2"><span class="lbl">Asistencia</span><p class="small muted">${d.grupo==='__new'?'Marca a los estudiantes del grupo para tomar la asistencia.':'Este grupo aún no tiene estudiantes.'}</p></div>`;
+  const n = k => M.filter(sid=>d.g_asis[sid]===k).length;
+  return `<div class="field w2"><span class="lbl">Asistencia de hoy <span class="muted small" data-asiscount>· ${n('P')} presentes, ${n('A')} ausentes, ${n('J')} justificados</span></span>
+    <div class="attform">${M.map(sid=>{ const s = stu(sid), a = d.g_asis[sid]; return `<div class="attrow"><div class="nm"><b>${esc(s.nombreSocial||s.nombre)}</b><span class="small muted">${esc(cursoOf(s))}</span></div>
+      <div class="seg mini" role="radiogroup" aria-label="Asistencia de ${esc(s.nombre)}">${ASIS_OPT.map(([k,t])=>`<button type="button" role="radio" aria-checked="${a===k}" aria-selected="${a===k}" data-act="gt-asis" data-k="${sid}" data-v="${k}">${t}</button>`).join('')}</div></div>`; }).join('')}</div></div>`;
+};
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="gt-asis"]'); if(!el || !S.form) return;
+  const d = S.form.draft; d.g_asis = d.g_asis||{}; d.g_asis[el.dataset.k] = el.dataset.v;
+  el.parentElement.querySelectorAll('button').forEach(b=>{ const on = b===el; b.setAttribute('aria-checked', on); b.setAttribute('aria-selected', on); });
+  const M = gtAsisMembers(d), n = k => M.filter(sid=>d.g_asis[sid]===k).length; const c = document.querySelector('[data-asiscount]'); if(c) c.textContent = `· ${n('P')} presentes, ${n('A')} ausentes, ${n('J')} justificados`; });
+/* al marcar estudiantes de un grupo nuevo, aparece su fila de asistencia */
+document.addEventListener('change', e=>{ if(e.target.dataset?.path!=='g_est' || !['agendaSesion','bitItem'].includes(S.form?.schema)) return;
+  const q = document.querySelector('.gfilter')?.value || '';
+  setTimeout(()=>{ keepScroll(render); const fi = document.querySelector('.gfilter'); if(fi && q){ fi.value = q; fi.dispatchEvent(new Event('input', {bubbles:true})); } }, 0); });
+/* presentes = marcados como Presente */
+const _gtSesionCopiasZ = gtSesionCopias;
+gtSesionCopias = function(g, base, pres, extra){
+  const A = (S.form?.draft?.g_asis) || {}; const ids = _gtSesionCopiasZ(g, base, pres, extra);
+  ids.forEach(([sid, id])=>{ const x = (stu(sid)?.sesiones||[]).find(y=>y.id===id); if(!x) return;
+    const k = pres.includes(sid) ? 'P' : (A[sid]==='J' ? 'J' : 'A'); x.asistencia = ASIS_TXT[k]; });
+  return ids;
+};
+/* la bitácora guarda también la asistencia del grupo */
+const _saveBitItemZ = saveBitItem;
+saveBitItem = function(d, f){ const A = d.g_asis ? {...d.g_asis} : null; const r = _saveBitItemZ(d, f);
+  const it = (bitRec(S.bprof, S.bweek)?.items||[]).find(x=>x.id===d.id); if(it){ if(it.gid && A) it.g_asis = A; else delete it.g_asis; }
+  return r; };
+/* en la ficha se ve si estuvo presente, ausente o justificado */
+SCHEMA.sesion[0].fields.push({k:'asistencia', l:'Asistencia', t:'text'});
+const _inputForZ2 = inputFor;
+inputFor = function(f, path, v, ctx){ if(f.k==='asistencia' && ['sesion','agendaSesion'].includes(S.form?.schema)) return ''; return _inputForZ2(f, path, v, ctx); };
+
+/* ---------- 2. Lista de asistencia (reforzamiento y grupos de trabajo) ---------- */
+function asisMatriz(g, desde, hasta){
+  const inR = f => (!desde || f>=desde) && (!hasta || f<=hasta);
+  if(!isGT(g)){
+    const L = gSes(g.id).filter(r=>inR(r.fecha)).slice().reverse();
+    return {E:gEst(g), cols:L.map(r=>({fecha:r.fecha, t:r.contenido||''})), cell:(e,i)=>L[i].asis?.[e.id]?.a || ''};
+  }
+  const M = new Map();
+  S.data.students.forEach(s=>(s.sesiones||[]).forEach(x=>{ if(x.gid===g.id && x.gses && inR(x.fecha)){ const r = M.get(x.gses) || {fecha:x.fecha, t:'', by:{}}; r.by[s.id] = x.asistencia==='Justificado' ? 'J' : x.asistencia==='Ausente' || x.estado==='Ausente' ? 'A' : x.estado==='Realizada' ? 'P' : ''; M.set(x.gses, r); } }));
+  const L = [...M.values()].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  return {E:gEst(g), cols:L, cell:(e,i)=>L[i].by[e.sid||e.id] || ''};
+}
+RKINDS.asistencia = {t:'Lista de asistencia', d:'', ic:'users', periodo:1, norecs:1};
+function buildAsistencia(o, meta){
+  const g = grp(o.item); const X = asisMatriz(g, o.desde, o.hasta);
+  let h = rHead('Lista de asistencia', `${esc(g.nombre)}${isGT(g)?' · Grupo de trabajo':' · Reforzamiento'}<br>Período: ${fmt(o.desde)} al ${fmt(o.hasta)}`, meta);
+  h += rkv([['Profesional a cargo', profName(g.profesional)], ['Horario', (g.dias||[]).join(', ')+(g.hora?' · '+g.hora:'')], ['Lugar', g.sala], ['Objetivo o foco', g.objetivo, 1]]);
+  if(!X.cols.length) h += '<p class="muted">No hay sesiones registradas en el período.</p>';
+  else {
+    const sym = {P:'✓', A:'A', J:'J'};
+    h += `<p class="small">✓ presente · A ausente · J justificado</p><div class="asis-wrap"><table class="asis-tbl"><thead><tr><th>Estudiante</th>${X.cols.map(c=>`<th title="${esc(c.t)}">${esc(fmtShort(c.fecha))}</th>`).join('')}<th>P</th><th>A</th><th>J</th><th>%</th></tr></thead><tbody>${X.E.map(e=>{
+      const v = X.cols.map((c,i)=>X.cell(e,i)); const n = k => v.filter(x=>x===k).length; const tot = n('P')+n('A')+n('J');
+      return `<tr><td>${esc(e.nombre)}${e.curso?`<br><span class="muted small">${esc(e.curso)}</span>`:''}</td>${v.map(x=>`<td class="c ${x?'a-'+x:''}">${sym[x]||'·'}</td>`).join('')}<td class="c">${n('P')}</td><td class="c">${n('A')}</td><td class="c">${n('J')}</td><td class="c"><b>${tot?Math.round(n('P')/tot*100)+'%':'—'}</b></td></tr>`; }).join('')}</tbody></table></div>`;
+  }
+  h += signs([[profName(g.profesional),'Profesional a cargo'],['Coordinación UAA','']]);
+  return `<div class="rpt">${ASIS_CSS}${h}${rFoot(meta)}</div>`;
+}
+const _buildReportZ = buildReport;
+buildReport = function(kind, s, o, meta){ if(kind==='asistencia') return buildAsistencia(o, meta); return _buildReportZ.apply(this, arguments); };
+const ASIS_CSS = `<style>.asis-wrap{overflow-x:auto}.asis-tbl th,.asis-tbl td.c{text-align:center;white-space:nowrap;font-size:9pt;padding:3px 5px}.asis-tbl td.a-A{color:#b3261e;font-weight:700}.asis-tbl td.a-J{color:#8a5a00;font-weight:700}</style>`;
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="asis-lista"]'); if(!el) return; openReport('asistencia', null, el.dataset.id || S.gid); });
+/* botón en las tarjetas de grupos de trabajo */
+const _vGruposZ = vGrupos;
+vGrupos = function(){ const h = _vGruposZ();
+  return h.replace(/<button class="btn sm" data-act="gt-edit" data-id="([^"]+)">/g, (m, id)=>`<button class="btn sm" data-act="asis-lista" data-id="${id}">${ic('doc','sm')} Lista de asistencia</button>${m}`); };
+
+/* ---------- 3. Registro DEC: historial de modificaciones y anulación con motivo ---------- */
+SCHEMA.dec.push({sec:'Modificación del registro', when:d=>!!d.id, note:'Este episodio ya está registrado. Cada cambio queda en su historial con la fecha, quién lo hizo, el motivo y lo que se modificó, como respaldo ante la normativa y para el análisis del equipo.', fields:[
+  {k:'motivoCambio', l:'Motivo de la modificación', t:'textarea', w:2, ph:'Ej.: Se completa la hora de aviso a la familia; se corrige el lugar del episodio.'}]});
+const decFields = () => SCHEMA.dec.flatMap(sec=>sec.fields).filter(f=>f.k!=='motivoCambio' && f.t!=='list');
+const decVal = (f, v) => { if(f.t==='bool') return v ? 'Sí' : 'No'; if(v==null || v==='' || (Array.isArray(v) && !v.length)) return '—'; if(Array.isArray(v)) return v.join(', '); if(f.t==='date') return fmt(v); if(f.t==='prof') return profName(v); if(f.t==='select'){ const o = optsOf(f, {}).find(x=>String(x[0])===String(v)); return o ? o[1] : String(v); } return String(v); };
+const _missingReqZ = missingReq;
+missingReq = function(schema, draft){ const m = _missingReqZ(schema, draft); if(schema===SCHEMA.dec && draft.id && empty(draft.motivoCambio)) m.push('Motivo de la modificación'); return m; };
+const _saveFormZ = saveForm;
+saveForm = function(){
+  const f = S.form;
+  if(f?.kind==='dec' && f.draft?.id){ const s = stu(f.sid), old = (s?.dec||[]).find(x=>x.id===f.draft.id);
+    if(old && !missingReq(SCHEMA.dec, f.draft).length){
+      const cambios = decFields().filter(fd=>decVal(fd, old[fd.k])!==decVal(fd, f.draft[fd.k])).map(fd=>({campo:fd.l, antes:decVal(fd, old[fd.k]), despues:decVal(fd, f.draft[fd.k])}));
+      const motivo = String(f.draft.motivoCambio||'').trim();
+      f.draft._versiones = [...(old._versiones||[])];
+      if(cambios.length) f.draft._versiones.push({ts:nowIso(), por:S.data.usuario||'', motivo, cambios});
+      else { toast('No hubo cambios en el registro'); S.form = null; render(); return; }
+      const sid = s.id, id = f.draft.id; const r = _saveFormZ.apply(this, arguments);
+      const rec = (stu(sid)?.dec||[]).find(x=>x.id===id); if(rec && 'motivoCambio' in rec){ delete rec.motivoCambio; persist(); keepScroll(render); }
+      return r;
+    } }
+  return _saveFormZ.apply(this, arguments);
+};
+function decHist(x){
+  const V = x._versiones||[]; const cre = x._creado ? `Registrado el ${esc(fmtTs(x._creado))} por ${esc(whoName(x._por))}.` : '';
+  if(!V.length) return '';
+  return `<details class="dechist"><summary>${ic('clock','sm')} Historial de modificaciones (${V.length})</summary><ol>${V.slice().reverse().map(v=>`<li><b>${esc(fmtTs(v.ts))}</b> · ${esc(whoName(v.por))}${v.motivo?`<br><span class="small">Motivo: ${esc(v.motivo)}</span>`:''}<ul>${v.cambios.map(c=>`<li><span class="muted">${esc(c.campo)}:</span> <s>${esc(trunc(c.antes, 160))}</s> → ${esc(trunc(c.despues, 160))}</li>`).join('')}</ul></li>`).join('')}</ol></details>`;
+}
+const _buildDecRIZ = buildDecRI;
+buildDecRI = function(s, o, meta){ const h = _buildDecRIZ(s, o, meta); const x = (s.dec||[]).find(y=>y.id===o.item); if(!x) return h;
+  const V = x._versiones||[]; const foot = rFoot(meta);
+  const sec = `<h2>Historial de modificaciones del registro</h2>${x._creado?`<p class="small">Registrado el ${esc(fmtTs(x._creado))} por ${esc(whoName(x._por))}.</p>`:''}${V.length?`<table><thead><tr><th>Fecha</th><th>Quién</th><th>Motivo</th><th>Cambios</th></tr></thead><tbody>${V.map(v=>`<tr><td>${esc(fmtTs(v.ts))}</td><td>${esc(whoName(v.por))}</td><td>${esc(v.motivo||'—')}</td><td>${v.cambios.map(c=>`${esc(c.campo)}: ${esc(trunc(c.antes,120))} → ${esc(trunc(c.despues,120))}`).join('<br>')}</td></tr>`).join('')}</tbody></table>`:'<p class="small muted">El registro no ha sido modificado.</p>'}`;
+  return h.includes(foot) ? h.replace(foot, sec + foot) : h.replace(/<\/div>$/, sec + '</div>'); };
+
+/* anular en vez de eliminar: el episodio sale de los conteos, pero queda guardado con el motivo */
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="del-item"][data-coll="dec"]'); if(!el) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  const s = stu(S.sid), x = (s?.dec||[]).find(y=>y.id===el.dataset.id); if(!x) return;
+  S.decAnular = {sid:s.id, id:x.id};
+  S.modal = {title:'Anular registro DEC', html:`<p>El episodio del <b>${esc(fmt(x.fecha))}</b> no se elimina: queda guardado como anulado, con el motivo, la fecha y tu nombre, y deja de contarse en alertas, análisis e informes.</p>
+    <div class="form"><div class="field w2"><label for="dec-anu">Motivo de la anulación <span class="req">*</span></label><textarea id="dec-anu" placeholder="Ej.: Registro duplicado del episodio del mismo día; se mantiene el registro de las 10:40."></textarea></div></div>
+    <div class="quick-actions" style="margin-top:12px"><button class="btn" data-act="dec-anu-no">Cancelar</button><button class="btn danger" data-act="dec-anu-ok">Anular registro</button></div>`};
+  render(); setTimeout(()=>document.getElementById('dec-anu')?.focus(), 30);
+}, true);
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="dec-anu-ok"],[data-act="dec-anu-no"]'); if(!el) return;
+  if(el.dataset.act==='dec-anu-no'){ S.modal = null; S.decAnular = null; render(); return; }
+  const mot = (document.getElementById('dec-anu')?.value||'').trim(); if(!mot){ toast('Escribe el motivo de la anulación', true); return; }
+  const r = S.decAnular, s = r && stu(r.sid), x = s && (s.dec||[]).find(y=>y.id===r.id); if(!x) return;
+  s.dec = s.dec.filter(y=>y.id!==x.id); s.decAnulados = s.decAnulados||[];
+  s.decAnulados.push({...x, anulado:{ts:nowIso(), por:S.data.usuario||'', motivo:mot}}); stamp(s);
+  logEv(s.id, 'Anuló', `registro DEC del ${fmt(x.fecha)} · ${mot}`.slice(0,480));
+  S.modal = null; S.decAnular = null; persist(); render(); toast('Registro anulado y guardado en el historial');
+});
+const _vCollZ = vColl;
+vColl = function(s, key, embedded){
+  let h = _vCollZ(s, key, embedded);
+  if(key!=='dec') return h;
+  h = h.replace(/aria-label="Eliminar">/g, 'aria-label="Anular registro" title="Anular registro">').replace(/data-act="del-item" data-coll="dec" data-id="([^"]+)">Confirmar<\/button>/g, 'data-act="del-item" data-coll="dec" data-id="$1">Anular</button>');
+  /* historial dentro de cada episodio */
+  (s.dec||[]).forEach(x=>{ const mark = `data-act="analyze" data-id="${x.id}"`; const i = h.indexOf(mark); if(i<0) return; const j = h.indexOf('<div class="body">', i); if(j<0) return; const k = h.indexOf('</article>', j); if(k<0) return;
+    const end = h.lastIndexOf('</div>', k); h = h.slice(0, end) + decHist(x) + h.slice(end); });
+  const A = s.decAnulados||[];
+  if(A.length) h += `<details class="glass card dechist" style="margin-top:16px"><summary>${ic('trash','sm')} Registros anulados (${A.length})</summary><ul class="rows">${A.slice().reverse().map(x=>`<li class="rowi"><div class="main"><span class="t">${esc(fmt(x.fecha))}${x.hora?' · '+esc(x.hora):''} · ${esc(etapaTxt(x.etapa))}</span><span class="d">Anulado el ${esc(fmtTs(x.anulado.ts))} por ${esc(whoName(x.anulado.por))}. Motivo: ${esc(x.anulado.motivo)}</span>${x.descripcion?`<span class="d"><i>${esc(trunc(x.descripcion,200))}</i></span>`:''}</div></li>`).join('')}</ul></details>`;
+  return h;
+};
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.dechist{margin-top:12px}.dechist summary{cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px}
+.dechist ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:8px}.dechist ul{margin:4px 0 0;padding-left:16px}
+.dechist s{color:var(--muted)}`; document.head.appendChild(st); })();
+
+/* ================= Tabulación automática de pruebas (TabulaTest) ================= */
+/* Cada prueba define áreas, subtests y puntaje máximo. La profesional escribe solo el puntaje obtenido:
+   la plataforma calcula el % de logro por subtest y por área (suma obtenidos / suma máximos) y el nivel de desempeño. */
+const TAB_NIV = [['L','Logrado'],['ML','Medianamente Logrado'],['PL','Por lograr']];
+const TAB_COL = {L:'#1e7d45', ML:'#b07800', PL:'#c62828'};
+const PRUEBA_DEF = {id:'ppi-1b', nombre:'Prueba Psicopedagógica Informal para primero básico', nivel:'1° básico', areas:[
+  {area:'Área Cognitiva', subtests:[{n:'Memoria y Atención', max:20},{n:'Series', max:12},{n:'Clasificación', max:6},{n:'Capacidades Espaciales', max:2},{n:'Organización Perceptiva', max:18}]},
+  {area:'Área Lectura y Escritura', subtests:[{n:'Comprensión Lectora', max:21},{n:'Exactitud Lectora', max:27},{n:'Ortografía visual y reglada', max:64},{n:'Grafomotricidad', max:12}]},
+  {area:'Área Matemática', subtests:[{n:'Cálculo y Numeración', max:74},{n:'Resolución de Problemas', max:8}]}]};
+const pruebas = () => (S.data.inst?.pruebas?.length ? S.data.inst.pruebas : [PRUEBA_DEF]);
+const umbrales = () => ({L:75, ML:40, ...(S.data.inst?.umbrales||{})});
+const nivelDe = (pct, U) => pct==null ? '' : pct >= U.L ? 'L' : pct >= U.ML ? 'ML' : 'PL';
+const tabPct = (o, m) => (m>0 && o!=='' && o!=null && !isNaN(o)) ? o/m*100 : null;
+const tabKey = (ai, si) => `a${ai}s${si}`;
+function tabCalc(t){ /* t = {areas:[{area, filas:[{n,max,obt}]}], U} */
+  const U = t.U || umbrales();
+  return t.areas.map(a=>{ const F = a.filas.map(f=>{ const p = tabPct(+f.obt, +f.max); return {...f, pct:p, niv:nivelDe(p, U)}; });
+    const done = F.filter(f=>f.pct!=null); const so = done.reduce((s,f)=>s + +f.obt, 0), sm = done.reduce((s,f)=>s + +f.max, 0);
+    const p = sm ? so/sm*100 : null; return {area:a.area, filas:F, pct:p, niv:nivelDe(p, U), so, sm}; });
+}
+const fmtPct = p => p==null ? '—' : Math.round(p)+'%';
+function tabTable(t, opts={}){
+  const A = tabCalc(t); const nv = k => k ? `<span style="color:${TAB_COL[k]};font-weight:700">${(TAB_NIV.find(x=>x[0]===k)||[])[1]}</span>` : '—';
+  const th = 'background:#002D82;color:#fff;padding:5px 7px;border:1px solid #c9d1e3;font-size:9.5pt', td = 'padding:5px 7px;border:1px solid #c9d1e3;font-size:9.5pt;vertical-align:middle';
+  return `<table class="tabtest" style="border-collapse:collapse;width:100%;margin:8px 0"><thead>${opts.title!==false?`<tr><th colspan="8" style="${th}">RESUMEN PERFIL DE SUBTESTS</th></tr>`:''}<tr><th style="${th}">Habilidad</th><th style="${th}">Subtest</th><th style="${th}">Puntaje Máximo</th><th style="${th}">Puntaje Obtenido</th><th style="${th}">Porcentaje de Logro</th><th style="${th}">Nivel de Desempeño</th><th style="${th}">Porcentaje de Logro</th><th style="${th}">Nivel de Desempeño</th></tr></thead><tbody>${A.map(a=>a.filas.map((f,i)=>`<tr>${i===0?`<td rowspan="${a.filas.length}" style="${td}">${esc(a.area)}</td>`:''}<td style="${td}">${esc(f.n)}</td><td style="${td};text-align:center">${esc(f.max)}</td><td style="${td};text-align:center">${f.pct==null?'—':esc(f.obt)}</td><td style="${td};text-align:center">${fmtPct(f.pct)}</td><td style="${td};text-align:center">${nv(f.niv)}</td>${i===0?`<td rowspan="${a.filas.length}" style="${td};text-align:center">${fmtPct(a.pct)}</td><td rowspan="${a.filas.length}" style="${td};text-align:center">${nv(a.niv)}</td>`:''}</tr>`).join('')).join('')}</tbody></table>`;
+}
+/* tabla guardada en la evaluación */
+function tabHTML(e, rep){
+  const T = e?.tabulacion; if(!T) return '';
+  let h = (rep?'':`<p class="small muted" style="margin:6px 0 0">${esc(T.prueba)} · Logrado desde ${T.U.L}% · Medianamente logrado desde ${T.U.ML}%</p>`) + tabTable(T);
+  const s = (S.data.students||[]).find(x=>(x.evaluaciones||[]).includes(e));
+  const prev = s && (s.evaluaciones||[]).filter(x=>x!==e && x.tabulacion?.pruebaId===T.pruebaId && x.fecha < e.fecha).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+  if(prev){ const A = tabCalc(T), B = tabCalc(prev.tabulacion);
+    const L = A.map(a=>{ const b = B.find(x=>x.area===a.area); if(!b || a.pct==null || b.pct==null) return ''; const d = Math.round(a.pct) - Math.round(b.pct); return `${esc(a.area)}: ${fmtPct(b.pct)} → ${fmtPct(a.pct)} (${d>0?'+':''}${d} pts)`; }).filter(Boolean);
+    if(L.length) h += `<p class="small" style="margin:4px 0 0"><b>Comparado con la evaluación del ${esc(fmt(prev.fecha))}:</b> ${L.join(' · ')}</p>`; }
+  return h;
+}
+
+/* ---------- formulario de evaluación ---------- */
+SCHEMA.eval.push({sec:'Resultados por subtest', note:'Elige la prueba aplicada y escribe el puntaje obtenido en cada subtest. El porcentaje de logro y el nivel de desempeño se calculan solos, por subtest y por área.', fields:[
+  {k:'pruebaId', l:'Prueba aplicada', t:'select', w:2, o:()=>[['','Sin tabulación'], ...pruebas().map(p=>[p.id, p.nombre])]},
+  {k:'tabObt', l:'Puntajes', t:'tabgrid', w:2}]});
+const _inputForAA = inputFor;
+inputFor = function(f, path, v, ctx){
+  if(f.k==='pruebaId' && S.form?.schema==='eval') return _inputForAA(f, path, v, ctx).replace('<option value="">Seleccionar…</option>','');
+  if(f.t!=='tabgrid') return _inputForAA(f, path, v, ctx);
+  const d = S.form?.draft || {}; const P = pruebas().find(p=>p.id===d.pruebaId); if(!P) return '';
+  const o = d.tabObt || {}; const U = umbrales();
+  const t = {U, areas:P.areas.map((a,ai)=>({area:a.area, filas:a.subtests.map((st,si)=>({n:st.n, max:st.max, obt:o[tabKey(ai,si)]??''}))}))};
+  const A = tabCalc(t);
+  return `<div class="field w2"><div class="tabgrid">${A.map((a,ai)=>`<div class="tg-area"><div class="tg-head"><b>${esc(a.area)}</b><span data-tg-area="${ai}">${fmtPct(a.pct)} · ${a.niv?TAB_NIV.find(x=>x[0]===a.niv)[1]:'—'}</span></div>
+    ${a.filas.map((r,si)=>`<div class="tg-row"><label for="tg-${ai}-${si}">${esc(r.n)}</label><span class="tg-max">de ${esc(r.max)}</span><input id="tg-${ai}-${si}" type="number" inputmode="numeric" min="0" max="${esc(r.max)}" data-path="tabObt.${tabKey(ai,si)}" data-max="${esc(r.max)}" value="${esc(r.obt)}"><span class="tg-res" data-tg="${ai}-${si}">${fmtPct(r.pct)}${r.niv?` · <b style="color:${TAB_COL[r.niv]}">${TAB_NIV.find(x=>x[0]===r.niv)[1]}</b>`:''}</span></div>`).join('')}</div>`).join('')}</div>
+    <p class="small muted">Rangos vigentes: Logrado desde ${U.L}%, Medianamente logrado desde ${U.ML}%, Por lograr bajo ${U.ML}%. Se ajustan en Equipo › Pruebas y tabulación.</p></div>`;
+};
+/* cálculo en vivo mientras se escribe */
+document.addEventListener('input', e=>{ const el = e.target; if(!el.dataset?.path?.startsWith('tabObt.') || S.form?.schema!=='eval') return;
+  setTimeout(()=>{ const d = S.form.draft, P = pruebas().find(p=>p.id===d.pruebaId); if(!P) return; const o = d.tabObt||{}, U = umbrales();
+    const A = tabCalc({U, areas:P.areas.map((a,ai)=>({area:a.area, filas:a.subtests.map((st,si)=>({n:st.n, max:st.max, obt:o[tabKey(ai,si)]??''}))}))});
+    A.forEach((a,ai)=>{ const h = document.querySelector(`[data-tg-area="${ai}"]`); if(h) h.textContent = `${fmtPct(a.pct)} · ${a.niv?TAB_NIV.find(x=>x[0]===a.niv)[1]:'—'}`;
+      a.filas.forEach((r,si)=>{ const c = document.querySelector(`[data-tg="${ai}-${si}"]`); if(c) c.innerHTML = `${fmtPct(r.pct)}${r.niv?` · <b style="color:${TAB_COL[r.niv]}">${TAB_NIV.find(x=>x[0]===r.niv)[1]}</b>`:''}`; }); });
+    el.classList.toggle('bad', el.value!=='' && (+el.value > +el.dataset.max || +el.value < 0)); }, 0); });
+document.addEventListener('change', e=>{ if(e.target.dataset?.path==='pruebaId' && S.form?.schema==='eval') setTimeout(()=>keepScroll(render), 0); });
+const _missingReqAA = missingReq;
+missingReq = function(schema, draft){ const m = _missingReqAA(schema, draft);
+  if(schema===SCHEMA.eval && draft.pruebaId){ const P = pruebas().find(p=>p.id===draft.pruebaId), o = draft.tabObt||{};
+    (P?.areas||[]).forEach((a,ai)=>a.subtests.forEach((st,si)=>{ const v = o[tabKey(ai,si)]; if(v!=='' && v!=null && (+v > +st.max || +v < 0)) m.push(`${st.n}: el puntaje debe estar entre 0 y ${st.max}`); })); }
+  return m; };
+/* guardar: la tabla queda fija en la evaluación (con los rangos de ese momento) */
+const _saveFormAA = saveForm;
+saveForm = function(){
+  const f = S.form;
+  if(f?.schema==='eval' && !missingReq(SCHEMA.eval, f.draft).length){ const d = f.draft, P = pruebas().find(p=>p.id===d.pruebaId);
+    if(P){ const o = d.tabObt||{};
+      d.tabulacion = {pruebaId:P.id, prueba:P.nombre, U:umbrales(), areas:P.areas.map((a,ai)=>({area:a.area, filas:a.subtests.map((st,si)=>({n:st.n, max:+st.max, obt:(o[tabKey(ai,si)]===''||o[tabKey(ai,si)]==null)?'':+o[tabKey(ai,si)]}))}))};
+      if(!d.instrumento) d.instrumento = P.nombre; }
+    else delete d.tabulacion;
+    delete d.tabObt; delete d.pruebaId; }
+  return _saveFormAA.apply(this, arguments);
+};
+/* al editar, se recuperan los puntajes */
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="edit-item"][data-coll="evaluaciones"]'); if(!el) return;
+  setTimeout(()=>{ const d = S.form?.draft; if(S.form?.schema!=='eval' || !d?.tabulacion) return; d.pruebaId = d.tabulacion.pruebaId; d.tabObt = {};
+    const P = pruebas().find(p=>p.id===d.pruebaId) ; (d.tabulacion.areas||[]).forEach((a,ai)=>a.filas.forEach((r,si)=>{ const pa = P?.areas.findIndex(x=>x.area===a.area); const ps = pa>=0 ? P.areas[pa].subtests.findIndex(x=>x.n===r.n) : -1; d.tabObt[tabKey(pa>=0?pa:ai, ps>=0?ps:si)] = r.obt; })); keepScroll(render); }, 0); });
+
+/* ---------- ficha: la tabla dentro de cada evaluación, con botón para copiar a Word ---------- */
+const _vCollAA = vColl;
+vColl = function(s, key, embedded){
+  let h = _vCollAA(s, key, embedded); if(key!=='evaluaciones') return h;
+  (s.evaluaciones||[]).forEach(x=>{ if(!x.tabulacion) return; const mark = `data-act="edit-item" data-coll="evaluaciones" data-id="${x.id}"`; const i = h.indexOf(mark); if(i<0) return;
+    const j = h.indexOf('<div class="body">', i); const k = h.indexOf('</article>', j); if(j<0 || k<0) return; const end = h.lastIndexOf('</div>', k);
+    h = h.slice(0, end) + `<div class="tabwrap">${tabHTML(x)}</div><div class="quick-actions"><button class="btn sm" data-act="tab-copy" data-sid="${s.id}" data-id="${x.id}">${ic('doc','sm')} Copiar tabla para Word</button></div>` + h.slice(end); });
+  return h;
+};
+document.addEventListener('click', async e=>{ const el = e.target.closest?.('[data-act="tab-copy"]'); if(!el) return;
+  const x = (stu(el.dataset.sid)?.evaluaciones||[]).find(y=>y.id===el.dataset.id); if(!x?.tabulacion) return;
+  const html = tabTable(x.tabulacion); const txt = tabCalc(x.tabulacion).flatMap(a=>a.filas.map(f=>[a.area, f.n, f.max, f.obt, fmtPct(f.pct), (TAB_NIV.find(n=>n[0]===f.niv)||[])[1]||'', fmtPct(a.pct), (TAB_NIV.find(n=>n[0]===a.niv)||[])[1]||''].join('\t'))).join('\n');
+  try{ await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}), 'text/plain':new Blob([txt],{type:'text/plain'})})]); toast('Tabla copiada: pégala en Word o Google Docs'); }
+  catch(err){ doCopy(txt, 'Tabla de resultados'); } });
+
+/* ---------- Equipo: pruebas y rangos ---------- */
+SCHEMA.prueba = [{sec:'Prueba', fields:[
+  {k:'nombre', l:'Nombre de la prueba', t:'text', req:1, w:2},
+  {k:'nivel', l:'Nivel o curso para el que se aplica', t:'text', ph:'Ej.: 1° básico'},
+  {k:'areas', l:'Área', t:'list', sub:[{k:'area', l:'Nombre del área', t:'text', w:2},{k:'subtxt', l:'Subtests: uno por línea, con su puntaje máximo (Ej.: Series | 12)', t:'textarea', w:2}]}]}];
+SCHEMA.umbrales = [{sec:'Rangos de nivel de desempeño', note:'Se aplican a todas las pruebas. Las evaluaciones ya guardadas mantienen los rangos con que se tabularon.', fields:[
+  {k:'L', l:'Logrado desde (%)', t:'number', req:1},{k:'ML', l:'Medianamente logrado desde (%)', t:'number', req:1}]}];
+const _saveFormAA2 = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f?.kind==='prueba'){ const d = f.draft; const bad = []; S.data.inst = S.data.inst||{};
+    const areas = (d.areas||[]).filter(a=>a && a.area).map(a=>({area:a.area.trim(), subtests:String(a.subtxt||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{ const m = l.match(/^(.*?)[|;:\t]\s*(\d+)\s*$/); if(!m){ bad.push(l); return null; } return {n:m[1].trim(), max:+m[2]}; }).filter(Boolean)}));
+    if(missingReq(SCHEMA.prueba, d).length || bad.length || !areas.some(a=>a.subtests.length)){ f.err = [...missingReq(SCHEMA.prueba, d), ...bad.map(l=>`Falta el puntaje máximo en "${l}"`), ...(!areas.some(a=>a.subtests.length)?['Agrega al menos un área con subtests']:[])]; render(); return; }
+    const L = (S.data.inst.pruebas||pruebas()).slice(); const p = {id:d.id||('pr-'+uid()), nombre:d.nombre, nivel:d.nivel||'', areas};
+    const i = L.findIndex(x=>x.id===p.id); if(i>=0) L[i] = p; else L.push(p); S.data.inst.pruebas = L;
+    logEv('', i>=0?'Editó':'Creó', 'prueba de tabulación '+p.nombre); S.form = null; persist(); render(); toast('Prueba guardada'); return; }
+  if(f?.kind==='umbrales'){ const d = f.draft; if(!(+d.L > +d.ML && +d.ML >= 0 && +d.L <= 100)){ f.err = ['"Logrado" debe ser mayor que "Medianamente logrado", entre 0 y 100']; render(); return; }
+    S.data.inst = S.data.inst||{}; S.data.inst.umbrales = {L:+d.L, ML:+d.ML}; logEv('','Editó',`rangos de desempeño (L ${d.L}%, ML ${d.ML}%)`); S.form = null; persist(); render(); toast('Rangos guardados'); return; }
+  return _saveFormAA2.apply(this, arguments); };
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act^="pr-"]'); if(!el) return; const a = el.dataset.act;
+  if(a==='pr-new') openForm({kind:'prueba', schema:'prueba', where:'modal', isNew:true, title:'Nueva prueba', draft:{areas:[{}]}});
+  if(a==='pr-edit'){ const p = pruebas().find(x=>x.id===el.dataset.id); if(p) openForm({kind:'prueba', schema:'prueba', where:'modal', title:'Editar prueba', draft:{id:p.id, nombre:p.nombre, nivel:p.nivel, areas:p.areas.map(x=>({area:x.area, subtxt:x.subtests.map(s=>`${s.n} | ${s.max}`).join('\n')}))}}); }
+  if(a==='pr-umb'){ const U = umbrales(); openForm({kind:'umbrales', schema:'umbrales', where:'modal', title:'Rangos de desempeño', draft:{L:U.L, ML:U.ML}}); } });
+const _vEquipoAA = vEquipo;
+vEquipo = function(){ const h = _vEquipoAA(); if(meRef()) return h; const U = umbrales();
+  return h + `<section class="glass card" style="margin-top:20px"><header><h2>Pruebas y tabulación</h2><div class="quick-actions"><button class="btn sm" data-act="pr-umb">${ic('edit','sm')} Rangos</button><button class="btn sm primary" data-act="pr-new">${ic('plus','sm')} Nueva prueba</button></div></header>
+    <p class="small muted" style="margin:-4px 0 10px">Logrado desde ${U.L}% · Medianamente logrado desde ${U.ML}% · Por lograr bajo ${U.ML}%.</p>
+    <ul class="rows">${pruebas().map(p=>`<li class="rowi click" data-act="pr-edit" data-id="${p.id}"><span class="icw av2">${ic('chart')}</span><div class="main"><span class="t">${esc(p.nombre)}</span><span class="d">${p.areas.length} áreas · ${p.areas.reduce((t,a)=>t+a.subtests.length,0)} subtests${p.nivel?' · '+esc(p.nivel):''}</span></div>${ic('arrow','sm')}</li>`).join('')}</ul></section>`; };
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.tabgrid{display:flex;flex-direction:column;gap:12px}
+.tg-area{border:1px solid var(--line,rgba(0,0,0,.12));border-radius:14px;padding:10px 14px}
+.tg-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.tg-row{display:grid;grid-template-columns:minmax(0,1fr) 56px 90px 220px;gap:10px;align-items:center;padding:4px 0}
+.tg-row input{width:90px}.tg-row input.bad{outline:2px solid #c62828}
+.tg-max,.tg-res{font-size:.88em;color:var(--muted)}.tg-max{text-align:right}
+@media (max-width:560px){.tg-row{grid-template-columns:minmax(0,1fr) 80px}.tg-max{display:none}.tg-res{grid-column:1/-1}}
+.tabwrap{overflow-x:auto;margin-top:8px}`; document.head.appendChild(st); })();
+
+/* ================= Sesiones programadas, formularios que no saltan y firma de PAEC cargados ================= */
+
+/* ---------- 1. Sesión futura = trabajo por realizar ---------- */
+const isPlan = d => d && (d.estado==='Programada' || (d.fecha && d.fecha > D(0)));
+const HECHO_KEYS = ['actividades','respuesta','acuerdos','psiObs','asistencia'];
+const _inputForAB = inputFor;
+inputFor = function(f, path, v, ctx){
+  const sch = S.form?.schema;
+  if(['sesion','agendaSesion'].includes(sch) && isPlan(S.form.draft)){
+    if(HECHO_KEYS.includes(f.k) || f.k.startsWith('psi_') || f===F_GPRES) return '';
+    if(f.k==='objetivo'){ const h = _inputForAB(f, path, v, ctx); return h.replace('Objetivos trabajados en la sesión', 'Objetivos a trabajar en la sesión').replace('Marca los que se trabajaron', 'Marca los que se trabajarán'); }
+  }
+  return _inputForAB(f, path, v, ctx);
+};
+const _formBodyAB = formBody;
+formBody = function(schema, draft, ctx){
+  let h = _formBodyAB(schema, draft, ctx);
+  if((schema===SCHEMA.sesion || schema===SCHEMA.agendaSesion) && isPlan(draft)){
+    h = `<div class="plan-note">${ic('calendar','sm')}<div><b>Sesión programada: queda agendada como trabajo por realizar.</b><span>Cuando la realices, ábrela con "Registrar lo realizado" para anotar lo que se hizo y la respuesta del estudiante.</span></div></div>` + h;
+    h = h.replace(/<section class="sec"><h3>Seguimiento socioemocional<\/h3>/, '<section class="sec"><h3>Atención psicológica planificada</h3>');
+  }
+  return h;
+};
+/* la fecha decide el estado al crear; cambiar fecha o estado reorganiza el formulario */
+document.addEventListener('change', e=>{ const f = S.form; if(!f || !['sesion','agendaSesion'].includes(f.schema)) return; const k = e.target.dataset?.path;
+  if(k!=='fecha' && k!=='estado') return;
+  setTimeout(()=>{ const d = f.draft;
+    if(k==='fecha' && f.isNew && d.fecha){ if(d.fecha > D(0)) d.estado = 'Programada'; else if(d.estado==='Programada' && d.fecha < D(0)) d.estado = 'Realizada'; }
+    keepScroll(render); }, 0); });
+/* al guardar una programada no quedan datos de "lo realizado" */
+const _saveFormAB = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f && ['sesion','agendaSesion'].includes(f.schema) && isPlan(f.draft)){ const d = f.draft; if(d.fecha > D(0)) d.estado = 'Programada';
+    HECHO_KEYS.forEach(k=>delete d[k]); Object.keys(d).filter(k=>k.startsWith('psi_')).forEach(k=>delete d[k]); delete d.g_asis; }
+  return _saveFormAB.apply(this, arguments); };
+const _gtSesionCopiasAB = gtSesionCopias;
+gtSesionCopias = function(g, base, pres, extra){ const ids = _gtSesionCopiasAB(g, base, pres, extra);
+  if(base.estado!=='Realizada') ids.forEach(([sid, id])=>{ const x = (stu(sid)?.sesiones||[]).find(y=>y.id===id); if(x){ delete x.asistencia; x.estado = base.estado; } });
+  return ids; };
+/* "Realizada" abre el formulario para registrar lo trabajado */
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="mark-done"]'); if(!el) return;
+  const t = stu(el.dataset.sid), x = (t?.sesiones||[]).find(y=>y.id===el.dataset.id); if(!x) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  openForm({kind:'sesiones', schema:'sesion', where:'modal', sid:t.id, draft:{...clone(x), estado:'Realizada', fecha: x.fecha > D(0) ? D(0) : x.fecha}, title:'Registrar lo realizado · '+(t.nombreSocial||t.nombre)});
+}, true);
+const _vCollAB = vColl;
+vColl = function(s, key, embedded){ const h = _vCollAB(s, key, embedded); return key==='sesiones' ? h.replace(/(data-act="mark-done"[^>]*>)(<svg[\s\S]*?<\/svg>) Realizada<\/button>/g, '$1$2 Registrar lo realizado</button>') : h; };
+
+/* ---------- 2. Los formularios en ventana no vuelven al inicio al redibujarse ---------- */
+const _renderModalAB = renderModal;
+renderModal = function(){
+  const m = document.getElementById('modal');
+  const sc = [...m.querySelectorAll('.scrim, .dialog, .dialog .body, .dialog .fields')].map((el,i)=>[i, el.scrollTop]).filter(([,t])=>t>0);
+  const a = document.activeElement; const fid = a && m.contains(a) ? (a.id || null) : null; const sel = fid && typeof a.selectionStart==='number' ? [a.selectionStart, a.selectionEnd] : null;
+  const r = _renderModalAB.apply(this, arguments);
+  if(sc.length){ const L = [...m.querySelectorAll('.scrim, .dialog, .dialog .body, .dialog .fields')]; sc.forEach(([i,t])=>{ if(L[i]) L[i].scrollTop = t; }); }
+  if(fid){ const n = document.getElementById(fid); if(n && m.contains(n)){ n.focus({preventScroll:true}); if(sel && typeof n.setSelectionRange==='function'){ try{ n.setSelectionRange(sel[0], sel[1]); }catch(err){} } } }
+  return r;
+};
+
+/* ---------- 3. PAEC ya elaborado: registrar firma y enlace al documento firmado ---------- */
+{ const sec = SCHEMA.paec.find(s=>s.sec==='Firmas y confidencialidad');
+  if(sec){ const i = sec.fields.findIndex(f=>f.k==='firmaEstablecimiento');
+    sec.fields.splice(i, 0, {k:'fechaFirma', l:'Fecha de la firma', t:'date'});
+    sec.fields.push({k:'docFirmado', l:'Enlace al PAEC firmado (Drive)', t:'text', w:2, ph:'https://drive.google.com/…'}); } }
+SCHEMA.paecFirma = [{sec:'Firma del PAEC', note:'Para los PAEC que ya fueron firmados fuera de la plataforma. Registra quién firmó y deja el enlace al documento escaneado.', fields:[
+  {k:'fechaFirma', l:'Fecha de la firma', t:'date', req:1},
+  {k:'quien', l:'Firmado por', t:'select', req:1, o:()=>['Apoderado titular','Apoderado suplente (con poder simple)']},
+  {k:'firmaEstablecimiento', l:'Firma por el establecimiento (nombre y cargo)', t:'text', w:2, ph:'Ej.: Constanza González Toro, Coordinación UAA'},
+  {k:'docFirmado', l:'Enlace al PAEC firmado (Drive)', t:'text', w:2, ph:'https://drive.google.com/…'}]}];
+const linkOk = u => /^https:\/\/[^\s]+$/i.test(String(u||'').trim());
+const paecFirmado = p => !!(p && (p.firmaApoderado || (p.firmaSuplente && p.poderSimple)));
+const _missingReqAB = missingReq;
+missingReq = function(schema, draft){ const m = _missingReqAB(schema, draft);
+  if((schema===SCHEMA.paecFirma || schema===SCHEMA.paec) && draft.docFirmado && !linkOk(draft.docFirmado)) m.push('El enlace debe comenzar con https://');
+  return m; };
+const _saveFormAB2 = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f?.kind==='paecFirma'){ const miss = missingReq(SCHEMA.paecFirma, f.draft); if(miss.length){ f.err = miss; render(); return; }
+    const s = stu(f.sid); if(!s?.paec){ S.form = null; render(); return; } const d = f.draft, tit = d.quien==='Apoderado titular';
+    s.paec = stamp({...s.paec, fechaFirma:d.fechaFirma, firmaApoderado:tit, firmaSuplente:!tit, poderSimple:!tit || !!s.paec.poderSimple, firmaEstablecimiento:d.firmaEstablecimiento||s.paec.firmaEstablecimiento||'', docFirmado:(d.docFirmado||'').trim(), fechaInformado:s.paec.fechaInformado||d.fechaFirma});
+    logEv(s.id, 'Registró', `firma del PAEC (${d.quien}, ${fmt(d.fechaFirma)})${d.docFirmado?' con documento firmado':''}`);
+    S.form = null; persist(); render(); toast('Firma del PAEC registrada'); return; }
+  return _saveFormAB2.apply(this, arguments); };
+function paecFirmaCard(s){
+  const p = s.paec; if(!p?.fechaElaboracion) return '';
+  const ok = paecFirmado(p); const doc = linkOk(p.docFirmado) ? (typeof safeUrl==='function' ? safeUrl(p.docFirmado) : p.docFirmado) : '';
+  return `<section class="glass card paecfirma ${ok?'ok':'warn'}"><div class="pf-row"><span class="icw ${ok?'av3':'av4'}">${ic(ok?'check':'alert')}</span><div class="main">
+    <b>${ok?'PAEC firmado':'PAEC sin firma registrada'}</b>
+    <span class="small muted">${ok?`Firmado${p.fechaFirma?' el '+esc(fmt(p.fechaFirma)):''} por el apoderado ${p.firmaApoderado?'titular':'suplente con poder simple'}${p.firmaEstablecimiento?' · Establecimiento: '+esc(p.firmaEstablecimiento):''}`:'Si ya fue firmado en papel, registra la firma y deja el enlace al documento escaneado.'}</span></div>
+    <div class="quick-actions">${doc?`<a class="btn sm" href="${esc(doc)}" target="_blank" rel="noopener noreferrer">${ic('doc','sm')} Ver PAEC firmado</a>`:''}<button class="btn sm ${ok?'':'primary'}" data-act="paec-firma">${ic('edit','sm')} ${ok?'Editar firma':'Registrar firma'}</button></div></div></section>`;
+}
+const _tabBodyAB = tabBody;
+tabBody = function(s){ const h = _tabBodyAB(s); if(S.tab==='paec' && !(S.form && S.form.where==='inline')) return paecFirmaCard(s) + h; return h; };
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="paec-firma"]'); if(!el) return; const s = stu(S.sid); if(!s?.paec) return; const p = s.paec;
+  openForm({kind:'paecFirma', schema:'paecFirma', where:'modal', sid:s.id, title:'Firma del PAEC', draft:{fechaFirma:p.fechaFirma||p.fechaInformado||D(0), quien: p.firmaSuplente && !p.firmaApoderado ? 'Apoderado suplente (con poder simple)' : 'Apoderado titular', firmaEstablecimiento:p.firmaEstablecimiento||'', docFirmado:p.docFirmado||''}}); });
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.plan-note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:rgba(22,70,180,.08);margin:0 0 6px}
+.plan-note div{display:flex;flex-direction:column;gap:2px}.plan-note span{font-size:.9em;color:var(--muted)}
+.paecfirma{margin-bottom:16px;padding:14px 18px}.paecfirma .pf-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.paecfirma .main{flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px}
+.paecfirma.warn{border-left:4px solid var(--warn,#c98a00)}.paecfirma.ok{border-left:4px solid var(--ok,#1e8c4e)}`; document.head.appendChild(st); })();
 
 
 /* ---------- íconos ---------- */
