@@ -5554,6 +5554,94 @@ saveGrupo = function(d, f){
   if(g) (g.estudiantes||[]).forEach(e=>{ if(e.sid && !stu(e.sid) && byId[e.sid]){ e.nombre = byId[e.sid].nombre; e.curso = byId[e.sid].curso; } });
 };
 
+/* ================= Bitácora · etapa 1: regla única, horas justas, síntesis propuesta y privacidad ================= */
+
+/* ---------- 1. Una sola regla: toda atención registrada en la bitácora queda también en la ficha ---------- */
+const _inputForAG = inputFor;
+inputFor = function(f, path, v, ctx){
+  if(f.k==='bh_ficha' && S.form?.schema==='bitItem'){ const d = S.form.draft; if(d.tipo!==BIT_AT) return '';
+    return `<div class="field w2"><p class="small muted">${ic('check','sm')} Esta atención queda también en la ficha ${typeof isGrp==='function' && isGrp(d) ? 'de cada estudiante del grupo' : 'del estudiante'}, en Intervenciones, para que cuente en su PAI y en sus informes.</p></div>`; }
+  return _inputForAG(f, path, v, ctx); };
+const _saveBitItemAG = saveBitItem;
+saveBitItem = function(d, f){ if(d.tipo===BIT_AT) d.bh_ficha = true; return _saveBitItemAG(d, f); };
+
+/* ---------- 2. Horas comparadas con lo esperado a la fecha ---------- */
+function horasEsperadas(contrH, mon){
+  if(!contrH) return null; const hoy = D(0), cur = monday(hoy);
+  let dias; if(mon < cur) dias = 5; else if(mon > cur) dias = 0;
+  else { const wd = (parse(hoy).getDay()+6)%7; dias = Math.min(wd+1, 5); }
+  return {dias, min: Math.round(contrH*60*dias/5)};
+}
+const verTodasBit = () => isCoord(S.data.usuario) || !!S.admin;
+
+/* ---------- 4. Cada profesional ve su propia bitácora; coordinación y administración ven todas ---------- */
+const _vBitacoraAG = vBitacora;
+vBitacora = function(){
+  if(!verTodasBit() && S.data.usuario) S.bprof = S.data.usuario;
+  let h = _vBitacoraAG();
+  const prof = S.bprof, mon = S.bweek; if(!prof) return h;
+  const W = weekSummary(prof, mon), b = W.b, isClosed = b?.estado==='Cerrada', mine = prof===S.data.usuario, closed = isClosed || !mine;
+  if(!verTodasBit()){ const p = S.data.equipo.find(x=>x.id===prof); h = h.replace(/<select id="bprof"[\s\S]*?<\/select>/, `<span class="selpill bitme">${ic('team','sm')} ${esc(p?.nombre||'')}</span>`); }
+  /* indicador de horas y regla de registro */
+  const E = horasEsperadas(W.contr, mon); const regH = W.total;
+  const pct = E && E.min ? Math.min(100, Math.round(regH/E.min*100)) : null;
+  const card = `<div class="glass card bitrule">
+    ${E?`<div class="progress"><span class="lbl"><span>${E.dias===5?'Horas registradas en la semana':'Horas registradas hasta hoy'}: <b>${hrs(regH)}</b> de ${hrs(E.min)} ${E.dias===5?'':'esperadas a la fecha'}</span><span class="mono">${pct==null?'—':pct+'%'}</span></span><div class="bar ${pct>=90?'ok':''}"><i style="width:${pct||0}%"></i><b style="left:${Math.max(pct||0,3)}%"></b></div><span class="small muted">Contrato: ${esc(W.contr)} h semanales en la unidad${E.dias<5&&E.dias>0?` · se comparan ${E.dias} de 5 días hábiles`:''}.</span></div>`:''}
+    <div class="rule"><span class="icw av2">${ic('info','sm')}</span><div><b>¿Qué se anota aquí?</b><span>Se registran solas las sesiones, el reforzamiento, las reuniones, las comunicaciones con familias, las evaluaciones y los documentos. Agrega aquí lo demás: coordinación, preparación de material, observaciones. Las atenciones que agregues aquí quedan también en la ficha del estudiante.</span></div></div></div>`;
+  h = h.replace(/<div class="glass card" style="margin-bottom:18px;padding:16px 22px">[\s\S]*?<\/p><\/div>\s*(?=<div class="grid2">)/, card + '\n  ');
+  if(!h.includes('class="glass card bitrule"')) h = h.replace('<div class="grid2">', card + '<div class="grid2">');
+  h = h.replace(/Total registrado de [\d.,]+ h contratadas/, E && E.dias<5 && E.dias>0 ? `Total registrado · ${hrs(E.min)} esperadas a hoy` : `Total registrado${W.contr?` de ${W.contr} h semanales`:''}`);
+  /* síntesis: se guarda sola, se puede proponer y se cierra con un solo botón */
+  if(!closed){
+    h = h.replace('<section class="glass card form"><header><h2>Síntesis de la semana</h2></header>', `<section class="glass card form"><header><h2>Síntesis de la semana</h2><button class="btn sm" data-act="bit-sint">${ic('edit','sm')} Proponer síntesis</button></header><p class="small muted" style="margin:-6px 0 4px">Se guarda sola mientras escribes. La propuesta usa lo registrado en la semana y solo completa los cuadros vacíos.</p>`);
+    h = h.replace(/<button class="btn" data-act="bit-save">Guardar síntesis<\/button>/, '<span class="small muted" id="bt-st"></span>');
+    h = h.replace(/(data-act="bit-close">)([^<]*<svg[\s\S]*?<\/svg>) Cerrar semana/, '$1$2 Cerrar y firmar semana');
+  }
+  return h;
+};
+/* guardado automático de la síntesis */
+let _btT = null;
+document.addEventListener('input', e=>{ if(!['bt-logros','bt-dif','bt-pend'].includes(e.target.id)) return; if(S.bprof!==S.data.usuario) return;
+  const st = document.getElementById('bt-st'); if(st) st.textContent = 'Guardando…';
+  clearTimeout(_btT); _btT = setTimeout(()=>{ const b = bitEnsure(S.bprof, S.bweek); if(b.estado==='Cerrada') return;
+    b.logros = document.getElementById('bt-logros')?.value||''; b.dificultades = document.getElementById('bt-dif')?.value||''; b.pendientes = document.getElementById('bt-pend')?.value||''; stamp(b); persist();
+    const s2 = document.getElementById('bt-st'); if(s2) s2.textContent = 'Guardado ✓'; }, 800); });
+
+/* ---------- 3. Síntesis propuesta a partir de lo registrado ---------- */
+function bitPropuesta(prof, mon){
+  const W = weekSummary(prof, mon), fin = addDays(mon, 6), inR = f => f && f>=mon && f<=fin;
+  const ses = W.auto.filter(a=>a.directa), grupal = ses.filter(a=>a.tipo==='Atención grupal' || a.tipo==='Reforzamiento');
+  const man = W.man; const temas = {}; man.forEach(i=>(i.bh_tem||[]).forEach(t=>temas[t]=(temas[t]||0)+1));
+  S.data.students.forEach(s=>(s.sesiones||[]).forEach(x=>{ if(x.profesional===prof && x.estado==='Realizada' && inR(x.fecha)) sesObjTxt(x, s).forEach(t=>{ const k = t.replace(/^PAI · /,'').split(':')[0]; temas[k]=(temas[k]||0)+1; }); }));
+  const top = Object.entries(temas).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>x[0].toLowerCase());
+  const informes = (S.data.log||[]).filter(l=>l.por===prof && inR(l.ts.slice(0,10)) && /Cerró informe|Emitió informe/.test(l.accion)).length;
+  const coord = man.filter(i=>i.tipo==='Coordinación con docentes').length;
+  const nSes = ses.length + man.filter(i=>i.tipo===BIT_AT).length; const nGr = grupal.length + man.filter(i=>i.tipo===BIT_AT && i.gid).length;
+  const logros = [
+    nSes ? `${nSes} ${nSes===1?'sesión realizada':'sesiones realizadas'}${nGr?` (${nGr} ${nGr===1?'grupal':'grupales'})`:''} con ${W.est} ${W.est===1?'estudiante':'estudiantes'} (${hrs(W.dir)} de atención directa).` : '',
+    top.length ? `Temas más trabajados: ${top.join(', ')}.` : '',
+    W.fam ? `${W.fam} ${W.fam===1?'contacto':'contactos'} con familias.` : '',
+    coord ? `${coord} ${coord===1?'instancia':'instancias'} de coordinación con docentes.` : '',
+    informes ? `${informes} ${informes===1?'informe cerrado o emitido':'informes cerrados o emitidos'}.` : ''].filter(Boolean).join('\n');
+  const aus = []; S.data.students.forEach(s=>(s.sesiones||[]).forEach(x=>{ if(x.profesional===prof && inR(x.fecha) && (x.estado==='Ausente' || x.estado==='Suspendida')) aus.push(x.estado); }));
+  const dif = aus.length ? `${aus.length} ${aus.length===1?'sesión no se realizó':'sesiones no se realizaron'} por ausencia o suspensión.` : '';
+  const nmon = addDays(mon, 7), nfin = addDays(mon, 13); let prox = 0;
+  S.data.students.forEach(s=>(s.sesiones||[]).forEach(x=>{ if(x.profesional===prof && x.estado==='Programada' && x.fecha>=nmon && x.fecha<=nfin) prox++; }));
+  const sinResp = S.data.students.flatMap(s=>(s.sesiones||[]).filter(x=>x.profesional===prof && x.estado==='Realizada' && inR(x.fecha) && !x.respuesta && !x.gses)).length;
+  const pend = [prox ? `${prox} ${prox===1?'sesión programada':'sesiones programadas'} para la próxima semana.` : '', sinResp ? `Completar la respuesta del estudiante en ${sinResp} ${sinResp===1?'sesión':'sesiones'} de esta semana.` : ''].filter(Boolean).join('\n');
+  return {logros, dif, pend};
+}
+document.addEventListener('click', e=>{ if(!e.target.closest?.('[data-act="bit-sint"]')) return; const P = bitPropuesta(S.bprof, S.bweek); let n = 0;
+  [['bt-logros','logros'],['bt-dif','dif'],['bt-pend','pend']].forEach(([id,k])=>{ const t = document.getElementById(id); if(t && !t.value.trim() && P[k]){ t.value = P[k]; t.dispatchEvent(new Event('input', {bubbles:true})); n++; } });
+  toast(n ? 'Síntesis propuesta: revísala y ajústala antes de cerrar' : 'No hay cuadros vacíos o aún no hay registros esta semana', !n); });
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.bitrule{margin-bottom:18px;padding:16px 22px;display:flex;flex-direction:column;gap:14px}
+.bitrule .progress .lbl b{font-weight:800}.bitrule .bar.ok i{background:var(--ok,#1e8c4e)}
+.bitrule .rule{display:flex;gap:10px;align-items:flex-start;padding-top:12px;border-top:1px solid var(--line,rgba(0,0,0,.1))}
+.bitrule .rule div{display:flex;flex-direction:column;gap:2px}.bitrule .rule span:not(.icw){font-size:.9em;color:var(--muted)}
+.selpill.bitme{display:inline-flex;align-items:center;gap:6px;cursor:default}`; document.head.appendChild(st); })();
+
 
 /* ---------- íconos ---------- */
 const ICONS = {
