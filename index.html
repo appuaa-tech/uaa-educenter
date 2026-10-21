@@ -6066,6 +6066,169 @@ const _vEstudiantesAJ = vEstudiantes;
 vEstudiantes = function(){ const h = _vEstudiantesAJ.apply(this, arguments); if(!isCoord(S.data.usuario) && !S.admin) return h; const n = sinAnam().length; if(!n) return h;
   return h.replace('<button class="btn primary" data-act="new-student">', `<button class="btn" data-act="bn-open">${ic('chat','sm')} Anamnesis ya realizadas (${n})</button><button class="btn primary" data-act="new-student">`); };
 
+/* ================= Configuración de la plataforma (administración y coordinación) ================= */
+/* Las listas de opciones se pueden ampliar y depurar sin tocar el código. Las opciones que usan las reglas
+   de la plataforma (plazos, obligaciones, cálculos) no se pueden ocultar. Se guarda en inst.config. */
+{ const f = SCHEMA.eval[0].fields.find(x=>x.k==='tipo'); if(f && typeof f.o==='function'){ const L = f.o(); f.o = () => EVAL_TIPOS; window.__evalTipos0 = L; } }
+const EVAL_TIPOS = (window.__evalTipos0 || []).slice();
+{ const sec = SCHEMA.comunicacion?.[0] || (Object.values(SCHEMA).find(s=>Array.isArray(s) && s[0]?.fields?.some(x=>x.k==='tipo' && x.l==='Medio'))||[])[0];
+  const f = sec?.fields.find(x=>x.k==='tipo' && x.l==='Medio'); if(f && typeof f.o==='function'){ window.__medios0 = f.o(); f.o = () => COM_MEDIOS; } }
+const COM_MEDIOS = (window.__medios0 || []).slice();
+
+const CFG_LISTAS = [
+  {k:'evalTipos', arr:EVAL_TIPOS, t:'Tipos de evaluación', d:'Al registrar una evaluación.', grp:'Evaluación'},
+  {k:'adapt', arr:ADAPT, t:'Adecuaciones para evaluaciones', d:'En el PAEC, el PACI y las evaluaciones adaptadas.', grp:'Evaluación'},
+  {k:'modalidades', arr:MODALIDADES, t:'Modalidades de sesión', d:'Al registrar una sesión.', grp:'Intervención'},
+  {k:'areas', arr:AREAS, t:'Áreas de los objetivos del PAI', d:'Al definir objetivos del PAI.', grp:'Intervención'},
+  {k:'objOrigen', arr:OBJ_ORIGEN, t:'Origen de otros objetivos', d:'Cuando una sesión trabaja un objetivo fuera del PAI.', grp:'Intervención'},
+  {k:'psiTipos', arr:PSI_TIPOS, t:'Tipos de atención psicológica', d:'En el seguimiento socioemocional.', grp:'Intervención'},
+  {k:'medTipos', arr:MED_TIPOS, t:'Medidas excepcionales', d:'En la pestaña Medidas excepcionales.', grp:'Intervención'},
+  {k:'motivos', arr:MOTIVOS, t:'Motivos de comunicación con la familia', d:'Al registrar una comunicación.', grp:'Familia'},
+  {k:'medios', arr:COM_MEDIOS, t:'Medios de comunicación con la familia', d:'Entrevista, llamado, correo…', grp:'Familia'},
+  {k:'docs', arr:DOCS_ENT, t:'Documentos entregados a la familia', d:'Al registrar qué se entregó.', grp:'Familia'},
+  {k:'bitTipos', arr:BIT_TIPOS, t:'Tipos de actividad de la bitácora', d:'Al agregar una actividad a la bitácora.', grp:'Equipo'},
+  {k:'reuTipos', arr:REU_TIPOS, t:'Tipos de reunión de equipo', d:'Al programar una reunión.', grp:'Equipo'},
+  {k:'cargos', arr:CARGOS, t:'Cargos del equipo', d:'En la ficha de cada integrante.', grp:'Equipo'},
+  {k:'condiciones', arr:CONDICIONES, t:'Condiciones y diagnósticos', d:'En los datos del estudiante.', grp:'Estudiantes'},
+  {k:'cursos', arr:CURSOS, t:'Cursos', d:'En los datos del estudiante y los grupos.', grp:'Estudiantes'}].filter(L=>Array.isArray(L.arr));
+/* opciones que usan las reglas de la plataforma: no se ocultan */
+const CFG_FIJAS = {
+  evalTipos:['Psicopedagógica','Psicológica','Fonoaudiológica','Terapia ocupacional','Informe externo recibido','Reevaluación'],
+  adapt:['Tiempo adicional','Pausas durante la evaluación','Sala o espacio alternativo','Ubicación preferente','Protectores auditivos','Reducción de estímulos','Instrucciones leídas en voz alta','Instrucciones fraccionadas paso a paso','Formato visual o con pictogramas','Destacado de palabras clave','Respuesta oral','Objetivos priorizados según PACI','Anticipación de la evaluación','Mediación de profesional UAA'],
+  modalidades:['Individual fuera del aula','Grupal fuera del aula','Apoyo en aula común','Codocencia','Reunión con docentes','Entrevista con familia'],
+  areas:['Lectura','Escritura','Lenguaje y comunicación','Regulación emocional','Habilidades sociales'],
+  objOrigen:['Solicitud de la familia'], psiTipos:['Entrevista inicial con el estudiante','Sesión individual','Seguimiento','Taller grupal (juegos y tareas en grupo)'],
+  medTipos:['Acompañamiento en aula por el apoderado'],
+  motivos:['Autorización de tratamiento de datos','Autorización para evaluación','Devolución de resultados de evaluación','Entrega de PAI','Entrega de PACI','Entrega y firma de PAEC','Revisión o modificación de PAEC','Informe de avance del período','Aviso de episodio de desregulación','Entrevista posterior a episodio DEC','Circular informativa Ley TEA','Citación a entrevista','Otro'],
+  medios:['Entrevista presencial','Llamado telefónico','Reunión virtual','Correo electrónico','Agenda virtual (Notas Net)','Entrega en mano'],
+  docs:['Formulario de consentimiento','Autorización de evaluación','Informe de evaluación','PAI','PACI','PAEC','Protocolo DEC del Reglamento Interno','Circular Ley TEA','Informe de avance','Informe para la familia'],
+  reuTipos:['Reunión semanal de la unidad','Estudio de caso','Reunión con docentes','Otra'],
+  cargos:['Coordinación UAA','Educador/a diferencial','Psicopedagogo/a','Psicólogo/a','Asistente de la educación','Equipo de gestión'],
+  condiciones:['Autismo (TEA)','Discapacidad intelectual']};
+const CFG_DEF = Object.fromEntries(CFG_LISTAS.map(L=>[L.k, L.arr.slice()]));
+CFG_FIJAS.bitTipos = CFG_DEF.bitTipos || []; CFG_FIJAS.cursos = CFG_DEF.cursos || [];
+const cfgFija = (k, v) => (CFG_FIJAS[k]||[]).includes(v);
+const cfg = () => S.data?.inst?.config || {};
+const CFG_TXT_DEF = {
+  famIntro:'Estimada familia: este informe resume el acompañamiento que la Unidad de Apoyo al Aprendizaje realizó con {nombre} durante el período, sus avances y lo que pueden hacer en casa para apoyarle.',
+  famContacto:'Si tienen dudas o información nueva de especialistas tratantes, pueden solicitar una entrevista con {referente} por medio de la libreta o el correo institucional.'};
+const cfgTxt = k => (cfg().textos?.[k] || '').trim() || CFG_TXT_DEF[k];
+
+/* aplicar: las listas se actualizan en su lugar, así todos los formularios ven el cambio */
+let _cfgSig = null;
+function cfgApply(){
+  const C = cfg(), sig = JSON.stringify(C.listas||{}); if(sig===_cfgSig) return; _cfgSig = sig;
+  CFG_LISTAS.forEach(L=>{ const c = C.listas?.[L.k] || {}; const ocultas = (c.ocultas||[]).filter(v=>!cfgFija(L.k, v));
+    const val = [...CFG_DEF[L.k].filter(v=>!ocultas.includes(v)), ...(c.agregadas||[]).filter(v=>v && !CFG_DEF[L.k].includes(v))];
+    L.arr.splice(0, L.arr.length, ...val); });
+}
+const _renderAL = render;
+render = function(){ try{ cfgApply(); }catch(e){} return _renderAL.apply(this, arguments); };
+/* un registro antiguo con una opción ya retirada la sigue mostrando */
+const _inputForAL = inputFor;
+inputFor = function(f, path, v, ctx){
+  if(f.t==='select' && v!=null && v!=='' && !optsOf(f, ctx).some(o=>String(o[0])===String(v))) return _inputForAL({...f, o:()=>[...optsOf(f, ctx), [v, v+' (opción retirada)']]}, path, v, ctx);
+  return _inputForAL(f, path, v, ctx); };
+
+/* textos del informe para la familia */
+const _buildReportAL = buildReport;
+buildReport = function(kind, s, o, meta){
+  let h = _buildReportAL.apply(this, arguments); if(kind!=='familia' || !s) return h;
+  const nom = esc(firstName(s.nombreSocial||s.nombre)), ref = esc(profName(s.referente));
+  const sub = t => esc(t).replace(/\{nombre\}/g, nom).replace(/\{referente\}/g, ref);
+  const d1 = sub(CFG_TXT_DEF.famIntro), d2 = sub(CFG_TXT_DEF.famContacto);
+  if(cfg().textos?.famIntro) h = h.replace(d1, sub(cfgTxt('famIntro')));
+  if(cfg().textos?.famContacto) h = h.replace(d2, sub(cfgTxt('famContacto')));
+  return h; };
+
+/* ---------- vista ---------- */
+const puedeCfg = () => !!S.admin || isCoord(S.data.usuario);
+function vConfig(){
+  if(!puedeCfg()){ S.rsub = null; return vRespaldo(); }
+  const C = cfg(); const grupos = [...new Set(CFG_LISTAS.map(L=>L.grp))];
+  const card = L => { const c = C.listas?.[L.k]||{}; const n = L.arr.length, add = (c.agregadas||[]).length, hid = (c.ocultas||[]).length;
+    return `<li class="rowi click" data-act="cfg-lista" data-k="${L.k}"><span class="icw av2">${ic('layers')}</span><div class="main"><span class="t">${esc(L.t)}</span><span class="d">${esc(L.d)} · ${n} opciones${add?` · ${add} agregadas`:''}${hid?` · ${hid} ocultas`:''}</span></div>${ic('arrow','sm')}</li>`; };
+  const tx = C.textos||{};
+  return `<div class="stack">
+  <header class="pagehead"><div><p class="eyebrow">Administración</p><h1>Configuración de la <b>plataforma</b></h1><p class="muted" style="max-width:70ch">Ajusta las opciones que usa todo el equipo sin esperar una actualización. Los cambios se ven de inmediato para todos y quedan en el registro de cambios.</p></div></header>
+  <section class="glass card"><header><h2>Accesos rápidos</h2></header><div class="cfg-quick">
+    <button class="btn" data-act="nav" data-view="equipo">${ic('team','sm')} Equipo y accesos</button>
+    <button class="btn" data-act="cfg-pruebas">${ic('chart','sm')} Pruebas y tabulación</button>
+    <button class="btn" data-act="pr-umb">${ic('target','sm')} Rangos de desempeño</button>
+    <button class="btn" data-act="coord-acad">${ic('users','sm')} Coordinaciones académicas</button>
+    <button class="btn" data-act="mat-edit">${ic('doc','sm')} Información de la matrícula</button>
+    <button class="btn" data-act="cfg-colegio">${ic('archive','sm')} Datos del colegio y respaldo</button></div></section>
+  ${grupos.map(g=>`<section class="glass card"><header><h2>Listas · ${esc(g)}</h2></header><ul class="rows">${CFG_LISTAS.filter(L=>L.grp===g).map(card).join('')}</ul></section>`).join('')}
+  <section class="glass card"><header><h2>Textos del informe para la familia</h2><button class="btn sm" data-act="cfg-textos">${ic('edit','sm')} Editar</button></header>
+    <p class="small muted" style="margin:-4px 0 8px">Son el punto de partida de cada informe; el profesional puede ajustarlos al editarlo.</p>
+    <dl class="cfg-txt"><dt>Saludo inicial${tx.famIntro?'':' (predeterminado)'}</dt><dd>${esc(cfgTxt('famIntro'))}</dd><dt>Nota de contacto${tx.famContacto?'':' (predeterminada)'}</dt><dd>${esc(cfgTxt('famContacto'))}</dd></dl></section>
+  <section class="glass card"><header><h2>Lo que requiere una actualización</h2></header><p class="small muted" style="margin:0">Nuevas pantallas, cálculos, reglas legales, permisos de la base de datos o cambios de diseño. Para eso se pide el cambio y se publica una nueva versión.</p></section></div>`;
+}
+const _vRespaldoAL = vRespaldo;
+vRespaldo = function(){ if(S.rsub==='config') return vConfig(); return _vRespaldoAL.apply(this, arguments); };
+
+/* navegación: botón en el menú (escritorio) y en "Más" (celular) */
+const _renderChromeAL = renderChrome;
+renderChrome = function(){ const r = _renderChromeAL.apply(this, arguments); const dk = document.getElementById('dock');
+  if(dk && puedeCfg() && !isDir(S.data.usuario) && !dk.querySelector('[data-act="cfg-open"]')){
+    const on = S.view==='respaldo' && S.rsub==='config';
+    if(on) dk.querySelector('[data-view="respaldo"]')?.removeAttribute('aria-current');
+    const more = dk.querySelector('[data-act="more"]');
+    const b = document.createElement('button'); b.className = 'desk-only'; b.dataset.act = 'cfg-open'; b.title = b.ariaLabel = 'Configuración'; if(on) b.setAttribute('aria-current','page');
+    b.innerHTML = `${ic('edit')}<span class="lbl">Configuración</span>`; dk.insertBefore(b, more || null); }
+  return r; };
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="nav"]'); if(el) S.rsub = null; }, true);
+document.addEventListener('click', e=>{ if(e.target.closest?.('[data-act="more"]') && puedeCfg()) setTimeout(()=>{ if(S.modal?.title!=='Más opciones' || S.modal.html.includes('cfg-open')) return;
+  S.modal.html = S.modal.html.replace('</ul>', `<li class="rowi click" data-act="cfg-open"><span class="icw">${ic('edit')}</span><div class="main"><span class="t">Configuración</span><span class="d">Listas de opciones, textos y accesos rápidos</span></div></li></ul>`); renderModal(); }, 0); });
+
+/* ---------- formularios ---------- */
+SCHEMA.cfgTextos = [{sec:'Textos del informe para la familia', note:'Usa {nombre} para el nombre del estudiante y {referente} para el profesional referente. Deja un cuadro vacío para volver al texto predeterminado.', fields:[
+  {k:'famIntro', l:'Saludo inicial', t:'textarea', w:2, ph:CFG_TXT_DEF.famIntro},
+  {k:'famContacto', l:'Nota de contacto al final', t:'textarea', w:2, ph:CFG_TXT_DEF.famContacto}]}];
+function cfgListaModal(k){
+  const L = CFG_LISTAS.find(x=>x.k===k); if(!L) return; const c = cfg().listas?.[k] || {}; const D = S.cfgDraft = {k, ocultas:new Set(c.ocultas||[]), agregadas:(c.agregadas||[]).join('\n')};
+  S.modal = {title:L.t, html:`<p class="muted" style="margin-top:0">${esc(L.d)} Desmarca una opción para dejar de ofrecerla; los registros que ya la usan la conservan.</p>
+    <div class="cfg-list">${CFG_DEF[k].map((v,i)=>{ const fija = cfgFija(k, v); return `<label class="bool ${fija?'fija':''}"><input type="checkbox" data-cfgv="${i}" ${D.ocultas.has(v)&&!fija?'':'checked'} ${fija?'disabled':''}><span>${esc(v)}${fija?` <span class="chip" title="La usan las reglas de la plataforma">${ic('shield','sm')} fija</span>`:''}</span></label>`; }).join('')}</div>
+    <div class="form" style="margin-top:14px"><div class="field w2"><label for="cfg-add">Opciones nuevas (una por línea)</label><textarea id="cfg-add" rows="5">${esc(D.agregadas)}</textarea><span class="small muted">Aparecen al final de la lista, para todo el equipo.</span></div></div>
+    <div class="quick-actions" style="margin-top:14px"><button class="btn" data-act="cfg-reset">${ic('back','sm')} Volver a la lista original</button><span style="flex:1"></span><button class="btn" data-act="close-modal">Cancelar</button><button class="btn primary" data-act="cfg-save">${ic('check','sm')} Guardar</button></div>`};
+  renderModal();
+}
+document.addEventListener('change', e=>{ const D = S.cfgDraft; if(!D || !S.modal) return; const t = e.target;
+  if(t.dataset?.cfgv!=null){ const v = CFG_DEF[D.k][+t.dataset.cfgv]; if(t.checked) D.ocultas.delete(v); else D.ocultas.add(v); }
+  if(t.id==='cfg-add') D.agregadas = t.value; });
+document.addEventListener('input', e=>{ if(e.target.id==='cfg-add' && S.cfgDraft) S.cfgDraft.agregadas = e.target.value; });
+function cfgGuardar(k, val, detalle){
+  S.data.inst = S.data.inst || {}; const C = S.data.inst.config = {...(S.data.inst.config||{})}; C.listas = {...(C.listas||{})};
+  if(val) C.listas[k] = val; else delete C.listas[k]; C._mod = nowIso(); C._modPor = S.data.usuario||'';
+  logEv('', 'Configuró', detalle); persist(); cfgApply(); }
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act^="cfg-"]'); if(!el) return; const a = el.dataset.act;
+  if(a==='cfg-open'){ S.view = 'respaldo'; S.rsub = 'config'; S.modal = null; render(); window.scrollTo(0,0); return; }
+  if(a==='cfg-lista'){ cfgListaModal(el.dataset.k); return; }
+  if(a==='cfg-pruebas'){ S.rsub = null; S.view = 'equipo'; render(); setTimeout(()=>{ [...document.querySelectorAll('section h2')].find(h=>h.textContent==='Pruebas y tabulación')?.scrollIntoView({block:'start'}); }, 50); return; }
+  if(a==='cfg-colegio'){ S.rsub = null; S.view = 'respaldo'; render(); window.scrollTo(0,0); return; }
+  if(a==='cfg-textos'){ const t = cfg().textos||{}; openForm({kind:'cfgTextos', schema:'cfgTextos', where:'modal', title:'Textos del informe para la familia', draft:{famIntro:t.famIntro||'', famContacto:t.famContacto||''}}); return; }
+  const D = S.cfgDraft; if(!D) return; const L = CFG_LISTAS.find(x=>x.k===D.k);
+  if(a==='cfg-reset'){ cfgGuardar(D.k, null, `lista "${L.t}" vuelve a la original`); S.modal = null; S.cfgDraft = null; render(); toast('Lista restaurada'); return; }
+  if(a==='cfg-save'){
+    const add = [...new Set(String(D.agregadas||'').split('\n').map(x=>x.trim().slice(0,120)).filter(Boolean))].filter(v=>!CFG_DEF[D.k].includes(v));
+    const ocultas = [...D.ocultas].filter(v=>!cfgFija(D.k, v));
+    if(CFG_DEF[D.k].length - ocultas.length + add.length < 1){ toast('La lista debe tener al menos una opción', true); return; }
+    cfgGuardar(D.k, (add.length||ocultas.length) ? {agregadas:add, ocultas} : null, `lista "${L.t}": ${add.length} agregadas, ${ocultas.length} ocultas`);
+    S.modal = null; S.cfgDraft = null; render(); toast('Lista guardada'); }
+});
+const _saveFormAL = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f?.kind==='cfgTextos'){ const d = f.draft; S.data.inst = S.data.inst||{}; const C = S.data.inst.config = {...(S.data.inst.config||{})};
+    C.textos = {famIntro:String(d.famIntro||'').trim().slice(0,1500), famContacto:String(d.famContacto||'').trim().slice(0,1500)};
+    logEv('', 'Configuró', 'textos del informe para la familia'); S.form = null; persist(); render(); toast('Textos guardados'); return; }
+  return _saveFormAL.apply(this, arguments); };
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.cfg-quick{display:flex;flex-wrap:wrap;gap:8px}
+.cfg-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px 14px;max-height:46vh;overflow:auto;padding:2px}
+.cfg-list label.fija{opacity:.78}.cfg-list .chip{font-size:.72em;vertical-align:middle}
+.cfg-txt{margin:0;display:grid;gap:4px}.cfg-txt dt{font-weight:700;font-size:.9em;margin-top:6px}.cfg-txt dd{margin:0;color:var(--muted)}`; document.head.appendChild(st); })();
+
 
 /* ---------- íconos ---------- */
 const ICONS = {

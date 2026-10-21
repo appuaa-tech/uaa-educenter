@@ -161,3 +161,7 @@ En la ficha › Anamnesis, el botón **Ya está hecha: registrar con enlace a Dr
 ## Evaluaciones: prueba de kínder y análisis cualitativo libre
 
 La prueba de kínder queda disponible en "Resultados por subtest", con sus habilidades agrupadas por área. En Equipo › Pruebas y tabulación, una línea que empieza con # agrupa los subtests siguientes bajo esa habilidad. El análisis cualitativo tiene un texto libre que se puede usar con o sin prueba. Se quitó la fecha de devolución a la familia del formulario (la devolución se registra como comunicación con la familia). No requiere SQL.
+
+## Configuración de la plataforma
+
+Administración y coordinación ven "Configuración" en el menú (en el celular, en Más). Ahí se amplían o depuran las listas de opciones (tipos de evaluación, modalidades, motivos y medios de comunicación, documentos, tipos de bitácora, reuniones, cargos, condiciones, cursos y otras), se editan los textos base del informe para la familia y hay accesos rápidos a Equipo, Pruebas, Rangos, Coordinaciones académicas, Matrícula y Datos del colegio. Las opciones que usan las reglas de la plataforma aparecen como "fija" y no se pueden ocultar. Se guarda en la base (inst.config) y queda en el registro de cambios. No requiere SQL.
