@@ -149,3 +149,15 @@ Para asistentes dedicadas a reforzamiento (SQL 09). Ven sus grupos, registran as
 ## Acceso a fichas por profesional (SQL 10)
 
 Coordinación puede limitar las fichas que ve cada profesional en Equipo › integrante › "Acceso a fichas de estudiantes". La base de datos solo entrega esas fichas y su auditoría. Quien tiene lista no crea estudiantes nuevos: los crea coordinación y luego los marca en su lista.
+
+## Informes editables por el profesional
+
+En la ficha › Informes, el Informe para la familia, el Informe técnico de avance y el Informe para profesionales externos traen el botón **Editar el informe**. La plantilla queda como punto de partida y cada sección se puede reescribir, renombrar, mover, quitar o agregar desde los registros (síntesis y sugerencias del informe psicopedagógico, tabla de resultados, objetivos del PAI, lo observado en sesiones, acuerdos con la familia). El borrador se guarda solo. Encabezado, folio, nota de confidencialidad, firmas y acuse de recibo no se editan. Al emitir, la plataforma guarda una copia exacta de lo entregado ("Copias de lo entregado"), que se puede volver a imprimir sin generar un folio nuevo. No requiere SQL.
+
+## Anamnesis ya realizadas (documento en Drive)
+
+En la ficha › Anamnesis, el botón **Ya está hecha: registrar con enlace a Drive** la deja como realizada con su fecha, entrevistador/a, informante, enlace al documento y autorización del apoderado. Coordinación puede cargarlas en lote desde Estudiantes › **Anamnesis ya realizadas (N)**. No requiere SQL.
+
+## Evaluaciones: prueba de kínder y análisis cualitativo libre
+
+La prueba de kínder queda disponible en "Resultados por subtest", con sus habilidades agrupadas por área. En Equipo › Pruebas y tabulación, una línea que empieza con # agrupa los subtests siguientes bajo esa habilidad. El análisis cualitativo tiene un texto libre que se puede usar con o sin prueba. Se quitó la fecha de devolución a la familia del formulario (la devolución se registra como comunicación con la familia). No requiere SQL.

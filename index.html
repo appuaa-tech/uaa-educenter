@@ -659,7 +659,6 @@ const SCHEMA = {
       {k:'instrumento', l:'Instrumentos aplicados', t:'text', ph:'Ej. EVALÚA, CLP, observación en aula'},
       {k:'resultados', l:'Síntesis de resultados', t:'textarea', w:2},
       {k:'sugerencias', l:'Sugerencias para aula y familia', t:'textarea', w:2},
-      {k:'devolucion', l:'Fecha de devolución a la familia', t:'date'},
       {k:'informado', l:'Resultados informados a la familia', t:'bool'}]}
   ],
   pai: [
@@ -4918,7 +4917,13 @@ const PRUEBA_DEF = {id:'ppi-1b', nombre:'Prueba Psicopedagógica Informal para p
   {area:'Área Cognitiva', subtests:[{n:'Memoria y Atención', max:20},{n:'Series', max:12},{n:'Clasificación', max:6},{n:'Capacidades Espaciales', max:2},{n:'Organización Perceptiva', max:18}]},
   {area:'Área Lectura y Escritura', subtests:[{n:'Comprensión Lectora', max:21},{n:'Exactitud Lectora', max:27},{n:'Ortografía visual y reglada', max:64},{n:'Grafomotricidad', max:12}]},
   {area:'Área Matemática', subtests:[{n:'Cálculo y Numeración', max:74},{n:'Resolución de Problemas', max:8}]}]};
-const pruebas = () => (S.data.inst?.pruebas?.length ? S.data.inst.pruebas : [PRUEBA_DEF]);
+/* Kínder: cada subtest indica su habilidad (h); el porcentaje y el nivel se calculan por área (grupo de habilidades) */
+const PRUEBA_K = {id:'ppi-k', nombre:'Prueba Psicopedagógica Informal para kínder', nivel:'Kínder', areas:[
+  {area:'Psicomotricidad y percepción', subtests:[{h:'Psicomotricidad fina', n:'Traza líneas', max:8},{h:'Psicomotricidad fina', n:'Recorta figuras con tijeras', max:4},{h:'Percepción visual y auditiva', n:'Reconoce diferencias', max:7},{h:'Percepción visual y auditiva', n:'Reproduce patrón de líneas', max:4},{h:'Percepción visual y auditiva', n:'Reconoce rimas entre palabras', max:3}]},
+  {area:'Lenguaje, lectura y escritura', subtests:[{h:'Lenguaje', n:'Razonamiento verbal', max:9},{h:'Lenguaje', n:'Analogías y opuestos verbales', max:9},{h:'Lenguaje', n:'Descripción de imágenes', max:4},{h:'Lectura y escritura', n:'Lectura', max:6},{h:'Lectura y escritura', n:'Escritura', max:6}]},
+  {area:'Pensamiento matemático', subtests:[{h:'Pensamiento matemático', n:'Pensamiento numérico y variacional', max:23},{h:'Pensamiento matemático', n:'Pensamiento espacial y métrico', max:9},{h:'Pensamiento matemático', n:'Pensamiento métrico y variacional', max:6}]}]};
+const PRUEBAS_BASE = [PRUEBA_K, PRUEBA_DEF];
+const pruebas = () => { const L = S.data.inst?.pruebas || []; return [...L, ...PRUEBAS_BASE.filter(b=>!L.some(x=>x.id===b.id))]; };
 const umbrales = () => ({L:75, ML:40, ...(S.data.inst?.umbrales||{})});
 const nivelDe = (pct, U) => pct==null ? '' : pct >= U.L ? 'L' : pct >= U.ML ? 'ML' : 'PL';
 const tabPct = (o, m) => (m>0 && o!=='' && o!=null && !isNaN(o)) ? o/m*100 : null;
@@ -4933,7 +4938,7 @@ const fmtPct = p => p==null ? '—' : Math.round(p)+'%';
 function tabTable(t, opts={}){
   const A = tabCalc(t); const nv = k => k ? `<span style="color:${TAB_COL[k]};font-weight:700">${(TAB_NIV.find(x=>x[0]===k)||[])[1]}</span>` : '—';
   const th = 'background:#002D82;color:#fff;padding:5px 7px;border:1px solid #c9d1e3;font-size:9.5pt', td = 'padding:5px 7px;border:1px solid #c9d1e3;font-size:9.5pt;vertical-align:middle';
-  return `<table class="tabtest" style="border-collapse:collapse;width:100%;margin:8px 0"><thead>${opts.title!==false?`<tr><th colspan="8" style="${th}">RESUMEN PERFIL DE SUBTESTS</th></tr>`:''}<tr><th style="${th}">Habilidad</th><th style="${th}">Subtest</th><th style="${th}">Puntaje Máximo</th><th style="${th}">Puntaje Obtenido</th><th style="${th}">Porcentaje de Logro</th><th style="${th}">Nivel de Desempeño</th><th style="${th}">Porcentaje de Logro</th><th style="${th}">Nivel de Desempeño</th></tr></thead><tbody>${A.map(a=>a.filas.map((f,i)=>`<tr>${i===0?`<td rowspan="${a.filas.length}" style="${td}">${esc(a.area)}</td>`:''}<td style="${td}">${esc(f.n)}</td><td style="${td};text-align:center">${esc(f.max)}</td><td style="${td};text-align:center">${f.pct==null?'—':esc(f.obt)}</td><td style="${td};text-align:center">${fmtPct(f.pct)}</td><td style="${td};text-align:center">${nv(f.niv)}</td>${i===0?`<td rowspan="${a.filas.length}" style="${td};text-align:center">${fmtPct(a.pct)}</td><td rowspan="${a.filas.length}" style="${td};text-align:center">${nv(a.niv)}</td>`:''}</tr>`).join('')).join('')}</tbody></table>`;
+  return `<table class="tabtest" style="border-collapse:collapse;width:100%;margin:8px 0"><thead>${opts.title!==false?`<tr><th colspan="8" style="${th}">RESUMEN PERFIL DE SUBTESTS</th></tr>`:''}<tr><th style="${th}">Habilidad</th><th style="${th}">Subtest</th><th style="${th}">Puntaje Máximo</th><th style="${th}">Puntaje Obtenido</th><th style="${th}">Porcentaje de Logro</th><th style="${th}">Nivel de Desempeño</th><th style="${th}">Porcentaje de Logro</th><th style="${th}">Nivel de Desempeño</th></tr></thead><tbody>${A.map(a=>a.filas.map((f,i)=>`<tr>${(f.h ? (i===0 || a.filas[i-1].h!==f.h) : i===0)?`<td rowspan="${f.h ? (()=>{ let k = i; while(k<a.filas.length && a.filas[k].h===f.h) k++; return k-i; })() : a.filas.length}" style="${td}">${esc(f.h||a.area)}</td>`:''}<td style="${td}">${esc(f.n)}</td><td style="${td};text-align:center">${esc(f.max)}</td><td style="${td};text-align:center">${f.pct==null?'—':esc(f.obt)}</td><td style="${td};text-align:center">${fmtPct(f.pct)}</td><td style="${td};text-align:center">${nv(f.niv)}</td>${i===0?`<td rowspan="${a.filas.length}" style="${td};text-align:center">${fmtPct(a.pct)}</td><td rowspan="${a.filas.length}" style="${td};text-align:center">${nv(a.niv)}</td>`:''}</tr>`).join('')).join('')}</tbody></table>`;
 }
 /* tabla guardada en la evaluación */
 function tabHTML(e, rep){
@@ -4957,10 +4962,10 @@ inputFor = function(f, path, v, ctx){
   if(f.t!=='tabgrid') return _inputForAA(f, path, v, ctx);
   const d = S.form?.draft || {}; const P = pruebas().find(p=>p.id===d.pruebaId); if(!P) return '';
   const o = d.tabObt || {}; const U = umbrales();
-  const t = {U, areas:P.areas.map((a,ai)=>({area:a.area, filas:a.subtests.map((st,si)=>({n:st.n, max:st.max, obt:o[tabKey(ai,si)]??''}))}))};
+  const t = {U, areas:P.areas.map((a,ai)=>({area:a.area, filas:a.subtests.map((st,si)=>({h:st.h||'', n:st.n, max:st.max, obt:o[tabKey(ai,si)]??''}))}))};
   const A = tabCalc(t);
   return `<div class="field w2"><div class="tabgrid">${A.map((a,ai)=>`<div class="tg-area"><div class="tg-head"><b>${esc(a.area)}</b><span data-tg-area="${ai}">${fmtPct(a.pct)} · ${a.niv?TAB_NIV.find(x=>x[0]===a.niv)[1]:'—'}</span></div>
-    ${a.filas.map((r,si)=>`<div class="tg-row"><label for="tg-${ai}-${si}">${esc(r.n)}</label><span class="tg-max">de ${esc(r.max)}</span><input id="tg-${ai}-${si}" type="number" inputmode="numeric" min="0" max="${esc(r.max)}" data-path="tabObt.${tabKey(ai,si)}" data-max="${esc(r.max)}" value="${esc(r.obt)}"><span class="tg-res" data-tg="${ai}-${si}">${fmtPct(r.pct)}${r.niv?` · <b style="color:${TAB_COL[r.niv]}">${TAB_NIV.find(x=>x[0]===r.niv)[1]}</b>`:''}</span></div>`).join('')}</div>`).join('')}</div>
+    ${a.filas.map((r,si)=>`${r.h && (si===0 || a.filas[si-1].h!==r.h) && r.h!==a.area ? `<div class="tg-hab">${esc(r.h)}</div>` : ''}<div class="tg-row"><label for="tg-${ai}-${si}">${esc(r.n)}</label><span class="tg-max">de ${esc(r.max)}</span><input id="tg-${ai}-${si}" type="number" inputmode="numeric" min="0" max="${esc(r.max)}" data-path="tabObt.${tabKey(ai,si)}" data-max="${esc(r.max)}" value="${esc(r.obt)}"><span class="tg-res" data-tg="${ai}-${si}">${fmtPct(r.pct)}${r.niv?` · <b style="color:${TAB_COL[r.niv]}">${TAB_NIV.find(x=>x[0]===r.niv)[1]}</b>`:''}</span></div>`).join('')}</div>`).join('')}</div>
     <p class="small muted">Rangos vigentes: Logrado desde ${U.L}%, Medianamente logrado desde ${U.ML}%, Por lograr bajo ${U.ML}%. Se ajustan en Equipo › Pruebas y tabulación.</p></div>`;
 };
 /* cálculo en vivo mientras se escribe */
@@ -4982,7 +4987,7 @@ saveForm = function(){
   const f = S.form;
   if(f?.schema==='eval' && !missingReq(SCHEMA.eval, f.draft).length){ const d = f.draft, P = pruebas().find(p=>p.id===d.pruebaId);
     if(P){ const o = d.tabObt||{};
-      d.tabulacion = {pruebaId:P.id, prueba:P.nombre, U:umbrales(), areas:P.areas.map((a,ai)=>({area:a.area, filas:a.subtests.map((st,si)=>({n:st.n, max:+st.max, obt:(o[tabKey(ai,si)]===''||o[tabKey(ai,si)]==null)?'':+o[tabKey(ai,si)]}))}))};
+      d.tabulacion = {pruebaId:P.id, prueba:P.nombre, U:umbrales(), areas:P.areas.map((a,ai)=>({area:a.area, filas:a.subtests.map((st,si)=>({...(st.h?{h:st.h}:{}), n:st.n, max:+st.max, obt:(o[tabKey(ai,si)]===''||o[tabKey(ai,si)]==null)?'':+o[tabKey(ai,si)]}))}))};
       if(!d.instrumento) d.instrumento = P.nombre; }
     else delete d.tabulacion;
     delete d.tabObt; delete d.pruebaId; }
@@ -5004,7 +5009,7 @@ vColl = function(s, key, embedded){
 };
 document.addEventListener('click', async e=>{ const el = e.target.closest?.('[data-act="tab-copy"]'); if(!el) return;
   const x = (stu(el.dataset.sid)?.evaluaciones||[]).find(y=>y.id===el.dataset.id); if(!x?.tabulacion) return;
-  const html = tabTable(x.tabulacion); const txt = tabCalc(x.tabulacion).flatMap(a=>a.filas.map(f=>[a.area, f.n, f.max, f.obt, fmtPct(f.pct), (TAB_NIV.find(n=>n[0]===f.niv)||[])[1]||'', fmtPct(a.pct), (TAB_NIV.find(n=>n[0]===a.niv)||[])[1]||''].join('\t'))).join('\n');
+  const html = tabTable(x.tabulacion); const txt = tabCalc(x.tabulacion).flatMap(a=>a.filas.map(f=>[f.h||a.area, f.n, f.max, f.obt, fmtPct(f.pct), (TAB_NIV.find(n=>n[0]===f.niv)||[])[1]||'', fmtPct(a.pct), (TAB_NIV.find(n=>n[0]===a.niv)||[])[1]||''].join('\t'))).join('\n');
   try{ await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}), 'text/plain':new Blob([txt],{type:'text/plain'})})]); toast('Tabla copiada: pégala en Word o Google Docs'); }
   catch(err){ doCopy(txt, 'Tabla de resultados'); } });
 
@@ -5012,13 +5017,13 @@ document.addEventListener('click', async e=>{ const el = e.target.closest?.('[da
 SCHEMA.prueba = [{sec:'Prueba', fields:[
   {k:'nombre', l:'Nombre de la prueba', t:'text', req:1, w:2},
   {k:'nivel', l:'Nivel o curso para el que se aplica', t:'text', ph:'Ej.: 1° básico'},
-  {k:'areas', l:'Área', t:'list', sub:[{k:'area', l:'Nombre del área', t:'text', w:2},{k:'subtxt', l:'Subtests: uno por línea, con su puntaje máximo (Ej.: Series | 12)', t:'textarea', w:2}]}]}];
+  {k:'areas', l:'Área', t:'list', sub:[{k:'area', l:'Nombre del área', t:'text', w:2},{k:'subtxt', l:'Subtests: uno por línea, con su puntaje máximo (Ej.: Series | 12). Para agruparlos por habilidad, escribe antes una línea con # y su nombre (Ej.: # Lenguaje)', t:'textarea', w:2}]}]}];
 SCHEMA.umbrales = [{sec:'Rangos de nivel de desempeño', note:'Se aplican a todas las pruebas. Las evaluaciones ya guardadas mantienen los rangos con que se tabularon.', fields:[
   {k:'L', l:'Logrado desde (%)', t:'number', req:1},{k:'ML', l:'Medianamente logrado desde (%)', t:'number', req:1}]}];
 const _saveFormAA2 = saveForm;
 saveForm = function(){ const f = S.form;
   if(f?.kind==='prueba'){ const d = f.draft; const bad = []; S.data.inst = S.data.inst||{};
-    const areas = (d.areas||[]).filter(a=>a && a.area).map(a=>({area:a.area.trim(), subtests:String(a.subtxt||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{ const m = l.match(/^(.*?)[|;:\t]\s*(\d+)\s*$/); if(!m){ bad.push(l); return null; } return {n:m[1].trim(), max:+m[2]}; }).filter(Boolean)}));
+    const areas = (d.areas||[]).filter(a=>a && a.area).map(a=>({area:a.area.trim(), subtests:(()=>{ let h = ''; return String(a.subtxt||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{ if(l.startsWith('#')){ h = l.replace(/^#+\s*/,''); return null; } const m = l.match(/^(.*?)[|;:\t]\s*(\d+)\s*$/); if(!m){ bad.push(l); return null; } return {...(h?{h}:{}), n:m[1].trim(), max:+m[2]}; }).filter(Boolean); })()}));
     if(missingReq(SCHEMA.prueba, d).length || bad.length || !areas.some(a=>a.subtests.length)){ f.err = [...missingReq(SCHEMA.prueba, d), ...bad.map(l=>`Falta el puntaje máximo en "${l}"`), ...(!areas.some(a=>a.subtests.length)?['Agrega al menos un área con subtests']:[])]; render(); return; }
     const L = (S.data.inst.pruebas||pruebas()).slice(); const p = {id:d.id||('pr-'+uid()), nombre:d.nombre, nivel:d.nivel||'', areas};
     const i = L.findIndex(x=>x.id===p.id); if(i>=0) L[i] = p; else L.push(p); S.data.inst.pruebas = L;
@@ -5028,7 +5033,7 @@ saveForm = function(){ const f = S.form;
   return _saveFormAA2.apply(this, arguments); };
 document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act^="pr-"]'); if(!el) return; const a = el.dataset.act;
   if(a==='pr-new') openForm({kind:'prueba', schema:'prueba', where:'modal', isNew:true, title:'Nueva prueba', draft:{areas:[{}]}});
-  if(a==='pr-edit'){ const p = pruebas().find(x=>x.id===el.dataset.id); if(p) openForm({kind:'prueba', schema:'prueba', where:'modal', title:'Editar prueba', draft:{id:p.id, nombre:p.nombre, nivel:p.nivel, areas:p.areas.map(x=>({area:x.area, subtxt:x.subtests.map(s=>`${s.n} | ${s.max}`).join('\n')}))}}); }
+  if(a==='pr-edit'){ const p = pruebas().find(x=>x.id===el.dataset.id); if(p) openForm({kind:'prueba', schema:'prueba', where:'modal', title:'Editar prueba', draft:{id:p.id, nombre:p.nombre, nivel:p.nivel, areas:p.areas.map(x=>({area:x.area, subtxt:x.subtests.map((s,i)=>`${s.h && s.h!==x.subtests[i-1]?.h ? '# '+s.h+'\n' : ''}${s.n} | ${s.max}`).join('\n')}))}}); }
   if(a==='pr-umb'){ const U = umbrales(); openForm({kind:'umbrales', schema:'umbrales', where:'modal', title:'Rangos de desempeño', draft:{L:U.L, ML:U.ML}}); } });
 const _vEquipoAA = vEquipo;
 vEquipo = function(){ const h = _vEquipoAA(); if(meRef()) return h; const U = umbrales();
@@ -5041,7 +5046,7 @@ vEquipo = function(){ const h = _vEquipoAA(); if(meRef()) return h; const U = um
 .tg-area{border:1px solid var(--line,rgba(0,0,0,.12));border-radius:14px;padding:10px 14px}
 .tg-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap}
 .tg-row{display:grid;grid-template-columns:minmax(0,1fr) 56px 90px 220px;gap:10px;align-items:center;padding:4px 0}
-.tg-row input{width:90px}.tg-row input.bad{outline:2px solid #c62828}
+.tg-hab{font-size:.82em;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:8px 0 2px}.tg-row input{width:90px}.tg-row input.bad{outline:2px solid #c62828}
 .tg-max,.tg-res{font-size:.88em;color:var(--muted)}.tg-max{text-align:right}
 @media (max-width:560px){.tg-row{grid-template-columns:minmax(0,1fr) 80px}.tg-max{display:none}.tg-res{grid-column:1/-1}}
 .tabwrap{overflow-x:auto;margin-top:8px}`; document.head.appendChild(st); })();
@@ -5275,7 +5280,7 @@ const firmaDe = pid => { const p = S.data.equipo.find(x=>x.id===pid) || {}; retu
     {k:'instrOtros', l:'Otros instrumentos o procedimientos aplicados', t:'text', w:2, ph:'Ej.: Observación en aula, revisión de cuadernos'},
     {k:'motivo', l:'3. Motivo de la evaluación', t:'textarea', w:2},
     {k:'conducta', l:'4. Descripción de la conducta observada', t:'textarea', w:2, ph:'Disposición, atención, necesidad de pausas o apoyos durante la evaluación.'}]});
-  SCHEMA.eval.push({sec:'5. Análisis cualitativo', when:isPsico, note:'Un texto por área de la prueba. Puedes partir de la redacción que propone la plataforma a partir de la tabla y ajustarla.', fields:[{k:'cual', l:'Análisis por área', t:'cualgrid', w:2}]});
+  SCHEMA.eval.push({sec:'5. Análisis cualitativo', when:isPsico, note:'Escríbelo libremente o, si elegiste una prueba, también por área. Puedes partir de la redacción que propone la plataforma a partir de la tabla y ajustarla.', fields:[{k:'cual', l:'Análisis por área', t:'cualgrid', w:2},{k:'cualLibre', l:'Análisis cualitativo (texto libre)', t:'textarea', w:2, ph:'Observaciones del proceso, estrategias que usó, errores frecuentes, relación entre las áreas…'}]});
   SCHEMA.eval.push({sec:'Síntesis y sugerencias', when:isPsico, fields:[
     {k:'sintesis', l:'6. Síntesis diagnóstica', t:'textarea', w:2},
     {k:'sugFam', l:'7. Sugerencias a la familia (una por línea)', t:'textarea', w:2},
@@ -5300,7 +5305,7 @@ inputFor = function(f, path, v, ctx){
     if(isPsico(d) && (f.k==='resultados' || f.k==='sugerencias')) return '';
     if(f.k==='motivo' && isPsico(d) && empty(d.motivo)) d.motivo = MOTIVO_DEF, v = MOTIVO_DEF;
     if(f.t==='cualgrid'){ const A = areasDe(d); const c = d.cual || (d.cual = {});
-      if(!A.length) return `<div class="field w2"><p class="small muted">Elige la prueba aplicada en "Resultados por subtest" para escribir el análisis de cada área.</p></div>`;
+      if(!A.length) return `<div class="field w2"><p class="small muted">Si eliges la prueba aplicada en "Resultados por subtest", aparece un cuadro por área. Si no, escribe el análisis en el texto libre.</p></div>`;
       return `<div class="field w2 cualgrid">${A.map((a,i)=>`<div class="cg-area"><label for="cg-${i}">${ROMAN[i]||i+1}.- ${esc(a)}</label><textarea id="cg-${i}" data-path="cual.a${i}" rows="5">${esc(c['a'+i]||'')}</textarea></div>`).join('')}
         <div><button type="button" class="btn sm" data-act="cual-sug">${ic('edit','sm')} Proponer redacción desde la tabla</button> <span class="small muted">Solo completa las áreas vacías.</span></div></div>`; }
   }
@@ -5334,7 +5339,7 @@ function buildPsicoped(s, o, meta){
   h += `<h2>3. Motivo de la evaluación</h2>${parr(x.motivo)}<h2>4. Descripción de la conducta observada</h2>${parr(x.conducta)}`;
   h += `<h2>5. Análisis de tareas</h2><h3>Análisis cuantitativo</h3>${x.tabulacion ? tabTable(x.tabulacion) : '<p class="muted">Sin tabulación registrada.</p>'}`;
   const A = (x.tabulacion?.areas||[]).map(a=>a.area);
-  h += `<h3>Análisis cualitativo</h3>${A.map((a,i)=>`<h4>${ROMAN[i]||i+1}.- ${esc(a.toUpperCase())}</h4>${parr(x.cual?.['a'+i])}`).join('') || parr(x.resultados)}`;
+  h += `<h3>Análisis cualitativo</h3>${(A.map((a,i)=>empty(x.cual?.['a'+i]) ? '' : `<h4>${ROMAN[i]||i+1}.- ${esc(a.toUpperCase())}</h4>${parr(x.cual['a'+i])}`).join('') + (empty(x.cualLibre) ? '' : parr(x.cualLibre))) || parr(x.resultados)}`;
   h += `<h2>6. Síntesis diagnóstica</h2>${parr(x.sintesis || x.resultados)}<h2>7. Sugerencias a la familia</h2>${vin(x.sugFam)}<h2>8. Sugerencias al establecimiento</h2>${vin(x.sugEst)}`;
   h += `<div class="psi-firma"><div class="ln"></div><b>${esc((F.nombre||'').toUpperCase())}</b><span>${esc((F.cargo||'').toUpperCase())}</span>${F.run?`<span>RUN: ${esc(F.run)}</span>`:''}${F.registro?`<span>REGISTRO SECREDUC N°: ${esc(F.registro)}</span>`:''}</div>`;
   if(!borr) h += `<p class="small" style="margin-top:14px">Informe cerrado el ${esc(fmtTs(x.informe.cerradoEn))} por ${esc(whoName(x.informe.cerradoPor))}.</p>`;
@@ -5348,7 +5353,7 @@ function faltaInforme(x){ const m = [];
   if(empty(x.motivo)) m.push('Motivo de la evaluación'); if(empty(x.conducta)) m.push('Descripción de la conducta observada');
   if(!x.tabulacion) m.push('Tabla de resultados (prueba aplicada y puntajes)');
   else { if(x.tabulacion.areas.some(a=>a.filas.some(f=>f.obt===''||f.obt==null))) m.push('Puntajes de todos los subtests');
-    x.tabulacion.areas.forEach((a,i)=>{ if(empty(x.cual?.['a'+i])) m.push('Análisis cualitativo: '+a.area); }); }
+    if(empty(x.cualLibre)) x.tabulacion.areas.forEach((a,i)=>{ if(empty(x.cual?.['a'+i])) m.push('Análisis cualitativo: '+a.area); }); }
   if(empty(x.sintesis)) m.push('Síntesis diagnóstica'); if(!lines(x.sugFam).length && !lines(x.sugEst).length) m.push('Sugerencias a la familia o al establecimiento');
   const F = x.firma || firmaDe(x.profesional); if(!F.nombre) m.push('Profesional que firma');
   return m; }
@@ -5482,7 +5487,7 @@ document.addEventListener('change', async e=>{ if(e.target.id!=='docx-in') retur
 .cualgrid{display:flex;flex-direction:column;gap:12px}.cg-area{display:flex;flex-direction:column;gap:6px}.cg-area label{font-weight:700}`; document.head.appendChild(st); })();
 
 /* la tarjeta de la ficha muestra lo esencial; el informe completo está en "Ver informe" */
-const PSI_OCULTOS = ['cual','motivo','conducta','sintesis','sugFam','sugEst','instrOtros','sugerencias','firma','origen'];
+const PSI_OCULTOS = ['cual','cualLibre','motivo','conducta','sintesis','sugFam','sugEst','instrOtros','sugerencias','firma','origen'];
 const _viewFieldsAD = viewFields;
 viewFields = function(fields, x, ctx){ if(x && isPsico(x) && (x.informe || x.cual || x.conducta)) fields = fields.filter(f=>!PSI_OCULTOS.includes(f.k)); return _viewFieldsAD(fields, x, ctx); };
 
@@ -5641,6 +5646,425 @@ document.addEventListener('click', e=>{ if(!e.target.closest?.('[data-act="bit-s
 .bitrule .rule{display:flex;gap:10px;align-items:flex-start;padding-top:12px;border-top:1px solid var(--line,rgba(0,0,0,.1))}
 .bitrule .rule div{display:flex;flex-direction:column;gap:2px}.bitrule .rule span:not(.icw){font-size:.9em;color:var(--muted)}
 .selpill.bitme{display:inline-flex;align-items:center;gap:6px;cursor:default}`; document.head.appendChild(st); })();
+
+/* ================= Bitácora · etapa 3: visado de coordinación, estado del equipo y resumen mensual ================= */
+const bitEstado = (pid, mon) => { const b = bitRec(pid, mon); if(b?.estado==='Cerrada') return b.visado ? 'Visada' : 'Cerrada'; if(b && (b.items?.length || b.logros || b.dificultades || b.pendientes)) return 'Abierta'; if(mon <= monday(D(0)) && weekSummary(pid, mon).auto.length) return 'Abierta'; return 'Sin actividad'; };
+const BIT_PILL = {Visada:'ok', Cerrada:'info', Abierta:'warn', 'Sin actividad':'none'};
+const equipoBit = () => (S.data.equipo||[]).filter(p=>p.id);
+
+/* ---------- visado ---------- */
+const _vBitacoraAH = vBitacora;
+vBitacora = function(){
+  let h = _vBitacoraAH(); const prof = S.bprof, mon = S.bweek; if(!prof) return h;
+  const b = bitRec(prof, mon), mine = prof===S.data.usuario;
+  let vis = '';
+  if(b?.estado==='Cerrada'){
+    if(b.visado) vis = `<div class="bitvis ok">${ic('check','sm')}<div><b>Visada por ${esc(whoName(b.visado.por))} el ${esc(fmtTs(b.visado.ts))}</b>${b.visado.comentario?`<span>“${esc(b.visado.comentario)}”</span>`:''}</div>${verTodasBit() && !mine?`<button class="btn sm" data-act="bit-visar">${ic('edit','sm')} Editar comentario</button>`:''}</div>`;
+    else if(verTodasBit() && !mine) vis = `<div class="bitvis">${ic('clock','sm')}<div><b>Semana cerrada, pendiente de visado</b><span>Revisa las actividades y la síntesis, y deja tu visto bueno o un comentario.</span></div><button class="btn sm primary" data-act="bit-visar">${ic('check','sm')} Visar</button></div>`;
+    else if(mine) vis = `<div class="bitvis">${ic('clock','sm')}<div><b>Cerrada · pendiente de visado de coordinación</b></div></div>`;
+  }
+  if(vis) h = h.replace('<section class="glass card form"><header><h2>Síntesis de la semana</h2>', `<section class="glass card form">${vis}<header><h2>Síntesis de la semana</h2>`);
+  /* estado del equipo para coordinación */
+  if(verTodasBit()){
+    const weeks = [3,2,1,0].map(i=>addDays(monday(D(0)), -7*i));
+    const fila = p => { const W = weekSummary(p.id, monday(D(0))); const E = horasEsperadas(W.contr, monday(D(0)));
+      return `<tr><td><button class="linkbtn" data-act="bit-ver" data-p="${p.id}">${esc(p.nombre)}</button><span class="small muted">${esc(p.cargo||'')}</span></td>${weeks.map(w=>{ const e = bitEstado(p.id, w); return `<td><button class="pill ${BIT_PILL[e]}" data-act="bit-ver" data-p="${p.id}" data-w="${w}" title="Semana del ${esc(weekLbl(w))}">${esc(e)}</button></td>`; }).join('')}<td class="num">${E?`${hrs(W.total)} <span class="small muted">de ${hrs(E.min)}</span>`:hrs(W.total)}</td></tr>`; };
+    const pend = equipoBit().flatMap(p=>weeks.slice(0,3).filter(w=>bitEstado(p.id,w)==='Cerrada').map(w=>({p, w})));
+    const atr = equipoBit().filter(p=>weeks.slice(1,3).every(w=>bitEstado(p.id,w)==='Abierta'));
+    const card = `<section class="glass card bitteam"><header><h2>Bitácoras del equipo</h2><button class="btn sm primary" data-act="bit-mes">${ic('print','sm')} Resumen mensual</button></header>
+      ${pend.length||atr.length?`<div class="bt-avisos">${pend.length?`<span class="chip">${ic('clock','sm')} ${pend.length} ${pend.length===1?'semana cerrada espera':'semanas cerradas esperan'} tu visado</span>`:''}${atr.length?`<span class="chip">${atr.length===1?esc(firstName(atr[0].nombre))+' lleva':atr.map(p=>esc(firstName(p.nombre))).join(', ')+' llevan'} dos semanas sin cerrar</span>`:''}</div>`:''}
+      <div class="tablewrap"><table class="bt-tbl"><thead><tr><th>Integrante</th>${weeks.map(w=>`<th>${esc(fmtShort(w))}</th>`).join('')}<th>Esta semana</th></tr></thead><tbody>${equipoBit().map(fila).join('')}</tbody></table></div>
+      <p class="small muted">Toca un estado para abrir esa bitácora. Las horas de esta semana se comparan con lo esperado a la fecha.</p></section>`;
+    h = h.replace('<div class="bithead glass card">', card + '<div class="bithead glass card">');
+  }
+  return h;
+};
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="bit-visar"],[data-act="bit-visar-ok"],[data-act="bit-visar-no"],[data-act="bit-ver"],[data-act="bit-mes"]'); if(!el) return; const a = el.dataset.act;
+  if(a==='bit-ver'){ S.bprof = el.dataset.p; if(el.dataset.w) S.bweek = el.dataset.w; keepScroll(render); return; }
+  if(a==='bit-mes'){ const Y = TODAY.getFullYear(), m = TODAY.getMonth(); openReport('bitmes', null, 'equipo'); const ini = new Date(Y, m, 1); S.rep.desde = isoOf(ini); S.rep.hasta = D(0); render(); return; }
+  if(a==='bit-visar-no'){ S.modal = null; render(); return; }
+  const b = bitRec(S.bprof, S.bweek); if(!b) return;
+  if(a==='bit-visar'){ S.modal = {title:'Visar bitácora', html:`<p><b>${esc(profName(S.bprof))}</b> · semana del ${esc(weekLbl(S.bweek))}</p><div class="form"><div class="field w2"><label for="bv-com">Comentario (opcional)</label><textarea id="bv-com" placeholder="Ej.: Muy buen registro de la coordinación con docentes. Recuerda completar la respuesta en las sesiones del martes.">${esc(b.visado?.comentario||'')}</textarea></div></div><div class="quick-actions" style="margin-top:12px"><button class="btn" data-act="bit-visar-no">Cancelar</button><button class="btn primary" data-act="bit-visar-ok">${ic('check','sm')} Visar</button></div>`}; render(); return; }
+  if(a==='bit-visar-ok'){ b.visado = {ts:nowIso(), por:S.data.usuario||'', comentario:(document.getElementById('bv-com')?.value||'').trim()}; stamp(b);
+    logEv('','Visó bitácora',`${profName(S.bprof)} · semana del ${weekLbl(S.bweek)}`); S.modal = null; persist(); render(); toast('Bitácora visada'); }
+});
+/* al reabrir una bitácora visada, el visado se pierde */
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="bit-reopen"]'); if(!el || S.arm!=='bopen') return; const b = bitRec(S.bprof, S.bweek); if(b?.visado){ b.visadoAnterior = [...(b.visadoAnterior||[]), b.visado]; delete b.visado; } }, true);
+/* la profesional ve el comentario de coordinación en su Inicio */
+const _bitNoticeAH = bitNotice;
+bitNotice = function(){ const u = S.data.usuario; let h = _bitNoticeAH();
+  const w = addDays(monday(D(0)), -7), b = u && bitRec(u, w);
+  if(b?.visado?.comentario && diffDays(b.visado.ts.slice(0,10)) >= -7) h += `<div class="notice glass"><span class="icw av3">${ic('check')}</span><div class="main"><b>Coordinación visó tu bitácora de la semana del ${esc(weekLbl(w))}</b><span class="small muted">“${esc(b.visado.comentario)}”</span></div></div>`;
+  return h; };
+
+/* ---------- resumen mensual para la dirección ---------- */
+RKINDS.bitmes = {t:'Resumen de bitácoras del equipo', d:'', ic:'doc', periodo:1, norecs:1};
+function buildBitMes(o, meta){
+  const desde = o.desde, hasta = o.hasta; const mons = []; for(let m = monday(desde); m <= hasta; m = addDays(m, 7)) mons.push(m);
+  const P = equipoBit().map(p=>{ let tot = 0, dir = 0, fam = 0, ses = 0; const est = new Set(); const tipos = {};
+    mons.forEach(m=>{ const W = weekSummary(p.id, m); const inR = f => f>=desde && f<=hasta;
+      W.auto.filter(a=>inR(a.fecha)).forEach(a=>{ if(a.min && (a.directa || a.cuenta)){ tipos[a.tipo] = (tipos[a.tipo]||0) + a.min; tot += a.min; if(a.directa) dir += a.min; } if(a.directa) ses++; if(a.tipo==='Comunicación con familia') fam++; (a.sids || (a.sid?[a.sid]:[])).forEach(s=>est.add(s)); });
+      W.man.filter(i=>inR(i.fecha)).forEach(i=>{ const mi = +i.minutos||0; tipos[i.tipo] = (tipos[i.tipo]||0) + mi; tot += mi; if(i.tipo===BIT_AT){ dir += mi; ses++; } if(i.tipo===BIT_FAM) fam++; (i.gid ? (i.g_pres||[]) : (i.sid?[i.sid]:[])).forEach(s=>est.add(s)); }); });
+    const cerr = mons.filter(m=>['Cerrada','Visada'].includes(bitEstado(p.id, m))).length, vis = mons.filter(m=>bitEstado(p.id, m)==='Visada').length;
+    return {p, tot, dir, fam, ses, est:est.size, tipos, cerr, vis, contr: p.horas ? Math.round(p.horas*60*mons.length) : null}; });
+  const T = P.reduce((a,x)=>({tot:a.tot+x.tot, dir:a.dir+x.dir, fam:a.fam+x.fam, ses:a.ses+x.ses}), {tot:0, dir:0, fam:0, ses:0});
+  const allT = {}; P.forEach(x=>Object.entries(x.tipos).forEach(([k,v])=>allT[k]=(allT[k]||0)+v));
+  let h = rHead('Resumen de bitácoras del equipo', `Unidad de Apoyo al Aprendizaje<br>Período: ${fmt(desde)} al ${fmt(hasta)} · ${mons.length} ${mons.length===1?'semana':'semanas'}`, meta);
+  h += `<div class="tiles"><div class="tile"><b>${hrs(T.tot)}</b><span>registradas por el equipo</span></div><div class="tile"><b>${hrs(T.dir)}</b><span>de atención directa (${T.tot?Math.round(T.dir/T.tot*100):0}%)</span></div><div class="tile"><b>${T.ses}</b><span>sesiones realizadas · ${T.fam} contactos con familias</span></div></div>`;
+  h += `<h2>Por integrante</h2><table><thead><tr><th>Integrante</th><th>Horas registradas</th><th>Atención directa</th><th>Sesiones</th><th>Estudiantes</th><th>Familias</th><th>Bitácoras cerradas</th></tr></thead><tbody>${P.map(x=>`<tr><td>${esc(x.p.nombre)}<br><span class="muted small">${esc(x.p.cargo||'')}</span></td><td>${hrs(x.tot)}${x.contr?`<br><span class="muted small">contrato: ${hrs(x.contr)}</span>`:''}</td><td>${hrs(x.dir)}</td><td>${x.ses}</td><td>${x.est}</td><td>${x.fam}</td><td>${x.cerr} de ${mons.length}${x.vis?` · ${x.vis} visadas`:''}</td></tr>`).join('')}</tbody></table>`;
+  const tl = Object.entries(allT).sort((a,b)=>b[1]-a[1]);
+  h += `<h2>Tiempo por tipo de actividad</h2>${tl.length?`<table><thead><tr><th>Actividad</th><th>Horas</th><th>% del total</th></tr></thead><tbody>${tl.map(([k,v])=>`<tr><td>${esc(k)}</td><td>${hrs(v)}</td><td>${T.tot?Math.round(v/T.tot*100):0}%</td></tr>`).join('')}</tbody></table>`:'<p class="muted">Sin actividades con tiempo registrado en el período.</p>'}`;
+  h += `<p class="small muted">Las comunicaciones, evaluaciones y documentos se registran sin tiempo, salvo que la profesional los agregue como actividad. Las horas reflejan lo registrado en la plataforma, no la jornada completa.</p>`;
+  h += signs([['Coordinación UAA',''],['Dirección','']]);
+  return `<div class="rpt">${h}${rFoot(meta)}</div>`;
+}
+const _buildReportAH = buildReport;
+buildReport = function(kind, s, o, meta){ if(kind==='bitmes') return buildBitMes(o, meta); return _buildReportAH.apply(this, arguments); };
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.bitteam{margin-bottom:18px}.bt-tbl{width:100%;border-collapse:collapse}.bt-tbl th,.bt-tbl td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--line,rgba(0,0,0,.08));vertical-align:middle}
+.bt-tbl td:first-child{display:flex;flex-direction:column;gap:2px}.bt-tbl .num{white-space:nowrap}.bt-tbl .pill{cursor:pointer;border:0;font:inherit}
+.linkbtn{background:none;border:0;padding:0;font:inherit;font-weight:700;color:inherit;cursor:pointer;text-align:left}.linkbtn:hover{text-decoration:underline}
+.bt-avisos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.bitvis{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-radius:14px;background:rgba(201,138,0,.1);margin-bottom:12px}
+.bitvis.ok{background:rgba(30,140,80,.1)}.bitvis>div{flex:1;min-width:200px;display:flex;flex-direction:column;gap:2px}.bitvis span{font-size:.9em;color:var(--muted)}`; document.head.appendChild(st); })();
+
+/* informes sin estudiante: no se proponen recomendaciones al cambiar el período */
+const _genRecsAH = genRecs;
+genRecs = function(s){ if(!s) return ''; return _genRecsAH.apply(this, arguments); };
+
+/* ================= Informes editables por el profesional (familia, avance, externo) ================= */
+/* La plantilla propone el informe completo. El profesional puede reescribir cada sección, quitarla,
+   moverla o agregar otras desde los registros. Se guarda como borrador y al emitir queda una copia
+   exacta de lo entregado. Encabezado, folio, confidencialidad, firmas y acuse de recibo no se editan. */
+const FS_KINDS = ['familia','avance','externo'];
+let _fsLast = null, _fsT = null, _fsArm = null;
+
+/* ---------- limpieza del contenido (lo pegado desde Word o la web) ---------- */
+const FS_TAGS = new Set(['P','BR','B','STRONG','I','EM','U','UL','OL','LI','H3','TABLE','THEAD','TBODY','TR','TH','TD','DIV','SPAN']);
+const FS_FULL = new Set([...FS_TAGS, 'H1','H2','HEADER','FOOTER','IMG','SECTION']);
+const FS_CLS = new Set(['tiles','tile','kv','w2','note','pre','muted','block','st','ok','partial','late','pend']);
+function fsClean(html, full){
+  const T = document.createElement('template'); T.innerHTML = String(html||'');
+  const okTags = full ? FS_FULL : FS_TAGS;
+  const walk = n => [...n.childNodes].forEach(c=>{
+    if(c.nodeType===3) return; if(c.nodeType!==1){ c.remove(); return; }
+    if(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','LINK','META','TEMPLATE','FORM','INPUT','BUTTON','TEXTAREA','SELECT'].includes(c.tagName) || (!full && c.tagName==='IMG')){ c.remove(); return; }
+    if(!full && /^H[1-6]$/.test(c.tagName) && c.tagName!=='H3'){ const h = document.createElement('h3'); h.append(...c.childNodes); c.replaceWith(h); walk(h); return; }
+    if(!okTags.has(c.tagName)){ walk(c); c.replaceWith(...c.childNodes); return; }
+    [...c.attributes].forEach(a=>{ const n_ = a.name.toLowerCase();
+      if(n_==='class'){ if(full) return; const k = [...c.classList].filter(x=>FS_CLS.has(x)); k.length ? c.setAttribute('class', k.join(' ')) : c.removeAttribute('class'); }
+      else if(n_==='style'){ if(/url\s*\(|expression|javascript|@import|position\s*:/i.test(a.value)) c.removeAttribute('style'); }
+      else if(n_==='colspan' || n_==='rowspan'){ if(!/^\d{1,2}$/.test(a.value)) c.removeAttribute(a.name); }
+      else if(full && c.tagName==='IMG' && n_==='src'){ if(!/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(a.value)) c.setAttribute('src',''); }
+      else if(full && c.tagName==='IMG' && (n_==='alt' || n_==='data-logo')) {}
+      else c.removeAttribute(a.name); });
+    walk(c); });
+  walk(T.content); return T.innerHTML;
+}
+const fsText = t => esc(t).replace(/\r?\n/g, '<br>');
+
+/* ---------- la plantilla se divide en partes fijas y secciones editables ---------- */
+function fsSplit(html){
+  const t = document.createElement('div'); t.innerHTML = html; const R = t.querySelector('.rpt') || t;
+  const top = [], end = [], secs = []; let cur = null;
+  [...R.children].forEach(el=>{
+    const fijo = el.matches('.r-head,.r-band,h1,.r-sub,.ack,.sign,.r-foot') || (el.matches('.note') && /Documento confidencial/.test(el.textContent));
+    if(fijo){ (secs.length ? end : top).push(el.outerHTML); return; }
+    if(el.tagName==='H2'){ cur = {t:el.textContent.trim(), html:''}; secs.push(cur); return; }
+    if(!cur){ cur = {t:'', html:''}; secs.push(cur); }
+    cur.html += el.outerHTML; });
+  secs.forEach(x=>{ x.k = slug(x.t) || 'intro'; x.id = uid(); });
+  return {top: top.join(''), end: end.join(''), secs};
+}
+const fsTemplate = r => { const o = {...r, secs:null, editing:false}; return fsSplit(_buildReportAI(r.kind, stu(r.sid), o, {folio:'', ts:nowIso()})); };
+
+const _buildReportAI = buildReport;
+buildReport = function(kind, s, o, meta){
+  const base = _buildReportAI.apply(this, arguments);
+  if(!FS_KINDS.includes(kind) || !o?.secs){ if(meta?.folio) _fsLast = {kind, sid:s?.id, folio:meta.folio, ts:meta.ts, html:base}; return base; }
+  const P = fsSplit(base);
+  const ed = !meta?.folio && o.editing && !o.fsView;
+  const body = o.secs.map((x,i)=> ed
+    ? `<div class="fsec${o.fsel===i?' on':''}" data-fi="${i}"><div class="fsec-bar" contenteditable="false"><input class="fsec-t" data-fi="${i}" value="${esc(x.t)}" placeholder="${i===0&&!x.t?'Sin título (párrafo de inicio)':'Título de la sección'}" aria-label="Título de la sección"><span class="fsec-tools"><button type="button" data-act="fs-up" data-fi="${i}" title="Subir" aria-label="Subir sección" ${i===0?'disabled':''}>↑</button><button type="button" data-act="fs-down" data-fi="${i}" title="Bajar" aria-label="Bajar sección" ${i===o.secs.length-1?'disabled':''}>↓</button><button type="button" data-act="fs-del" data-fi="${i}" title="Quitar la sección">Quitar</button></span></div><div class="fsec-b" contenteditable="true" data-fi="${i}" role="textbox" aria-multiline="true" aria-label="Contenido de ${esc(x.t||'la sección')}">${fsClean(x.html)||'<p><br></p>'}</div></div>`
+    : (x.t ? `<h2>${esc(x.t)}</h2>` : '') + fsClean(x.html)).join('');
+  const out = `<div class="rpt${ed?' fsed':''}">${P.top}${body}${P.end}</div>`;
+  if(meta?.folio) _fsLast = {kind, sid:s?.id, folio:meta.folio, ts:meta.ts, html:out};
+  return out;
+};
+
+/* ---------- borrador: se guarda solo mientras se escribe ---------- */
+function fsSave(r){
+  const s = stu(r.sid); if(!s || !r.secs) return;
+  s.borradoresInf = s.borradoresInf || {};
+  s.borradoresInf[r.kind] = {desde:r.desde, hasta:r.hasta, item:r.item||'', secs:r.secs.map(x=>({id:x.id, k:x.k, t:String(x.t||'').slice(0,200), html:fsClean(x.html)})), ts:nowIso(), por:S.data.usuario||''};
+  persist(); r.fsSaved = nowIso();
+  const st = document.getElementById('fs-st'); if(st && S.rep===r) st.textContent = 'Borrador guardado ✓ '+new Date().toTimeString().slice(0,5);
+}
+function fsSched(){ const r = S.rep; if(!r) return; const st = document.getElementById('fs-st'); if(st) st.textContent = 'Guardando…';
+  clearTimeout(_fsT); _fsT = setTimeout(()=>{ _fsT = null; fsSave(r); }, 700); }
+function fsFlush(){ if(_fsT){ clearTimeout(_fsT); _fsT = null; if(S.rep) fsSave(S.rep); } }
+
+const _openReportAI = openReport;
+openReport = function(kind, sid, item){
+  _openReportAI.apply(this, arguments);
+  const r = S.rep, s = stu(sid); if(!r || !FS_KINDS.includes(kind)) return;
+  const b = s?.borradoresInf?.[kind];
+  if(b?.secs?.length){ r.secs = b.secs.map(x=>({...x, id:x.id||uid()})); r.editing = true; r.desde = b.desde||r.desde; r.hasta = b.hasta||r.hasta; if(b.item) r.item = b.item; r.fromDraft = {ts:b.ts, por:b.por}; renderModal(); }
+};
+
+/* ---------- bloques que se pueden agregar ---------- */
+function fsCatalog(r){
+  const s = stu(r.sid); const inR = f => f && f>=r.desde && f<=r.hasta; const L = [];
+  const have = new Set((r.secs||[]).map(x=>x.k));
+  fsTemplate(r).secs.filter(x=>!have.has(x.k)).forEach(x=>L.push({g:'De la plantilla', id:'tpl:'+x.k, l:x.t||'Párrafo de inicio', sec:x}));
+  L.push({g:'Texto propio', id:'libre', l:'Sección en blanco', sec:{t:'Nueva sección', html:'<p>Escribe aquí.</p>'}});
+  const evs = (s.evaluaciones||[]).filter(e=>e.fecha).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const ps = evs.find(e=>typeof isPsico==='function' && isPsico(e) && (e.sintesis || e.sugFam));
+  const lines_ = t => String(t||'').split('\n').map(x=>x.replace(/^[-•\d.)\s]+/,'').trim()).filter(Boolean);
+  if(ps?.sintesis) L.push({g:'Desde los registros', id:'psi-sint', l:`Síntesis del informe psicopedagógico (${fmtShort(ps.fecha)})`, sec:{t:'Síntesis de la evaluación', html:lines_(ps.sintesis).map(p=>`<p>${esc(p)}</p>`).join('')}});
+  if(ps?.sugFam) L.push({g:'Desde los registros', id:'psi-fam', l:`Sugerencias a la familia del informe psicopedagógico (${fmtShort(ps.fecha)})`, sec:{t:'Sugerencias para la familia', html:`<ul>${lines_(ps.sugFam).map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`}});
+  const et = evs.find(e=>e.tabulacion || e.puntajes);
+  if(et && typeof tabHTML==='function'){ const tb = tabHTML(et, true); if(tb) L.push({g:'Desde los registros', id:'tab', l:`Tabla de resultados por área (${fmtShort(et.fecha)})`, sec:{t:'Resultados de la evaluación', html:tb}}); }
+  const eo = evs.find(e=>!(typeof isPsico==='function' && isPsico(e)) && (e.resultados || e.sugerencias));
+  if(eo) L.push({g:'Desde los registros', id:'ev', l:`Resultados de ${eo.tipo||'la evaluación'} (${fmtShort(eo.fecha)})`, sec:{t:`Evaluación ${String(eo.tipo||'').toLowerCase()}`.trim(), html:(eo.resultados?`<p>${fsText(eo.resultados)}</p>`:'')+(eo.sugerencias?`<h3>Sugerencias</h3><p>${fsText(eo.sugerencias)}</p>`:'')}});
+  const obj = s.pai?.objetivos||[];
+  if(obj.length) L.push({g:'Desde los registros', id:'pai', l:'Objetivos del PAI con sus estrategias', sec:{t:'Objetivos y cómo los trabajamos', html:`<table><thead><tr><th>Área</th><th>Objetivo</th><th>Cómo lo trabajamos</th><th>Cómo va</th></tr></thead><tbody>${obj.map(b=>`<tr><td>${esc(b.area||'')}</td><td>${esc(b.objetivo||'')}</td><td>${esc(b.estrategias||'')}</td><td>${esc(b.estado||'—')}</td></tr>`).join('')}</tbody></table>`}});
+  const resp = (s.sesiones||[]).filter(x=>x.estado==='Realizada' && x.respuesta && inR(x.fecha)).sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(-8);
+  if(resp.length) L.push({g:'Desde los registros', id:'resp', l:`Lo observado en las sesiones (${resp.length})`, sec:{t:'Lo que observamos en las sesiones', html:`<ul>${resp.map(x=>`<li>${fmtShort(x.fecha)}: ${esc(x.respuesta)}</li>`).join('')}</ul>`}});
+  if(s.pai?.compromisos) L.push({g:'Desde los registros', id:'comp', l:'Compromisos acordados con la familia (PAI)', sec:{t:'Compromisos acordados', html:`<p>${fsText(s.pai.compromisos)}</p>`}});
+  const ac = (s.comunicaciones||[]).filter(c=>c.acuerdos && inR(c.fecha)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  if(ac.length) L.push({g:'Desde los registros', id:'acu', l:`Acuerdos de las entrevistas del período (${ac.length})`, sec:{t:'Acuerdos con la familia', html:`<ul>${ac.map(c=>`<li>${fmtShort(c.fecha)} · ${esc(c.motivo||'')}: ${esc(c.acuerdos)}</li>`).join('')}</ul>`}});
+  const ad = (s.adaptadas||[]).filter(x=>inR(x.fecha));
+  if(ad.length) L.push({g:'Desde los registros', id:'adap', l:`Evaluaciones con adecuaciones (${ad.length})`, sec:{t:'Evaluaciones con adecuaciones', html:`<ul>${ad.map(x=>`<li>${fmtShort(x.fecha)} · ${esc(x.asignatura||'')}${(x.adaptaciones||[]).length?': '+esc(x.adaptaciones.join(', ')):''}</li>`).join('')}</ul>`}});
+  return L;
+}
+
+/* ---------- ventana del informe ---------- */
+const FS_TB = [['bold','<b>N</b>','Negrita'],['italic','<i>C</i>','Cursiva'],['underline','<u>S</u>','Subrayado'],['h3','Subtítulo','Subtítulo'],['p','Párrafo','Texto normal'],['ul','• Lista','Lista con viñetas'],['ol','1. Lista','Lista numerada'],['clear','Quitar formato','Quitar formato']];
+const _renderReportModalAI = renderReportModal;
+renderReportModal = function(){
+  let h = _renderReportModalAI.apply(this, arguments); const r = S.rep;
+  if(!r || !FS_KINDS.includes(r.kind)) return h;
+  if(!r.editing){
+    return h.replace('<div class="rep-actions">', `<div class="fs-cta"><div><b>¿Quieres decidir qué dice el informe?</b><span class="small muted">Puedes editar la plantilla completa: reescribir, quitar o mover secciones y agregar otras desde los registros. Se guarda como borrador.</span></div><button class="btn" data-act="fs-start">${ic('edit','sm')} Editar el informe</button></div><div class="rep-actions">`);
+  }
+  /* en edición, recomendaciones y síntesis se editan dentro del documento */
+  h = h.replace(/<div class="field w2"><label for="rep-recs">[\s\S]*?Volver a sugerir<\/button><\/div><\/div>/, '');
+  h = h.replace(/<div class="field w2"><label for="rep-sint">[\s\S]*?<\/textarea>[\s\S]*?<\/span><\/div>/, '');
+  const cat = fsCatalog(r); const grupos = [...new Set(cat.map(c=>c.g))];
+  const fd = r.fromDraft;
+  const banner = `<div class="fs-banner"><div class="fs-msg"><b>${ic('edit','sm')} Estás editando el informe</b><span class="small muted">${fd ? `Retomaste el borrador guardado el ${esc(fmtTs(fd.ts))}${fd.por?' por '+esc(whoName(fd.por)):''}. ` : ''}Lo que escribas queda tal cual en el informe. ${(L=>L.slice(0,-1).join(', ')+' y '+L.slice(-1))(['El encabezado','el folio', ...(r.kind==='familia'?[]:['la nota de confidencialidad']), 'las firmas', ...(r.kind==='familia'?['el acuse de recibo']:[])])} no se editan. Si cambias el período, las secciones ya editadas no se recalculan.</span><span class="small" id="fs-st" aria-live="polite">${r.fsSaved?'Borrador guardado ✓ '+esc(new Date(r.fsSaved).toTimeString().slice(0,5)):''}</span></div>
+    <div class="fs-btns"><button class="btn sm" data-act="fs-view">${r.fsView?ic('edit','sm')+' Seguir editando':ic('doc','sm')+' Ver cómo quedará'}</button><button class="btn sm ${_fsArm==='reset'?'danger':''}" data-act="fs-reset">${_fsArm==='reset'?'¿Seguro? Se pierden los cambios':'Volver a la plantilla'}</button></div></div>`;
+  h = h.replace('<div class="rep-actions">', banner + '<div class="rep-actions">');
+  if(!r.fsView){
+    const tb = `<div class="fs-tb" role="toolbar" aria-label="Formato del texto">${FS_TB.map(([c,l,t])=>`<button type="button" data-act="fs-cmd" data-c="${c}" title="${t}" aria-label="${t}">${l}</button>`).join('')}
+      <select id="fs-add" aria-label="Agregar sección"><option value="">＋ Agregar sección…</option>${grupos.map(g=>`<optgroup label="${esc(g)}">${cat.filter(c=>c.g===g).map(c=>`<option value="${esc(c.id)}">${esc(c.l)}</option>`).join('')}</optgroup>`).join('')}</select>
+      ${r.fsUndo?`<button type="button" class="fs-undo" data-act="fs-undo">Deshacer: quitar «${esc(trunc(r.fsUndo.sec.t||'Párrafo de inicio',28))}»</button>`:''}</div>`;
+    h = h.replace('<div class="rpt-frame">', '<div class="rpt-frame fs-frame">' + tb);
+  }
+  return h;
+};
+
+/* ---------- acciones ---------- */
+const fsRe = () => { const r = S.rep; r.fsCat = null; renderModal(); };
+document.addEventListener('mousedown', e=>{ if(e.target.closest?.('.fs-tb button')) e.preventDefault(); });
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act^="fs-"]'); if(!el || !S.rep) return; const r = S.rep, a = el.dataset.act, i = +el.dataset.fi;
+  if(a!=='fs-reset') _fsArm = null;
+  if(a==='fs-start'){ r.secs = fsTemplate(r).secs; r.editing = true; r.fsView = false; fsSave(r); renderModal(); toast('Ahora puedes editar el informe directamente en la hoja'); return; }
+  if(a==='fs-view'){ fsFlush(); r.fsView = !r.fsView; renderModal(); return; }
+  if(a==='fs-reset'){ if(_fsArm!=='reset'){ _fsArm = 'reset'; renderModal(); return; } _fsArm = null; clearTimeout(_fsT); _fsT = null;
+    const s = stu(r.sid); if(s?.borradoresInf){ delete s.borradoresInf[r.kind]; persist(); }
+    r.secs = null; r.editing = false; r.fsView = false; r.fromDraft = null; r.fsUndo = null; r.fsSaved = null; renderModal(); toast('Se restauró la plantilla'); return; }
+  if(a==='fs-cmd'){ const c = el.dataset.c; const b = document.activeElement?.closest?.('.fsec-b'); if(!b){ toast('Haz clic en el texto que quieres cambiar', true); return; }
+    const M = {bold:['bold'], italic:['italic'], underline:['underline'], h3:['formatBlock','h3'], p:['formatBlock','p'], ul:['insertUnorderedList'], ol:['insertOrderedList'], clear:['removeFormat']};
+    try{ document.execCommand(M[c][0], false, M[c][1]); }catch(err){} b.dispatchEvent(new Event('input', {bubbles:true})); return; }
+  if(!r.secs) return;
+  if(a==='fs-up' && i>0){ fsFlush(); [r.secs[i-1], r.secs[i]] = [r.secs[i], r.secs[i-1]]; r.fsel = i-1; fsSave(r); fsRe(); return; }
+  if(a==='fs-down' && i<r.secs.length-1){ fsFlush(); [r.secs[i+1], r.secs[i]] = [r.secs[i], r.secs[i+1]]; r.fsel = i+1; fsSave(r); fsRe(); return; }
+  if(a==='fs-del'){ fsFlush(); const [sec] = r.secs.splice(i, 1); r.fsUndo = {i, sec}; r.fsel = null; fsSave(r); fsRe(); return; }
+  if(a==='fs-undo' && r.fsUndo){ r.secs.splice(Math.min(r.fsUndo.i, r.secs.length), 0, r.fsUndo.sec); r.fsel = r.fsUndo.i; r.fsUndo = null; fsSave(r); fsRe(); return; }
+});
+document.addEventListener('change', e=>{ if(e.target.id!=='fs-add' || !S.rep?.secs) return; const r = S.rep; const it = fsCatalog(r).find(c=>c.id===e.target.value); if(!it) return;
+  fsFlush(); const at = r.fsel!=null && r.fsel<r.secs.length ? r.fsel+1 : r.secs.length;
+  r.secs.splice(at, 0, {id:uid(), k: it.sec.k || slug(it.sec.t) || it.id, t:it.sec.t, html:it.sec.html}); r.fsel = at; r.fsUndo = null; fsSave(r); fsRe();
+  setTimeout(()=>{ const n = document.querySelector(`.fsec[data-fi="${at}"]`); if(n){ n.scrollIntoView({block:'nearest'}); n.querySelector('.fsec-b')?.focus(); } }, 30);
+  toast('Sección agregada: revísala y ajústala'); });
+document.addEventListener('input', e=>{ const r = S.rep; if(!r?.secs) return; const t = e.target;
+  const b = t.closest?.('.fsec-b'); if(b){ const s = r.secs[+b.dataset.fi]; if(s){ s.html = b.innerHTML; fsSched(); } return; }
+  if(t.classList?.contains('fsec-t')){ const s = r.secs[+t.dataset.fi]; if(s){ s.t = t.value; fsSched(); } } });
+document.addEventListener('change', e=>{ if(S.rep?.secs && (e.target.id==='rep-desde' || e.target.id==='rep-hasta')) setTimeout(()=>fsSave(S.rep), 0); });
+document.addEventListener('focusin', e=>{ const r = S.rep; if(!r?.secs) return; const n = e.target.closest?.('.fsec'); if(!n) return; const i = +n.dataset.fi; if(r.fsel===i) return; r.fsel = i;
+  document.querySelectorAll('.fsec.on').forEach(x=>x.classList.remove('on')); n.classList.add('on'); });
+document.addEventListener('paste', e=>{ const b = e.target.closest?.('.fsec-b'); if(!b || !S.rep?.secs) return; e.preventDefault();
+  const cd = e.clipboardData; const html = cd.getData('text/html'); const txt = cd.getData('text/plain');
+  const ins = html ? fsClean(html.replace(/<!--[\s\S]*?-->/g,'')) : txt.split(/\r?\n\r?\n/).map(p=>`<p>${fsText(p)}</p>`).join('');
+  try{ document.execCommand('insertHTML', false, ins); }catch(err){} b.dispatchEvent(new Event('input', {bubbles:true})); });
+/* Enter en el título pasa al contenido; Escape no cierra la ventana mientras se escribe en la hoja */
+document.addEventListener('keydown', e=>{ if(!S.rep?.secs) return;
+  if(e.key==='Enter' && e.target.classList?.contains('fsec-t')){ e.preventDefault(); e.target.closest('.fsec')?.querySelector('.fsec-b')?.focus(); }
+  if(e.key==='Escape' && e.target.closest?.('.fsec-b, .fsec-t')){ e.stopImmediatePropagation(); e.target.blur(); } }, true);
+/* al cerrar la ventana no se pierde lo último escrito */
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="close-rep"], [data-act="scrim"]'); if(el && S.rep?.secs && (el.dataset.act!=='scrim' || e.target===el)) fsFlush(); }, true);
+
+/* ---------- al emitir: se guarda la copia exacta de lo entregado ---------- */
+const stripLogo = h => String(h).replace(/<img src="data:image\/[^"]*"/g, '<img src="" data-logo="1"');
+const putLogo = h => String(h).replace(/<img src="" data-logo="1"/g, `<img src="${LOGO()}" data-logo="1"`);
+const _emitReportAI = emitReport;
+emitReport = async function(mode){
+  const r = S.rep; const ok = r && FS_KINDS.includes(r.kind); if(ok) fsFlush();
+  const ctx = ok ? {sid:r.sid, kind:r.kind, desde:r.desde, hasta:r.hasta, editado:!!r.secs} : null; _fsLast = null;
+  const res = await _emitReportAI.apply(this, arguments);
+  if(ctx && _fsLast && _fsLast.kind===ctx.kind && !S.rep){
+    const s = stu(ctx.sid);
+    if(s){ s.infEmitidos = s.infEmitidos || [];
+      s.infEmitidos.push({id:uid(), kind:ctx.kind, folio:_fsLast.folio, ts:_fsLast.ts, desde:ctx.desde, hasta:ctx.hasta, editado:ctx.editado, por:S.data.usuario||'', html:stripLogo(_fsLast.html)});
+      if(s.borradoresInf){ delete s.borradoresInf[ctx.kind]; if(!Object.keys(s.borradoresInf).length) delete s.borradoresInf; }
+      persist(); keepScroll(render); }
+  }
+  return res;
+};
+
+/* ---------- en la pestaña Informes: borradores en curso y copias de lo entregado ---------- */
+const _vInformesAI = vInformes;
+vInformes = function(s){
+  let h = _vInformesAI.apply(this, arguments);
+  const B = Object.entries(s.borradoresInf||{}).filter(([k,b])=>RKINDS[k] && b?.secs?.length);
+  const E = (s.infEmitidos||[]).slice().reverse();
+  const bor = B.length ? `<section class="glass card"><header><h2>Borradores en edición</h2><span class="chip">${B.length}</span></header><ul class="rows">${B.map(([k,b])=>`<li class="rowi"><span class="icw">${ic('edit')}</span><div class="main"><span class="t">${esc(RKINDS[k].t)}</span><span class="d">Período ${esc(fmtShort(b.desde))} a ${esc(fmtShort(b.hasta))} · guardado ${esc(fmtTs(b.ts))}${b.por?' · '+esc(whoName(b.por)):''}</span></div><div class="end"><button class="btn sm" data-act="report" data-kind="${k}">Seguir editando ${ic('arrow','sm')}</button></div></li>`).join('')}</ul></section>` : '';
+  const cop = E.length ? `<section class="glass card"><header><h2>Copias de lo entregado</h2><span class="chip">${E.length}</span></header><p class="small muted" style="margin:-4px 0 8px">Cada informe emitido queda guardado tal como se entregó, con su folio, aunque después cambien los registros.</p><ul class="rows">${E.map(x=>`<li class="rowi"><span class="icw">${ic('doc')}</span><div class="main"><span class="t">${esc(RKINDS[x.kind]?.t||'Informe')} · folio ${esc(x.folio)}</span><span class="d">${x.desde?`Período ${esc(fmtShort(x.desde))} a ${esc(fmtShort(x.hasta))} · `:''}emitido ${esc(fmtTs(x.ts))} · ${esc(whoName(x.por))}</span>${x.editado?'<div class="meta"><span class="chip">Redactado por el profesional</span></div>':''}</div><div class="end"><button class="btn sm" data-act="inf-ver" data-id="${esc(x.id)}">Ver copia</button></div></li>`).join('')}</ul></section>` : '';
+  if(bor || cop) h = h.replace('<section class="glass card"><header><h2>Informes emitidos</h2>', bor + cop + '<section class="glass card"><header><h2>Informes emitidos</h2>');
+  return h;
+};
+const fsCopy = id => (stu(S.sid)?.infEmitidos||[]).find(x=>x.id===id);
+document.addEventListener('click', async e=>{
+  const el = e.target.closest?.('[data-act="inf-ver"], [data-act="inf-copy"], [data-act="inf-save"]'); if(!el) return;
+  const x = fsCopy(el.dataset.id); if(!x) return; const s = stu(S.sid);
+  const inner = putLogo(fsClean(x.html, true)); const title = `${RKINDS[x.kind]?.t||'Informe'} · ${s?.nombre||''} · copia folio ${x.folio}`;
+  if(el.dataset.act==='inf-ver'){
+    S.modal = {title:'Copia de lo entregado · folio '+x.folio, html:`<p class="small muted" style="margin:0 0 10px">Es la copia exacta emitida el ${esc(fmtTs(x.ts))}. Reimprimirla no genera un folio nuevo.</p><div class="rep-actions" style="margin-bottom:12px">${S.dl?`<button class="btn primary" data-act="inf-save" data-id="${esc(x.id)}">${ic('archive','sm')} Descargar para imprimir</button>`:''}<button class="btn ${S.dl?'':'primary'}" data-act="inf-copy" data-id="${esc(x.id)}">${ic('copy','sm')} Copiar para Word</button></div><div class="rpt-frame"><div class="rpt-page">${inner}</div></div>`};
+    renderModal(); document.querySelector('#modal .dialog')?.classList.add('wide'); return; }
+  if(el.dataset.act==='inf-save'){ try{ await S.dl.save({filename:`copia_${slug(x.folio)}_${slug(s?.nombre)}.html`, data: fullDoc(inner, title)}); logEv(s?.id||'', 'Reimprimió copia', `${RKINDS[x.kind]?.t||'Informe'} · folio ${x.folio}`); persist(); toast('Copia descargada'); }catch(err){ toast('No se pudo descargar. Usa Copiar para Word', true); } return; }
+  const htmlDoc = `<html><head><meta charset="utf-8"><style>${RPT_CSS}</style></head><body>${inner}</body></html>`;
+  const tmp = document.createElement('div'); tmp.innerHTML = inner; const plain = tmp.innerText;
+  try{ await navigator.clipboard.write([new ClipboardItem({'text/html': new Blob([htmlDoc],{type:'text/html'}), 'text/plain': new Blob([plain],{type:'text/plain'})})]); }
+  catch(err){ try{ await navigator.clipboard.writeText(plain); }catch(err2){ toast('No se pudo copiar', true); return; } }
+  logEv(s?.id||'', 'Reimprimió copia', `${RKINDS[x.kind]?.t||'Informe'} · folio ${x.folio}`); persist(); toast('Copia del folio '+x.folio+' copiada');
+});
+
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.fs-cta{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px dashed var(--line,rgba(0,0,0,.18));border-radius:16px;padding:12px 16px;margin:4px 0 12px}
+.fs-cta div{display:flex;flex-direction:column;gap:2px;flex:1 1 260px}
+.fs-banner{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;background:color-mix(in srgb,var(--accent,#002D82) 7%,transparent);border-radius:16px;padding:12px 16px;margin:4px 0 12px}
+.fs-banner .fs-msg{display:flex;flex-direction:column;gap:3px;flex:1 1 300px}.fs-banner .fs-msg b{display:inline-flex;gap:6px;align-items:center}
+.fs-banner .fs-btns{display:flex;gap:8px;flex-wrap:wrap}#fs-st{color:var(--ok,#1e8c4e);font-weight:600;min-height:1em}
+.fs-frame{max-height:70vh}
+.fs-tb{position:sticky;top:-16px;z-index:3;display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#DCE1EC;margin:-16px -16px 12px;padding:10px 16px;border-bottom:1px solid rgba(12,22,51,.12)}
+.fs-tb button{border:1px solid rgba(12,22,51,.18);background:#fff;color:#111a33;border-radius:9px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer;min-height:34px}
+.fs-tb button:hover{background:#f3f5fa}.fs-tb select{min-height:34px;border-radius:9px;border:1px solid rgba(12,22,51,.18);padding:4px 8px;font:inherit;font-size:13px;max-width:100%;background:#fff;color:#111a33}
+.fs-tb .fs-undo{background:#FFE600;border-color:#e0c800;font-weight:700}
+.rpt.fsed .fsec{position:relative;border:1px dashed transparent;border-radius:8px;margin:6px -8px;padding:4px 8px}
+.rpt.fsed .fsec:hover{border-color:#c5cbe0}.rpt.fsed .fsec.on{border-color:#002D82;background:#fbfcff}
+.rpt.fsed .fsec-bar{display:flex;gap:8px;align-items:center;margin:8px 0 4px}
+.rpt.fsed .fsec-t{flex:1;min-width:0;border:0;border-bottom:2px solid #FFE600;background:transparent;font:inherit;font-size:12.5pt;font-weight:800;color:#002D82;padding:3px 2px}
+.rpt.fsed .fsec-t:focus{outline:none;border-bottom-color:#002D82}
+.rpt.fsed .fsec-tools{display:flex;gap:4px;opacity:.55}.rpt.fsed .fsec:hover .fsec-tools,.rpt.fsed .fsec.on .fsec-tools{opacity:1}
+.rpt.fsed .fsec-tools button{border:1px solid #d9deea;background:#fff;border-radius:7px;padding:3px 8px;font:inherit;font-size:9pt;cursor:pointer;color:#5a6380}
+.rpt.fsed .fsec-tools button:disabled{opacity:.35;cursor:default}
+.rpt.fsed .fsec-b{min-height:2.2em;outline:none;border-radius:6px;padding:2px 4px}.rpt.fsed .fsec-b:focus{box-shadow:0 0 0 2px rgba(0,45,130,.18)}
+@media (max-width:640px){.fs-tb{top:-6px;margin:-6px -6px 10px;padding:8px}.rpt.fsed .fsec-bar{flex-wrap:wrap}}`; document.head.appendChild(st); })();
+
+/* ================= Anamnesis ya realizadas (documento en Drive) ================= */
+/* Muchas anamnesis se hicieron antes de usar la plataforma y están en Drive. Se registran como realizadas
+   con su fecha, quién la hizo y el enlace al documento, una por una o en lote (coordinación). */
+{ const sec = SCHEMA.anamnesis[0]; sec.fields.push({k:'docExterno', l:'Enlace a la anamnesis en Drive', t:'text', w:2, ph:'https://drive.google.com/…'}); }
+SCHEMA.anamExt = [{sec:'Anamnesis ya realizada', note:'Para las anamnesis que ya están hechas y guardadas en Drive. Queda registrada como realizada, con el enlace al documento. Si quieres, después puedes traspasar el detalle con Editar.', fields:[
+  {k:'fecha', l:'Fecha de la entrevista', t:'date', req:1},
+  {k:'entrevistador', l:'Entrevistador/a', t:'prof'},
+  {k:'informante', l:'Informante', t:'text', ph:'Nombre y parentesco'},
+  {k:'docExterno', l:'Enlace a la anamnesis en Drive', t:'text', w:2, ph:'https://drive.google.com/…'},
+  {k:'ubicacion', l:'O dónde está guardada (si no tiene enlace)', t:'text', w:2, ph:'Ej.: carpeta física del estudiante'},
+  {k:'motivo', l:'Motivo de consulta o derivación (opcional)', t:'textarea', w:2},
+  {k:'consentimiento', l:'El apoderado autorizó al equipo a registrar y usar esta información', t:'bool', w:2},
+  {k:'autorizaSalud', l:'Autoriza intercambiar información con profesionales de salud tratantes', t:'bool', w:2}]}];
+const _missingReqAJ = missingReq;
+missingReq = function(schema, draft){ const m = _missingReqAJ(schema, draft);
+  if(schema===SCHEMA.anamExt || schema===SCHEMA.anamnesis){
+    if(draft.docExterno && !linkOk(draft.docExterno)) m.push('El enlace debe comenzar con https://');
+    if(draft.fecha && draft.fecha > D(0)) m.push('La fecha de la entrevista no puede ser futura'); }
+  if(schema===SCHEMA.anamExt && !String(draft.docExterno||'').trim() && !String(draft.ubicacion||'').trim()) m.push('Deja el enlace a Drive o indica dónde está guardada');
+  return m; };
+const _saveFormAJ = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f?.kind==='anamExt'){ const miss = missingReq(SCHEMA.anamExt, f.draft); if(miss.length){ f.err = miss; render(); return; }
+    const s = stu(f.sid); if(!s){ S.form = null; render(); return; } const d = f.draft, nueva = !s.anamnesis?.fecha;
+    s.anamnesis = stamp({...(s.anamnesis||{}), fecha:d.fecha, entrevistador:d.entrevistador||'', informante:d.informante||'', motivo: d.motivo || s.anamnesis?.motivo || '', docExterno:String(d.docExterno||'').trim(), ubicacion:String(d.ubicacion||'').trim(), consentimiento:!!d.consentimiento, autorizaSalud:!!d.autorizaSalud, origen:'Realizada fuera de la plataforma'}, nueva);
+    logEv(s.id, nueva?'Registró':'Editó', `anamnesis realizada el ${fmt(d.fecha)} (${d.docExterno?'documento en Drive':'documento guardado fuera de la plataforma'})`);
+    S.form = null; persist(); render(); toast('Anamnesis registrada como realizada'); return; }
+  return _saveFormAJ.apply(this, arguments); };
+const anamUrl = a => linkOk(a?.docExterno) ? safeUrl(a.docExterno) : '';
+const _viewValAJ = viewVal;
+viewVal = function(f, v, ctx){ if(f.k==='docExterno' && linkOk(v)) return `<a href="${esc(safeUrl(v))}" target="_blank" rel="noopener noreferrer">${ic('doc','sm')} Ver anamnesis en Drive</a>`; return _viewValAJ.apply(this, arguments); };
+function anamExtOpen(s){ const a = s.anamnesis||{};
+  openForm({kind:'anamExt', schema:'anamExt', where:'modal', sid:s.id, title:'Anamnesis ya realizada', draft:{fecha:a.fecha||'', entrevistador:a.entrevistador||s.referente||'', informante:a.informante||'', docExterno:a.docExterno||'', ubicacion:a.ubicacion||'', motivo:a.motivo||'', consentimiento:!!a.consentimiento, autorizaSalud:!!a.autorizaSalud}}); }
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="anam-ext"]'); if(!el) return; const s = stu(S.sid); if(s) anamExtOpen(s); });
+
+/* en la pestaña Anamnesis: botón en el estado vacío y tarjeta con el documento */
+const _emptyDocAJ = emptyDoc;
+emptyDoc = function(s, k){ const h = _emptyDocAJ.apply(this, arguments); if(k!=='anamnesis') return h;
+  return h.replace(/(<button class="btn primary xl" data-act="edit-doc" data-tab="anamnesis">[\s\S]*?<\/button>)/, `<div class="quick-actions" style="justify-content:center">$1<button class="btn xl" data-act="anam-ext">${ic('doc')} Ya está hecha: registrar con enlace a Drive</button></div><p class="small muted" style="max-width:52ch">Si la entrevista ya se hizo y el documento está en Drive, regístrala como realizada con su fecha y el enlace.</p>`); };
+const _tabBodyAJ = tabBody;
+tabBody = function(s){ const h = _tabBodyAJ.apply(this, arguments); const a = s.anamnesis;
+  if(S.tab!=='anamnesis' || !a?.fecha || !(a.docExterno || a.ubicacion) || (S.form && S.form.where==='inline')) return h;
+  const u = anamUrl(a);
+  return `<section class="glass card paecfirma ok"><div class="pf-row"><span class="icw av3">${ic('check')}</span><div class="main"><b>Anamnesis realizada fuera de la plataforma</b><span class="small muted">Entrevista del ${esc(fmt(a.fecha))}${a.entrevistador?' · '+esc(profName(a.entrevistador)):''}${a.informante?' · informante: '+esc(a.informante):''}${!u && a.ubicacion?' · guardada en: '+esc(a.ubicacion):''}${a.consentimiento?'':' · falta registrar la autorización del apoderado'}</span></div>
+    <div class="quick-actions">${u?`<a class="btn sm primary" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${ic('doc','sm')} Ver anamnesis</a>`:''}<button class="btn sm" data-act="anam-ext">${ic('edit','sm')} Editar registro</button></div></div></section>` + h; };
+
+/* ---------- carga en lote (coordinación) ---------- */
+const sinAnam = () => S.data.students.filter(s=>!s.anamnesis?.fecha && (typeof aplica!=='function' || aplica(s,'anamnesis').on)).sort((a,b)=>CURSOS.indexOf(a.curso)-CURSOS.indexOf(b.curso) || a.nombre.localeCompare(b.nombre));
+function bulkAnamModal(){
+  const L = sinAnam(); const B = S.bulkAn = S.bulkAn || {fecha:'', ent:'', ubic:'Carpeta de anamnesis en el Drive de la unidad', cons:false, sel:{}, links:{}, fechas:{}};
+  S.modal = {title:'Anamnesis ya realizadas', html:`
+    <p class="muted">Para las anamnesis hechas antes de usar la plataforma. Marca a los estudiantes cuya anamnesis ya está hecha y deja el enlace a cada documento en Drive.</p>
+    ${L.length?`<div class="form"><div class="fields">
+      <div class="field"><label for="bn-fecha">Fecha de la entrevista (si es la misma para todos)</label><input type="date" id="bn-fecha" value="${esc(B.fecha)}"></div>
+      <div class="field"><label for="bn-ent">Entrevistador/a (si es la misma persona)</label><select id="bn-ent"><option value="">Según cada ficha (profesional referente)</option>${S.data.equipo.map(p=>`<option value="${esc(p.id)}" ${B.ent===p.id?'selected':''}>${esc(p.nombre)}</option>`).join('')}</select></div>
+      <div class="field w2"><label for="bn-ubic">Dónde están guardadas (para las que no tienen enlace)</label><input type="text" id="bn-ubic" value="${esc(B.ubic)}"></div>
+      <div class="field w2"><label class="bool"><input type="checkbox" id="bn-cons" ${B.cons?'checked':''}><span>Los documentos incluyen la autorización del apoderado para registrar y usar la información</span></label></div></div>
+      <div class="ba-head"><label class="bool"><input type="checkbox" id="bn-all"><span><b>Seleccionar todos</b> (${L.length} sin anamnesis)</span></label></div>
+      <div class="ba-list">${L.map(s=>`<div class="ba-row"><label class="bool"><input type="checkbox" data-bn="${s.id}" ${B.sel[s.id]?'checked':''}><span><b>${esc(s.nombreSocial||s.nombre)}</b> <span class="small muted">${esc(cursoOf(s))}</span></span></label>
+        <input type="date" data-bnf="${s.id}" value="${esc(B.fechas[s.id]||'')}" aria-label="Fecha de la anamnesis de ${esc(s.nombre)}" title="Solo si es distinta a la fecha común">
+        <input type="url" data-bnl="${s.id}" value="${esc(B.links[s.id]||'')}" placeholder="Enlace Drive" aria-label="Enlace a la anamnesis de ${esc(s.nombre)}"></div>`).join('')}</div>
+      <div class="quick-actions" style="margin-top:14px"><button class="btn" data-act="bn-no">Cancelar</button><button class="btn primary" data-act="bn-ok">${ic('check','sm')} Registrar anamnesis</button></div></div>`
+    : '<p class="empty">Todos los estudiantes a los que les corresponde ya tienen su anamnesis registrada.</p>'}`};
+  render();
+}
+document.addEventListener('change', e=>{ const B = S.bulkAn; if(!B || !S.modal) return; const t = e.target;
+  if(t.id==='bn-all'){ document.querySelectorAll('[data-bn]').forEach(x=>{ x.checked = t.checked; B.sel[x.dataset.bn] = t.checked; }); return; }
+  if(t.dataset.bn) B.sel[t.dataset.bn] = t.checked;
+  const mark = id => { B.sel[id] = true; const c = document.querySelector(`[data-bn="${id}"]`); if(c) c.checked = true; };
+  if(t.dataset.bnf){ B.fechas[t.dataset.bnf] = t.value; if(t.value) mark(t.dataset.bnf); }
+  if(t.dataset.bnl){ B.links[t.dataset.bnl] = t.value.trim(); if(t.value.trim()) mark(t.dataset.bnl); }
+  const v = id => document.getElementById(id); B.fecha = v('bn-fecha')?.value||''; B.ent = v('bn-ent')?.value||''; B.ubic = v('bn-ubic')?.value||''; B.cons = !!v('bn-cons')?.checked; });
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="bn-open"],[data-act="bn-ok"],[data-act="bn-no"]'); if(!el) return; const a = el.dataset.act;
+  if(a==='bn-open'){ S.bulkAn = null; bulkAnamModal(); return; }
+  if(a==='bn-no'){ S.modal = null; S.bulkAn = null; render(); return; }
+  const B = S.bulkAn; if(!B) return; const ids = Object.keys(B.sel).filter(k=>B.sel[k] && stu(k));
+  if(!ids.length){ toast('Marca al menos un estudiante', true); return; }
+  const sinF = ids.filter(id=>!(B.fechas[id] || B.fecha)); if(sinF.length){ toast(`Falta la fecha de ${sinF.length} ${sinF.length===1?'anamnesis':'anamnesis'}: indica la fecha común o la de cada una`, true); return; }
+  if(ids.some(id=>(B.fechas[id]||B.fecha) > D(0))){ toast('La fecha de la entrevista no puede ser futura', true); return; }
+  if(ids.some(id=>B.links[id] && !linkOk(B.links[id]))){ toast('Revisa los enlaces: deben comenzar con https://', true); return; }
+  if(ids.some(id=>!B.links[id]) && !B.ubic.trim()){ toast('Indica dónde están guardadas las anamnesis sin enlace', true); return; }
+  ids.forEach(id=>{ const s = stu(id); const f = B.fechas[id]||B.fecha;
+    s.anamnesis = stamp({...(s.anamnesis||{}), fecha:f, entrevistador:B.ent || s.anamnesis?.entrevistador || s.referente || '', docExterno:B.links[id]||'', ubicacion:B.links[id]?'':B.ubic.trim(), consentimiento:B.cons || !!s.anamnesis?.consentimiento, origen:'Realizada fuera de la plataforma'}, true);
+    logEv(id, 'Registró', `anamnesis realizada el ${fmt(f)} (carga inicial${B.links[id]?', documento en Drive':''})`); });
+  S.modal = null; S.bulkAn = null; persist(); render(); toast(`${ids.length} ${ids.length===1?'anamnesis registrada':'anamnesis registradas'} como realizadas`);
+});
+const _vEstudiantesAJ = vEstudiantes;
+vEstudiantes = function(){ const h = _vEstudiantesAJ.apply(this, arguments); if(!isCoord(S.data.usuario) && !S.admin) return h; const n = sinAnam().length; if(!n) return h;
+  return h.replace('<button class="btn primary" data-act="new-student">', `<button class="btn" data-act="bn-open">${ic('chat','sm')} Anamnesis ya realizadas (${n})</button><button class="btn primary" data-act="new-student">`); };
 
 
 /* ---------- íconos ---------- */
