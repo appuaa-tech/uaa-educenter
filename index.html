@@ -1165,7 +1165,7 @@ function genRecs(s, kind, desde, hasta){
     if(o.estado==='Logrado') trab.push(`Objetivo logrado en ${area}: proponer un nuevo objetivo o aumentar el nivel de exigencia.`);
     else if(o.estado==='No iniciado') trab.push(`Objetivo sin iniciar en ${area}: calendarizar sesiones o revisar su pertinencia.`);
     else if(!n) trab.push(`Objetivo de ${area} sin sesiones vinculadas en el período: vincular las sesiones para mostrar el trabajo realizado.`); });
-  const sinObj = real.filter(x=>!sesObjIdx(x).length && !sesOtros(x).length).length; if(sinObj && obj.length) trab.push(`${sinObj} ${sinObj===1?'sesión realizada no registra':'sesiones realizadas no registran'} el objetivo trabajado (del PAI u otro).`);
+  const sinObj = real.filter(x=>!sesObjIdx(x).length && !sesOtros(x).length && !(x.objetivosPsi||[]).length && !x.gses).length; if(sinObj && obj.length) trab.push(`${sinObj} ${sinObj===1?'sesión realizada no registra':'sesiones realizadas no registran'} el objetivo trabajado (del PAI u otro).`);
   const sinResp = real.filter(x=>!x.respuesta).length; if(sinResp) trab.push(`${sinResp} ${sinResp===1?'sesión no registra':'sesiones no registran'} la respuesta del estudiante. Completar ese campo fortalece la evidencia.`);
   if(!real.length) trab.push('No hay sesiones realizadas en el período. Registrar cada intervención con fecha, objetivo y respuesta del estudiante.');
   if(decs.length>=2) trab.push(`Se registraron ${decs.length} episodios de desregulación en el período. Revisar gatillantes y actualizar el eje reactivo del PAEC con la familia.`);
@@ -6229,6 +6229,98 @@ saveForm = function(){ const f = S.form;
 .cfg-list label.fija{opacity:.78}.cfg-list .chip{font-size:.72em;vertical-align:middle}
 .cfg-txt{margin:0;display:grid;gap:4px}.cfg-txt dt{font-weight:700;font-size:.9em;margin-top:6px}.cfg-txt dd{margin:0;color:var(--muted)}`; document.head.appendChild(st); })();
 
+/* ================= PAI de Psicología: plan individual propio de la psicóloga, ligado a sus sesiones ================= */
+/* Se construye sobre el "Acompañamiento psicológico" (s.psi): ahora es un plan completo, con objetivos, estrategias,
+   estado, revisión y firmas. Las sesiones de la psicóloga marcan los objetivos de este plan, no los del PAI general. */
+const PSIPAI_T = 'PAI de Psicología';
+const PSIPAI_LONG = 'Plan de Acompañamiento Individual · Psicología';
+const PSIPAI_EST = ['No iniciado','En proceso','Logrado parcialmente','Logrado'];
+{ const s0 = SCHEMA.psi[0]; s0.sec = 'Plan de acompañamiento psicológico';
+  const i = s0.fields.findIndex(f=>f.k==='frecuencia'); s0.fields.splice(i+1, 0, {k:'proximaRevision', l:'Próxima revisión del plan', t:'date'});
+  const fo = s0.fields.find(f=>f.k==='motivo'); if(fo) fo.l = 'Motivo y encuadre del acompañamiento';
+  const ob = SCHEMA.psi[1]; ob.note = 'Son los objetivos que trabajará la psicóloga. En cada sesión se marcan los que se abordaron, y así se ve el avance de cada uno.';
+  const L = ob.fields.find(f=>f.k==='objetivos'); if(L){ L.sub.splice(2, 0, {k:'estrategias', l:'Estrategias', t:'text'}); L.sub.push({k:'estado', l:'Estado', t:'select', o:()=>PSIPAI_EST}); }
+  SCHEMA.psi.push({sec:'Acuerdos con la familia y firmas', fields:[
+    {k:'compromisosFam', l:'Compromisos de la familia', t:'textarea', w:2},
+    {k:'fechaInformado', l:'Fecha en que se entregó a la familia', t:'date'},
+    {k:'docFirmado', l:'Enlace al plan firmado (Drive)', t:'text', w:2, ph:'https://drive.google.com/…'}]}); }
+const _missingReqAN = missingReq;
+missingReq = function(schema, draft){ const m = _missingReqAN(schema, draft); if(schema===SCHEMA.psi && draft.docFirmado && !linkOk(draft.docFirmado)) m.push('El enlace debe comenzar con https://'); return m; };
+
+/* ---------- sesiones: objetivos del PAI de Psicología ---------- */
+const psiObjs = s => (s?.psi?.objetivos||[]).filter(o=>o && (o.objetivo||'').trim());
+const sesPsiIdx = x => Array.isArray(x?.objetivosPsi) ? x.objetivosPsi.map(String) : [];
+const _sesObjTxtAN = sesObjTxt;
+sesObjTxt = function(x, s){ const P = s?.psi?.objetivos || [];
+  const a = sesPsiIdx(x).map(i=>P[+i]).filter(Boolean).map(o=>PSIPAI_T+' · '+(o.area ? o.area+': ' : '')+(o.objetivo||''));
+  return [...a, ..._sesObjTxtAN.apply(this, arguments)]; };
+const _inputForAN = inputFor;
+inputFor = function(f, path, v, ctx){
+  const h = _inputForAN.apply(this, arguments);
+  if(f.k!=='objetivo' || !isSesForm()) return h;
+  const d = S.form.draft; const s = ctx?.student || stu(d.sid); const P = s?.psi?.objetivos || [];
+  if(!P.length || (typeof isGrp==='function' && isGrp(d))) return h;
+  const esPsi = isPsi(d.profesional) || s.psi?.responsable===d.profesional;
+  if(!Array.isArray(d.objetivosPsi)) d.objetivosPsi = [];
+  const panel = `<details class="objpanel psiobj" ${esPsi?'open':''}><summary><span class="t">${ic('heart','sm')} Objetivos del ${PSIPAI_T}</span><span class="small muted" data-gcount="objetivosPsi">${d.objetivosPsi.length} marcados</span></summary>
+    ${chipField({k:'objetivosPsi', l:'Marca los que se trabajaron', chip:1, o:()=>P.map((o,i)=>[String(i), (o.area?o.area+': ':'')+(o.objetivo||'Objetivo '+(i+1))])}, 'objetivosPsi', d.objetivosPsi, ctx)}</details>`;
+  let out = h.replace('<details class="objpanel"', panel + '<details class="objpanel"');
+  if(esPsi) out = out.replace(/(<details class="objpanel") open(><summary><span class="t">[\s\S]*?Objetivos del PAI<\/span>)/, '$1$2');
+  return out; };
+document.addEventListener('change', e=>{ if(e.target.dataset?.path==='objetivosPsi') setTimeout(()=>{ const c = document.querySelector('[data-gcount="objetivosPsi"]'); if(c && S.form) c.textContent = `${(S.form.draft.objetivosPsi||[]).length} marcados`; }, 0); });
+const _saveFormAN = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f && ['sesion','agendaSesion'].includes(f.schema)){ const d = f.draft; const P = (f.sid ? stu(f.sid) : stu(d.sid))?.psi?.objetivos || [];
+    if((typeof isGrp==='function' && isGrp(d)) || !P.length) delete d.objetivosPsi;
+    else { d.objetivosPsi = (d.objetivosPsi||[]).map(String).filter(i=>+i < P.length).sort((a,b)=>a-b); if(!d.objetivosPsi.length) delete d.objetivosPsi; } }
+  return _saveFormAN.apply(this, arguments); };
+const _viewFieldsAN = viewFields;
+viewFields = function(fields, x, ctx){ if(x && Array.isArray(x.objetivosPsi) && !Array.isArray(x.objetivosPai) && x.fecha && ('estado' in x)) x = {...x, objetivosPai:[]}; return _viewFieldsAN(fields, x, ctx); };
+
+/* ---------- tarjeta del plan en Seguimiento socioemocional ---------- */
+const psiSesObj = (s, i) => (s.sesiones||[]).filter(x=>x.estado==='Realizada' && sesPsiIdx(x).includes(String(i)));
+const _tabBodyAN = tabBody;
+tabBody = function(s){ let h = _tabBodyAN.apply(this, arguments);
+  if(S.tab==='seguimiento' && s.psi && !(S.form && S.form.where==='inline')){
+    const P = s.psi; const rev = P.proximaRevision ? (diffDays(P.proximaRevision) < 0 ? `<span class="pill warn">Revisión vencida el ${esc(fmtShort(P.proximaRevision))}</span>` : `<span class="pill info">Revisión ${esc(fmtShort(P.proximaRevision))}</span>`) : '';
+    h = h.replace('<h2>Acompañamiento psicológico</h2></div><button class="btn sm" data-act="psi-edit">',
+      `<h2>${PSIPAI_T}</h2></div><div class="quick-actions">${rev}${linkOk(P.docFirmado)?`<a class="btn sm" href="${esc(safeUrl(P.docFirmado))}" target="_blank" rel="noopener noreferrer">${ic('doc','sm')} Ver firmado</a>`:''}<button class="btn sm" data-act="psipai-print">${ic('print','sm')} Imprimir para firmas</button><button class="btn sm" data-act="psi-edit">`);
+    h = h.replace(/(data-act="psi-edit">[\s\S]*?Editar<\/button>)/, '$1</div>');
+    (P.objetivos||[]).forEach((o,i)=>{ const n = psiSesObj(s, i).length; const tag = `${o.estado?' · '+esc(o.estado):''} · ${n} ${n===1?'sesión':'sesiones'}`;
+      const key = `<span class="t">${esc(o.objetivo||'')}</span><span class="d">${esc(o.area||'')}${o.indicador?' · '+esc(o.indicador):''}`;
+      h = h.replace(key, key + tag); });
+    h = h.replace('<h2>Acompañamiento psicológico</h2></header><p class="muted">Registra el motivo, los objetivos y los profesionales externos.', `<h2>${PSIPAI_T}</h2></header><p class="muted">Plan propio de la psicóloga: motivo, objetivos, estrategias y profesionales externos. Sus sesiones marcan estos objetivos.`).replace('Iniciar acompañamiento</button>', `Crear ${PSIPAI_T}</button>`);
+  }
+  if(S.tab==='pai' && s.psi && !(S.form && S.form.where==='inline')){ const n = psiObjs(s).length;
+    h = `<section class="glass card psinote"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span class="icw av4">${ic('heart')}</span><div style="flex:1;min-width:220px"><b>${PSIPAI_T}</b><div class="small muted">${esc(profName(s.psi.responsable))} tiene un plan propio con ${n} ${n===1?'objetivo':'objetivos'}. Sus sesiones se registran contra ese plan.</div></div><button class="btn sm" data-act="tab" data-tab="seguimiento">Ver plan ${ic('arrow','sm')}</button></div></section>` + h; }
+  return h; };
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="psipai-print"]'); if(!el) return; openReport('psipai', S.sid); });
+const _openFormAN = openForm;
+openForm = function(o){ if(o?.kind==='psi') o = {...o, title: o.isNew ? 'Crear '+PSIPAI_T : PSIPAI_T}; return _openFormAN.apply(this, [o, ...[...arguments].slice(1)]); };
+
+/* ---------- documento imprimible ---------- */
+RKINDS.psipai = {t:PSIPAI_LONG, d:'', ic:'heart', norecs:1};
+function buildPsiPai(s, o, meta){
+  const P = s.psi || {}; let h = rHead(PSIPAI_LONG, esc(s.nombre)+' · '+esc(cursoOf(s)), meta) + rConf();
+  h += `<h2>Identificación</h2>${rIdent(s, false)}`;
+  h += `<h2>Acompañamiento</h2>${rkv([['Psicólogo/a a cargo', profName(P.responsable)],['Inicio', P.inicio?fmt(P.inicio):''],['Frecuencia', P.frecuencia],['Próxima revisión', P.proximaRevision?fmt(P.proximaRevision):''],['Derivado por', P.derivadoPor],['Motivo y encuadre', P.motivo, 1],['Profesionales externos', P.externos, 1]])}`;
+  const obj = P.objetivos || [];
+  h += `<h2>Objetivos de intervención</h2>${obj.length ? `<table><thead><tr><th>Área</th><th>Objetivo</th><th>Estrategias</th><th>Cómo se verá el logro</th><th>Sesiones</th><th>Estado</th></tr></thead><tbody>${obj.map((b,i)=>`<tr><td>${esc(b.area||'')}</td><td>${esc(b.objetivo||'')}</td><td>${esc(b.estrategias||'')}</td><td>${esc(b.indicador||'')}</td><td>${psiSesObj(s,i).length}</td><td>${esc(b.estado||'—')}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Sin objetivos registrados.</p>'}`;
+  if(P.compromisosFam) h += `<h2>Compromisos de la familia</h2><p class="pre">${esc(P.compromisosFam)}</p>`;
+  const ap = (s.apoderados||[]).find(a=>a.tipo==='Titular') || (s.apoderados||[])[0] || {};
+  h += signs([[profName(P.responsable),'Psicólogo/a'],['Coordinación UAA',''],[ap.nombre||'Apoderado/a', (ap.parentesco||'Familia')+' · RUN: ____________']]);
+  return `<div class="rpt">${h}${rFoot(meta)}</div>`;
+}
+const _buildReportAN = buildReport;
+buildReport = function(kind, s, o, meta){ if(kind==='psipai') return buildPsiPai(s, o, meta); return _buildReportAN.apply(this, arguments); };
+
+/* alerta de revisión vencida para la psicóloga */
+const _alertsForAN = alertsFor;
+alertsFor = function(s){ const L = _alertsForAN.apply(this, arguments); const P = s.psi;
+  if(P?.proximaRevision && diffDays(P.proximaRevision) < 0) L.push({lvl:'warn', t:`${PSIPAI_T}: revisión pendiente`, d:`Vencía el ${fmt(P.proximaRevision)}. Revisa el estado de cada objetivo con la familia.`, tab:'seguimiento', sid:s.id, nombre:s.nombre});
+  return L; };
+(()=>{ const st = document.createElement('style'); st.textContent = `.psinote{padding:14px 18px}.objpanel.psiobj summary .t{color:var(--ink)}`; document.head.appendChild(st); })();
+
 
 /* ---------- íconos ---------- */
 const ICONS = {
@@ -7170,6 +7262,71 @@ document.addEventListener('click', e=>{
   if(a==='gcal-reload'){ gLoad(true); gSync(); toast('Actualizando calendario…'); }
 }, true);
 document.addEventListener('change', e=>{ if(e.target.dataset?.act==='gcal-pref'){ const p = gPref(); p.ses = e.target.checked; gSetPref(p); if(p.ses) gSync(); toast(p.ses?'Tus sesiones programadas se agregarán a tu calendario':'Las nuevas sesiones ya no se agregarán a tu calendario'); } });
+
+/* ================= Una sola agenda: sin sesiones duplicadas entre la plataforma y Google Calendar ================= */
+/* Dos formas de trabajar, a elección de cada profesional:
+   · "plataforma": agenda en la plataforma y se copia a su Google Calendar (si ya tenía ese evento a la misma hora, se vincula en vez de duplicarlo).
+   · "google": agenda en Google Calendar; la plataforma no crea eventos y ofrece registrar cada evento como sesión con un clic.
+   Un evento vinculado a una sesión no se muestra dos veces en la agenda y la plataforma nunca cambia ni borra un evento propio de la profesional. */
+const gModo = () => { const p = gPref(); return p.modo || (p.ses===false ? 'google' : 'plataforma'); };
+const gNorm = t => String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const gMin = h => { const [a,b] = String(h||'').split(':'); return (+a||0)*60 + (+b||0); };
+function gGuessStu(title){
+  const T = ' '+gNorm(title).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ')+' '; let best = null;
+  S.data.students.forEach(s=>{ [s.nombreSocial, s.nombre].filter(Boolean).forEach(n=>{ const w = gNorm(n).split(/\s+/).filter(x=>x.length>2); if(w.length<2) return;
+    const hits = w.filter(x=>T.includes(' '+x+' ')).length; if(T.includes(' '+w[0]+' ') && hits>=2 && (!best || hits>best.h)) best = {s, h:hits}; }); });
+  return best?.s || null;
+}
+const gMine = () => { const me = S.data.usuario; return S.data.students.flatMap(s=>(s.sesiones||[]).filter(x=>x.profesional===me).map(x=>({s, x}))); };
+const gLinked = () => new Set(gMine().map(({x})=>x.gcal?.id).filter(Boolean));
+const gSlot = ev => gMine().find(({x})=>x.fecha===ev.fecha && ev.hora && x.hora && x.estado!=='Suspendida' && Math.abs(gMin(x.hora)-gMin(ev.hora))<=10);
+const gDis = () => { try{ return new Set(JSON.parse(localStorage.getItem('uaa-gdis-'+(C.perfil?.email||''))||'[]')); }catch(e){ return new Set(); } };
+const gDisAdd = id => { const s = gDis(); s.add(id); try{ localStorage.setItem('uaa-gdis-'+(C.perfil?.email||''), JSON.stringify([...s].slice(-300))); }catch(e){} };
+/* eventos de Google que aún no son sesión (los vinculados o a la misma hora que una sesión no se repiten) */
+const gPend = () => { const L = gLinked(); return G.items.filter(e=>!L.has(e.id) && !gSlot(e)); };
+
+agendaExtra = function(){ if(!isTeam() || (S.fprof && S.fprof!==S.data.usuario)) return []; if(S.view==='agenda') gLoad(); return gPend(); };
+const _agendaExtraSlotM = agendaExtraSlot;
+agendaExtraSlot = function(x){ let h = _agendaExtraSlotM(x); if(x.todoDia) return h; const s = gGuessStu(x.titulo);
+  return h.replace(/<\/div><\/div>$/, `<button class="btn sm" data-act="gcal-ses" data-id="${esc(x.id)}" title="Registrar este evento como sesión${s?' de '+esc(s.nombre):''}">${ic('plus','sm')} Registrar sesión${s?' · '+esc(firstName(s.nombreSocial||s.nombre)):''}</button></div></div>`); };
+const _agendaExtraBarM = agendaExtraBar;
+agendaExtraBar = function(){ let h = _agendaExtraBarM(); if(!gOk()) return h; const m = gModo();
+  return h.replace(/<label class="bool small"><input type="checkbox" data-act="gcal-pref"[^>]*><span>[^<]*<\/span><\/label>/,
+    `<label class="small gmodo"><span>Agendo mis sesiones en</span><select data-act="gcal-modo"><option value="plataforma" ${m==='plataforma'?'selected':''}>la plataforma (se copian a mi Google)</option><option value="google" ${m==='google'?'selected':''}>Google Calendar (las registro aquí)</option></select></label>`); };
+document.addEventListener('change', e=>{ if(e.target.dataset?.act!=='gcal-modo') return; const p = gPref(); p.modo = e.target.value; p.ses = p.modo==='plataforma'; gSetPref(p);
+  if(p.ses) gSync(); toast(p.modo==='google' ? 'Tus eventos de Google aparecerán con el botón Registrar sesión; la plataforma ya no creará eventos nuevos' : 'Tus sesiones agendadas aquí se copiarán a tu Google Calendar'); refreshSoon(); }, true);
+
+/* escritura: nunca se modifica un evento propio; antes de crear uno se busca el que ya existe a esa hora */
+const _gUpsertM = gUpsert;
+gUpsert = async function(holder, ev, notify){
+  if(holder.gcal?.ext) return false;
+  if(!holder.gcal && holder.profesional && holder.fecha && holder.hora){ await gLoad();
+    const m = G.items.find(e=>e.fecha===holder.fecha && e.hora && Math.abs(gMin(e.hora)-gMin(holder.hora))<=10 && !gLinked().has(e.id));
+    if(m){ holder.gcal = {id:m.id, by:S.data.usuario, ext:true}; return true; } }
+  return _gUpsertM.apply(this, arguments); };
+const _gRemoveM = gRemove;
+gRemove = async function(g, notify){ if(g?.ext) return; return _gRemoveM.apply(this, arguments); };
+
+/* registrar un evento de Google como sesión */
+function gOpenSes(ev){ const s = gGuessStu(ev.titulo); const dur = ev.horaFin ? Math.max(15, gMin(ev.horaFin)-gMin(ev.hora)) : 45;
+  openForm({kind:'agenda', schema:'agendaSesion', where:'modal', isNew:true, title:'Registrar sesión desde Google Calendar',
+    draft:{sid:s?.id||'', fecha:ev.fecha, hora:ev.hora||'', duracion:dur, estado: ev.fecha > D(0) ? 'Programada' : 'Realizada', profesional:S.data.usuario||'', gcal:{id:ev.id, by:S.data.usuario, ext:true}}}); }
+document.addEventListener('click', e=>{ const el = e.target.closest?.('[data-act="gcal-ses"],[data-act="gcal-no"]'); if(!el) return; e.stopImmediatePropagation();
+  const ev = G.items.find(x=>x.id===el.dataset.id); if(!ev) return;
+  if(el.dataset.act==='gcal-no'){ gDisAdd(ev.id); refreshSoon(); toast('Listo, no se volverá a sugerir'); return; }
+  gOpenSes(ev); }, true);
+
+/* Inicio: atenciones del calendario de los últimos 7 días que parecen sesiones y aún no se registran */
+const _vPanelM = vPanel;
+vPanel = function(){ const h = _vPanelM.apply(this, arguments); if(!isTeam() || !gOk() || isDir(S.data.usuario)) return h;
+  const sig = G.items.length; gLoad().then(()=>{ if(S.view==='panel' && G.items.length!==sig) refreshSoon(); });
+  const dis = gDis(); const L = gPend().filter(e=>!e.todoDia && e.fecha>=D(-7) && e.fecha<=D(0) && !dis.has(e.id)).map(e=>({e, s:gGuessStu(e.titulo)})).filter(o=>o.s).slice(0,6);
+  if(!L.length) return h;
+  const card = `<section class="glass card gpend" style="margin-top:18px"><header><div><p class="eyebrow">Google Calendar</p><h2>Atenciones por registrar</h2></div><span class="chip">${L.length}</span></header>
+    <p class="small muted" style="margin:-4px 0 10px">Eventos de tu calendario de esta semana que parecen sesiones con estudiantes. Regístralos para que queden en la ficha y en tu bitácora.</p>
+    <ul class="rows">${L.map(({e,s})=>`<li class="rowi"><span class="icw">${ic('calendar')}</span><div class="main"><span class="t">${esc(e.titulo)}</span><span class="d">${esc(fmtShort(e.fecha))}${e.hora?' · '+esc(e.hora):''} · ${esc(s.nombre)}</span></div><div class="end"><button class="btn sm primary" data-act="gcal-ses" data-id="${esc(e.id)}">Registrar</button><button class="btn sm" data-act="gcal-no" data-id="${esc(e.id)}">No es una sesión</button></div></li>`).join('')}</ul></section>`;
+  const i = h.indexOf('<div class="hero"'); return i>=0 ? h.slice(0,i) + card + h.slice(i) : card + h; };
+(()=>{ const st = document.createElement('style'); st.textContent = `.gmodo{display:inline-flex;gap:6px;align-items:center}.gmodo select{min-height:32px;border-radius:10px;padding:2px 8px;font:inherit}.gpend .end{display:flex;gap:6px;flex-wrap:wrap}`; document.head.appendChild(st); })();
 
 cloudBoot();
 </script>

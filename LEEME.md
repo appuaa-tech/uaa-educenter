@@ -165,3 +165,11 @@ La prueba de kínder queda disponible en "Resultados por subtest", con sus habil
 ## Configuración de la plataforma
 
 Administración y coordinación ven "Configuración" en el menú (en el celular, en Más). Ahí se amplían o depuran las listas de opciones (tipos de evaluación, modalidades, motivos y medios de comunicación, documentos, tipos de bitácora, reuniones, cargos, condiciones, cursos y otras), se editan los textos base del informe para la familia y hay accesos rápidos a Equipo, Pruebas, Rangos, Coordinaciones académicas, Matrícula y Datos del colegio. Las opciones que usan las reglas de la plataforma aparecen como "fija" y no se pueden ocultar. Se guarda en la base (inst.config) y queda en el registro de cambios. No requiere SQL.
+
+## Google Calendar sin duplicados
+
+En Agenda, cada profesional elige "Agendo mis sesiones en": la plataforma (se copian a su Google Calendar) o Google Calendar (las registra aquí). Un evento propio a la misma hora que una sesión se vincula en vez de crear otro. Los eventos de Google tienen el botón "Registrar sesión", que abre la sesión con fecha, hora, duración y estudiante sugerido. En Inicio aparecen las atenciones de la semana en el calendario que aún no se registran. La plataforma nunca modifica ni borra un evento creado por la profesional.
+
+## PAI de Psicología
+
+El acompañamiento psicológico pasa a ser un plan propio de la psicóloga (Seguimiento socioemocional): motivo, objetivos con estrategias y estado, próxima revisión, compromisos de la familia, enlace al plan firmado e impresión para firmas. En sus sesiones se marcan los objetivos de ese plan. No requiere SQL.
