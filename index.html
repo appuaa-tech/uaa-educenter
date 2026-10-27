@@ -7355,5 +7355,60 @@ saveBitItem = function(d, f){
 const _bitDescAO = bitDesc;
 bitDesc = function(i){ const t = _bitDescAO(i); if(i.estNombre && !(i.sid && stu(i.sid))) return (t?t+' · ':'')+i.estNombre+(i.estCurso?' ('+i.estCurso+')':''); return t; };
 
+/* ================= Un solo camino para registrar la atención a estudiantes ================= */
+/* Toda atención a un estudiante se registra con "Registrar sesión" (mismo formulario desde Inicio, Agenda, la ficha o la bitácora)
+   y aparece sola en la bitácora. "Agregar otra actividad" queda solo para lo que no es atención directa. */
+const LBL_SES = 'Registrar sesión';
+(()=>{ const act = SCHEMA.bitItem.find(s=>s.sec==='Actividad'); const f = act && act.fields.find(x=>x.k==='tipo');
+  if(f) f.o = () => (meRef() || (S.form?.schema==='bitItem' && !S.form.isNew && S.form.draft?.tipo===BIT_AT)) ? BIT_TIPOS : BIT_TIPOS.filter(t=>t!==BIT_AT); })();
+const bitSesFecha = () => (D(0)>=S.bweek && D(0)<=addDays(S.bweek,6)) ? D(0) : S.bweek;
+function abrirSesion(draft){
+  const f = draft.fecha || D(0);
+  openForm({kind:'agenda', schema:'agendaSesion', where:'modal', isNew:true, title:LBL_SES,
+    draft:{estado: f>D(0) ? 'Programada' : 'Realizada', duracion:45, profesional:S.data.usuario||'', ...draft, fecha:f}});
+}
+/* aviso dentro de "Agregar otra actividad" */
+const _inputForAP = inputFor;
+inputFor = function(f, path, v, ctx){
+  const h = _inputForAP(f, path, v, ctx);
+  if(f.k==='tipo' && S.form?.schema==='bitItem' && S.form.isNew && S.form.draft?.tipo && !meRef())
+    return `<div class="field w2"><div class="glass" style="padding:12px 14px;border-radius:14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span class="small">${ic('info','sm')} ¿Atendiste a un estudiante? Regístralo como sesión: queda en su ficha y aparece sola en esta bitácora.</span><button type="button" class="btn sm" data-act="bit-to-ses">${ic('plus','sm')} ${LBL_SES}</button></div></div>` + h;
+  return h; };
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="bit-to-ses"],[data-act="bit-ses"]'); if(!el) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  if(el.dataset.act==='bit-to-ses'){ const d = S.form?.draft||{}; S.form = null; abrirSesion({fecha:d.fecha||bitSesFecha(), duracion:+d.minutos||45}); }
+  else abrirSesion({fecha:bitSesFecha()});
+}, true);
+/* el acceso rápido "Atención al estudiante" lleva al formulario de sesión */
+const _formBodyAP = formBody;
+formBody = function(schema, draft, ctx){
+  const h = _formBodyAP(schema, draft, ctx);
+  if(schema!==SCHEMA.bitItem || meRef() || !S.form?.isNew) return h;
+  return h.replace(/data-act="bit-tipo" data-v="Atención al estudiante">([\s\S]*?<\/svg>) Atención al estudiante/, 'data-act="bit-to-ses">$1 Atención al estudiante (se registra como sesión)');
+};
+/* bitácora: dos botones claros */
+const _vBitacoraAP = vBitacora;
+vBitacora = function(){
+  const h = _vBitacoraAP.apply(this, arguments);
+  if(meRef()) return h.replace(/(data-act="bit-add">[\s\S]*?<\/svg>) Agregar actividad/, '$1 Agregar actividad');
+  return h.replace(/<button class="btn sm primary" data-act="bit-add">([\s\S]*?<\/svg>) Agregar actividad<\/button>/,
+    `<span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm primary" data-act="bit-ses">$1 ${LBL_SES}</button><button class="btn sm" data-act="bit-add">$1 Otra actividad</button></span>`);
+};
+/* mismo nombre en todas partes */
+const _openFormAP = openForm;
+openForm = function(o){
+  if(o && o.isNew){
+    if(o.kind==='agenda' && o.title==='Nueva sesión') o.title = LBL_SES;
+    if(o.kind==='sesiones'){ const t = stu(o.sid); o.title = LBL_SES + (t ? ' · '+(t.nombreSocial||t.nombre) : ''); }
+  }
+  return _openFormAP.apply(this, arguments); };
+function relabelSes(){
+  document.querySelectorAll('[data-act="new-session"]').forEach(b=>{ b.childNodes.forEach(n=>{ if(n.nodeType===3 && /Nueva sesión/.test(n.textContent)) n.textContent = n.textContent.replace('Nueva sesión', LBL_SES); }); });
+  document.querySelectorAll('[data-act="add-item"][data-coll="sesiones"]').forEach(b=>{ b.childNodes.forEach(n=>{ if(n.nodeType===3 && /Agregar sesión/.test(n.textContent)) n.textContent = n.textContent.replace('Agregar sesión', LBL_SES); }); });
+}
+const _renderAP = render;
+render = function(){ const r = _renderAP.apply(this, arguments); try{ relabelSes(); }catch(_){} return r; };
+
 cloudBoot();
 </script>
