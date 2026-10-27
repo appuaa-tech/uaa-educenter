@@ -7328,5 +7328,32 @@ vPanel = function(){ const h = _vPanelM.apply(this, arguments); if(!isTeam() || 
   const i = h.indexOf('<div class="hero"'); return i>=0 ? h.slice(0,i) + card + h.slice(i) : card + h; };
 (()=>{ const st = document.createElement('style'); st.textContent = `.gmodo{display:inline-flex;gap:6px;align-items:center}.gmodo select{min-height:32px;border-radius:10px;padding:2px 8px;font:inherit}.gpend .end{display:flex;gap:6px;flex-wrap:wrap}`; document.head.appendChild(st); })();
 
+/* ================= Bitácora para perfil de reforzamiento: estudiantes desde el directorio ================= */
+(()=>{
+  const dirOpts = () => directorio().map(e=>[e.id, e.nombre+(e.curso?' · '+e.curso:'')]);
+  const stOptsBit = () => meRef() ? dirOpts() : S.data.students.map(s=>[s.id, s.nombre+' · '+cursoOf(s)]);
+  SID_AT.o = stOptsBit;
+  const det = SCHEMA.bitItem.find(s=>s.sec==='Detalle'); const fs = det && det.fields.find(f=>f.k==='sid'); if(fs) fs.o = stOptsBit;
+})();
+const dirEst = id => directorio().find(e=>e.id===id);
+const _inputForAO = inputFor;
+inputFor = function(f, path, v, ctx){
+  if(S.form?.schema==='bitItem' && meRef()){
+    if(f.k==='gmodo') return '';
+    if(f.k==='bh_ficha'){ if(S.form.draft.tipo!==BIT_AT) return '';
+      return `<div class="field w2"><p class="small muted">${ic('check','sm')} Esta atención queda registrada en tu bitácora con el nombre del estudiante. El equipo UAA la verá en el resumen semanal.</p></div>`; }
+  }
+  return _inputForAO(f, path, v, ctx); };
+const _saveBitItemAO = saveBitItem;
+saveBitItem = function(d, f){
+  if(meRef()){
+    d.gmodo = ['Individual']; d.bh_ficha = false;
+    const e = d.sid && !stu(d.sid) ? dirEst(d.sid) : null;
+    if(e){ d.estNombre = e.nombre; d.estCurso = e.curso||''; } else if(!d.sid){ delete d.estNombre; delete d.estCurso; }
+  }
+  return _saveBitItemAO(d, f); };
+const _bitDescAO = bitDesc;
+bitDesc = function(i){ const t = _bitDescAO(i); if(i.estNombre && !(i.sid && stu(i.sid))) return (t?t+' · ':'')+i.estNombre+(i.estCurso?' ('+i.estCurso+')':''); return t; };
+
 cloudBoot();
 </script>
