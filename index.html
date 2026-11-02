@@ -7410,5 +7410,46 @@ function relabelSes(){
 const _renderAP = render;
 render = function(){ const r = _renderAP.apply(this, arguments); try{ relabelSes(); }catch(_){} return r; };
 
+/* ================= Editar una sesión ya registrada, desde la agenda y la bitácora ================= */
+const sesPuedeEditar = (s, x) => { const u = S.data.usuario; return !!u && (isCoord(u) || x.profesional===u || x._por===u); };
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="ses-edit"]'); if(!el) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  const s = stu(el.dataset.sid), x = s && (s.sesiones||[]).find(y=>y.id===el.dataset.id);
+  if(!x){ toast('No se encontró la sesión. Puede que otra persona la haya eliminado.', true); return; }
+  if(!sesPuedeEditar(s, x)){ toast('Solo quien registró la sesión, su profesional o coordinación pueden editarla.', true); return; }
+  openForm({kind:'sesiones', schema:'sesion', where:'modal', sid:s.id, draft:clone(x), title:'Editar sesión · '+(s.nombreSocial||s.nombre)});
+}, true);
+/* agenda: botón Editar en cada sesión (realizada o programada) */
+const _vAgendaAQ = vAgenda;
+vAgenda = function(){
+  const keep = [];
+  S.data.students.forEach(s=>(s.sesiones||[]).forEach(x=>{ if(!sesPuedeEditar(s, x)) return; keep.push([x, x.modalidad]); x.modalidad = (x.modalidad||'Sesión') + '⟦'+s.id+'|'+x.id+'⟧'; }));
+  let h;
+  try { h = _vAgendaAQ.apply(this, arguments); } finally { keep.forEach(([x, m])=>{ if(m===undefined) delete x.modalidad; else x.modalidad = m; }); }
+  h = h.replace(/⟦([^|⟧]+)\|([^⟧]+)⟧([\s\S]*?<\/div><\/div><span class="pill [^"]*">[^<]*<\/span>(?:<button class="btn sm" data-act="mark-done"[^>]*>[\s\S]*?<\/button>)?)/g,
+    (m, sid, id, rest) => rest + `<button class="iconbtn sm" data-act="ses-edit" data-sid="${sid}" data-id="${id}" aria-label="Editar la sesión" title="Editar la sesión">${ic('edit')}</button>`);
+  return h.replace(/⟦[^⟧]*⟧/g, '');
+};
+/* marca la sesión en la descripción automática de la bitácora para poder editarla */
+const _weekAutoAQ = weekAuto;
+weekAuto = function(prof, mon){
+  const A = _weekAutoAQ.apply(this, arguments);
+  if(!S._tokAQ) return A;
+  const used = new Set();
+  A.forEach(a=>{ if(!a.directa || !a.sid) return; const s = stu(a.sid); if(!s) return;
+    const x = (s.sesiones||[]).find(y=>!used.has(y.id) && y.profesional===prof && y.estado==='Realizada' && y.fecha===a.fecha && (+y.duracion||0)===(+a.min||0));
+    if(x && sesPuedeEditar(s, x)){ used.add(x.id); a.desc = (a.desc||'') + '⟦'+s.id+'|'+x.id+'⟧'; } });
+  return A;
+};
+const _vBitacoraAQ = vBitacora;
+vBitacora = function(){
+  S._tokAQ = true; let h;
+  try { h = _vBitacoraAQ.apply(this, arguments); } finally { S._tokAQ = false; }
+  h = h.replace(/⟦([^|⟧]+)\|([^⟧]+)⟧<\/div><\/div><span class="chip">Registro automático<\/span>/g,
+    (m, sid, id) => `</div></div><span class="chip">Registro automático</span><button class="iconbtn sm" data-act="ses-edit" data-sid="${sid}" data-id="${id}" aria-label="Editar la sesión" title="Editar la sesión">${ic('edit')}</button>`);
+  return h.replace(/⟦[^⟧]*⟧/g, '');
+};
+
 cloudBoot();
 </script>
