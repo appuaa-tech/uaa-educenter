@@ -7451,5 +7451,210 @@ vBitacora = function(){
   return h.replace(/⟦[^⟧]*⟧/g, '');
 };
 
+/* ================= Documentos adjuntos: PDF o enlace de Drive (PAEC, PAI, PACI, evaluaciones) ================= */
+/* Mucho del año se trabajó en papel. Cada plan y cada evaluación puede llevar el documento escaneado (PDF o imagen)
+   o el enlace a Drive, y un plan hecho fuera de la plataforma se registra como elaborado sin transcribirlo. */
+const DOC_MAX = 15 * 1024 * 1024;
+const DOC_TIPOS = ['application/pdf','image/jpeg','image/png'];
+const DOC_BUCKET = 'documentos';
+const DOC_LOCAL = {};                                   /* demo: archivos solo en memoria */
+const docCloud = () => typeof sb!=='undefined' && sb && sb.storage && !(S.data && S.data.demo);
+const kb = n => n >= 1048576 ? (n/1048576).toLocaleString('es-CL',{maximumFractionDigits:1})+' MB' : Math.max(1, Math.round(n/1024))+' KB';
+const docIco = d => d.url ? 'link' : 'doc';
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.docs{display:flex;flex-direction:column;gap:8px}
+.docs .di{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--surface-2,rgba(0,0,0,.035))}
+.docs .di .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.docs .add{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.docs .add input[type=url]{flex:1;min-width:200px}
+.docs .up{font-size:.9em}
+.doclinks{display:flex;flex-direction:column;gap:4px}`; document.head.appendChild(st); })();
+
+/* --- campo "docs" en los formularios --- */
+const docsField = (l, req) => ({k:'docs', l, t:'docs', w:2, req: req?1:0});
+const _inputForAS = inputFor;
+inputFor = function(f, path, v, ctx){
+  if(f.t!=='docs') return _inputForAS.apply(this, arguments);
+  const L = Array.isArray(v) ? v : []; const up = S.form?._up;
+  return `<div class="field w2"><span class="lbl">${esc(f.l)}${f.req?' <span class="req">*</span>':''}</span><div class="docs">
+    ${L.map((d,i)=>`<div class="di">${ic(docIco(d),'sm')}<span class="n" title="${esc(d.nombre)}">${esc(d.nombre)}</span><span class="small muted">${d.url?'Drive':kb(d.bytes||0)}</span>
+      <button type="button" class="btn sm" data-doc-open="${i}" data-doc-path="${esc(path)}">Ver</button><button type="button" class="iconbtn sm" data-doc-del="${i}" data-doc-path="${esc(path)}" aria-label="Quitar ${esc(d.nombre)}" title="Quitar">${ic('trash')}</button></div>`).join('')}
+    ${up ? `<div class="di up">${ic('clock','sm')}<span class="n">Subiendo ${esc(up)}…</span></div>` : ''}
+    <div class="add"><label class="btn sm">${ic('plus','sm')} Subir PDF o imagen<input type="file" accept="application/pdf,image/jpeg,image/png" data-doc-up="${esc(path)}" style="display:none"></label>
+      <input type="url" placeholder="o pega el enlace de Drive: https://drive.google.com/…" data-doc-url-in="${esc(path)}" aria-label="Enlace de Drive">
+      <button type="button" class="btn sm" data-doc-url-add="${esc(path)}">Agregar enlace</button></div>
+    <p class="small muted" style="margin:0">PDF, JPG o PNG de hasta 15 MB. Solo lo ve el equipo de la unidad.${docCloud()?'':' En la demo el archivo no queda guardado al recargar.'}</p></div></div>`;
+};
+/* --- vista: enlaces para abrir --- */
+const _viewValAS = viewVal;
+viewVal = function(f, v, ctx){
+  if(f.t!=='docs') return _viewValAS.apply(this, arguments);
+  if(!Array.isArray(v) || !v.length) return null;
+  return `<div class="doclinks">${v.map(d=>`<a href="#" data-doc-view="${esc(d.path||'')}" data-doc-href="${esc(d.url||'')}">${ic(docIco(d),'sm')} ${esc(d.nombre)}</a>`).join('')}</div>`;
+};
+const _missingReqAS = missingReq;
+missingReq = function(schema, draft){ const m = _missingReqAS.apply(this, arguments);
+  const fs = (schema||[]).filter(s=>!s.when || s.when(draft)).flatMap(s=>s.fields||[]).filter(f=>f.t==='docs');
+  fs.forEach(f=>{ const L = draft[f.k]; const i = m.indexOf(f.l); if(f.req && !(Array.isArray(L) && L.length)){ if(i<0) m.push(f.l+': sube el documento o pega el enlace de Drive'); else m[i] = f.l+': sube el documento o pega el enlace de Drive'; } else if(i>=0) m.splice(i,1); });
+  return m; };
+
+/* --- abrir un documento --- */
+async function docAbrir(d){
+  if(!d) return;
+  if(d.url){ window.open(safeUrl(d.url), '_blank', 'noopener'); return; }
+  if(String(d.path||'').startsWith('demo:')){ const u = DOC_LOCAL[d.path]; if(u) window.open(u, '_blank'); else toast('En la demo el archivo no se conserva al recargar la página.', true); return; }
+  if(!docCloud()){ toast('No hay conexión con el almacenamiento de documentos.', true); return; }
+  const w = window.open('', '_blank');                  /* se abre antes de esperar, para que el navegador no la bloquee */
+  const {data, error} = await sb.storage.from(DOC_BUCKET).createSignedUrl(d.path, 600);
+  if(error || !data?.signedUrl){ if(w) w.close(); toast('No se pudo abrir el documento'+(error?.message?': '+error.message:'.'), true); return; }
+  if(w) w.location.href = data.signedUrl; else window.open(data.signedUrl, '_blank');
+  logEv(S.form?.sid || S.sid || '', 'Abrió', 'documento adjunto '+d.nombre);
+}
+const docLista = path => { const f = S.form; if(!f) return null; let L = getPath(f.draft, path); if(!Array.isArray(L)){ L = []; setPath(f.draft, path, L); } return L; };
+const docSid = () => S.form?.sid || S.form?.draft?.sid || S.sid || '';
+
+/* --- subir --- */
+async function docSubir(file, path){
+  const f = S.form; if(!f || !file) return;
+  if(!DOC_TIPOS.includes(file.type)){ toast('Solo se aceptan PDF, JPG o PNG.', true); return; }
+  if(file.size > DOC_MAX){ toast(`El archivo pesa ${kb(file.size)}. El máximo es 15 MB: escanéalo en menor resolución o divídelo.`, true); return; }
+  const sid = docSid(); if(!sid){ toast('Guarda primero el registro del estudiante.', true); return; }
+  const ext = file.type==='application/pdf' ? 'pdf' : file.type==='image/png' ? 'png' : 'jpg';
+  const nombre = String(file.name||('documento.'+ext)).slice(0,120);
+  const doc = {id:uid(), nombre, bytes:file.size, tipo:file.type, por:S.data.usuario||'', en:nowIso()};
+  f._up = nombre; render();
+  try{
+    if(docCloud()){
+      const p = `st/${sid}/${new Date().getFullYear()}/${doc.id}.${ext}`;
+      const {error} = await sb.storage.from(DOC_BUCKET).upload(p, file, {contentType:file.type, upsert:false, cacheControl:'3600'});
+      if(error) throw error;
+      doc.path = p;
+    } else { doc.path = 'demo:'+doc.id; DOC_LOCAL[doc.path] = URL.createObjectURL(file); }
+    if(S.form!==f){ docBorrar([doc.path]); return; }    /* el formulario se cerró mientras subía */
+    docLista(path).push(doc); (f._uploaded = f._uploaded||[]).push(doc.path);
+    toast('Documento adjuntado: '+nombre);
+  }catch(e){ console.error(e);
+    const m = String(e?.message||e);
+    toast(/bucket|not found/i.test(m) ? 'Falta activar el almacenamiento de documentos (SQL de Supabase). Mientras tanto, pega el enlace de Drive.' : /row-level|security|policy|403|Unauthorized/i.test(m) ? 'No tienes permiso para subir documentos a este estudiante.' : 'No se pudo subir el archivo: '+m.slice(0,120), true);
+  } finally { if(S.form===f) f._up = null; render(); }
+}
+async function docBorrar(paths){
+  const ps = (paths||[]).filter(p=>p && !String(p).startsWith('demo:'));
+  (paths||[]).filter(p=>String(p).startsWith('demo:')).forEach(p=>{ try{ URL.revokeObjectURL(DOC_LOCAL[p]); }catch(e){} delete DOC_LOCAL[p]; });
+  if(ps.length && docCloud()){ try{ await sb.storage.from(DOC_BUCKET).remove(ps); }catch(e){ console.error(e); } }
+}
+document.addEventListener('change', e=>{
+  const inp = e.target.closest?.('input[data-doc-up]'); if(!inp) return;
+  const file = inp.files && inp.files[0]; const path = inp.dataset.docUp; inp.value = '';
+  docSubir(file, path);
+});
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-doc-open],[data-doc-del],[data-doc-url-add],[data-doc-view]'); if(!el) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if(el.dataset.docView!==undefined){ const p = el.dataset.docView, u = el.dataset.docHref; docAbrir(u ? {url:u, nombre:el.textContent.trim()} : {path:p, nombre:el.textContent.trim()}); return; }
+  if(el.dataset.docUrlAdd!==undefined){ const path = el.dataset.docUrlAdd; const inp = el.parentNode.querySelector('[data-doc-url-in]'); const u = String(inp?.value||'').trim();
+    if(!linkOk(u)){ toast('El enlace debe comenzar con https://', true); inp?.focus(); return; }
+    const nombre = /drive\.google|docs\.google/i.test(u) ? 'Documento en Drive' : u.replace(/^https:\/\//,'').slice(0,60);
+    docLista(path).push({id:uid(), nombre, url:u, por:S.data.usuario||'', en:nowIso()}); render(); return; }
+  const path = el.dataset.docPath, i = +(el.dataset.docOpen ?? el.dataset.docDel); const L = docLista(path); const d = L && L[i]; if(!d) return;
+  if(el.dataset.docOpen!==undefined){ docAbrir(d); return; }
+  L.splice(i, 1); const f = S.form;
+  if(d.path && (f._uploaded||[]).includes(d.path)){ docBorrar([d.path]); f._uploaded = f._uploaded.filter(p=>p!==d.path); }   /* recién subido y no guardado: se elimina */
+  render();
+}, true);
+/* si el formulario se cierra sin guardar, se eliminan los archivos subidos en él */
+let AS_LAST = null;
+const _saveFormAS = saveForm;
+saveForm = function(){ const f = S.form; const r = _saveFormAS.apply(this, arguments); if(f && S.form!==f){ f._saved = true;
+  (f.draft?.docs||[]).filter(d=>(f._uploaded||[]).includes(d.path)).forEach(d=>logEv(f.sid||f.draft?.sid||'', 'Adjuntó', 'documento '+d.nombre)); }
+  return r; };
+const _renderAS = render;
+render = function(){ const r = _renderAS.apply(this, arguments);
+  if(AS_LAST && S.form!==AS_LAST){ const g = AS_LAST; if(!g._saved && (g._uploaded||[]).length) docBorrar(g._uploaded); }
+  AS_LAST = S.form || null; return r; };
+
+/* --- dónde aparece el campo --- */
+{ const add = (schema, secName, l) => { const sec = (SCHEMA[schema]||[]).find(s=>s.sec===secName) || (SCHEMA[schema]||[])[0]; if(sec && !sec.fields.some(f=>f.k==='docs')) sec.fields.push(docsField(l)); };
+  add('paec', 'Firmas y confidencialidad', 'Documentos del PAEC (escaneado o en Drive)');
+  add('pai', 'Vigencia', 'Documentos del PAI (escaneado o en Drive)');
+  add('paci', 'Vigencia', 'Documentos del PACI (escaneado o en Drive)');
+  add('eval', 'Evaluación', 'Informe o protocolo escaneado'); }
+
+/* --- plan elaborado fuera de la plataforma --- */
+const PLAN_EXT_NOM = {paec:'PAEC', pai:'PAI', paci:'PACI'};
+SCHEMA.planExt = [
+  {sec:'Plan ya elaborado', note:'Para los planes hechos en papel, Word o Drive antes de usar la plataforma. Queda registrado como elaborado, con su documento. Después puedes traspasar el detalle con Editar, si lo necesitas.', fields:[
+    {k:'fechaElaboracion', l:'Fecha de elaboración', t:'date', req:1},
+    {k:'responsable', l:'Responsable', t:'prof'},
+    {k:'periodo', l:'Período', t:'text', ph:'Ej.: 2026 o segundo semestre 2026'},
+    {k:'proximaRevision', l:'Próxima revisión', t:'date'},
+    docsField('Documento del plan', true)]},
+  {sec:'Equipo de apoyo', when:()=>S.form?.planKind==='paec', fields:[
+    {k:'equipoIds', l:'Quienes participan del PAEC', t:'checks', w:2, chip:1, o:()=>(S.data.equipo||[]).map(p=>[p.id, p.nombre])}]},
+  {sec:'Familia', fields:[
+    {k:'fechaInformado', l:'Fecha en que se informó a la familia', t:'date'},
+    {k:'firma', l:'Firma de la familia', t:'select', o:()=>S.form?.planKind==='paec' ? ['Sin firma todavía','Firmado por apoderado titular','Firmado por apoderado suplente (con poder simple)'] : ['Sin firma todavía','Firmado por la familia']},
+    {k:'fechaFirma', l:'Fecha de la firma', t:'date'}]},
+  {sec:'Resumen (opcional)', fields:[
+    {k:'resumen', l:'Lo principal del plan, en pocas líneas', t:'textarea', w:2, ph:'Sirve para que el equipo lo vea sin abrir el documento'}]}];
+function planExtOpen(s, k){
+  const cur = s[k] || {};
+  openForm({kind:'planExt', schema:'planExt', where:'modal', sid:s.id, planKind:k, title:PLAN_EXT_NOM[k]+' ya elaborado · '+(s.nombreSocial||s.nombre),
+    draft:{fechaElaboracion:cur.fechaElaboracion||'', responsable:cur.responsable||s.referente||'', periodo:cur.periodo||'', proximaRevision:cur.proximaRevision||'', docs:clone(cur.docs||[]),
+      equipoIds:(cur.equipo||[]).map(e=>e.prof).filter(Boolean), fechaInformado:cur.fechaInformado||'', fechaFirma:cur.fechaFirma||'', resumen:cur.resumenExt||'',
+      firma: k==='paec' ? (cur.firmaApoderado ? 'Firmado por apoderado titular' : (cur.firmaSuplente ? 'Firmado por apoderado suplente (con poder simple)' : '')) : (cur.firmaFamilia ? 'Firmado por la familia' : '')}});
+}
+const _missingReqAS2 = missingReq;
+missingReq = function(schema, draft){ const m = _missingReqAS2.apply(this, arguments);
+  if(schema===SCHEMA.planExt){
+    if(draft.fechaElaboracion && draft.fechaElaboracion > D(0)) m.push('La fecha de elaboración no puede ser futura');
+    if(/^Firmado/.test(draft.firma||'') && !draft.fechaFirma) m.push('Indica la fecha de la firma');
+    if(draft.proximaRevision && draft.fechaElaboracion && draft.proximaRevision < draft.fechaElaboracion) m.push('La próxima revisión debe ser posterior a la elaboración'); }
+  return m; };
+const _saveFormAS2 = saveForm;
+saveForm = function(){
+  const f = S.form;
+  if(f?.kind==='planExt'){
+    const miss = missingReq(SCHEMA.planExt, f.draft); if(miss.length){ f.err = miss; render(); return; }
+    const s = stu(f.sid), k = f.planKind; if(!s || !PLAN_EXT_NOM[k]){ S.form = null; render(); return; }
+    const d = f.draft, cur = s[k] || {}, nueva = !cur.fechaElaboracion;
+    const p = {...cur, fechaElaboracion:d.fechaElaboracion, responsable:d.responsable||'', periodo:d.periodo||'', proximaRevision:d.proximaRevision||'', docs:d.docs||[], fechaInformado:d.fechaInformado||'', resumenExt:String(d.resumen||'').trim(),
+      origen: cur.origen || 'Elaborado fuera de la plataforma'};
+    if(k==='paec'){
+      const prev = Object.fromEntries((cur.equipo||[]).map(e=>[e.prof, e.rol||'']));
+      p.equipo = (d.equipoIds||[]).map(id=>({prof:id, rol:prev[id]||''}));
+      p.firmaApoderado = d.firma==='Firmado por apoderado titular'; p.firmaSuplente = d.firma==='Firmado por apoderado suplente (con poder simple)';
+      if(p.firmaSuplente) p.poderSimple = true; p.fechaFirma = /^Firmado/.test(d.firma||'') ? d.fechaFirma : (cur.fechaFirma||'');
+    } else { p.firmaFamilia = d.firma==='Firmado por la familia'; p.fechaFirma = p.firmaFamilia ? d.fechaFirma : ''; if(k==='paci' && d.fechaInformado) p.informado = true; }
+    s[k] = stamp(p, nueva);
+    logEv(s.id, nueva?'Registró':'Editó', `${PLAN_EXT_NOM[k]} elaborado el ${fmt(d.fechaElaboracion)} fuera de la plataforma (${(d.docs||[]).length} documento${(d.docs||[]).length===1?'':'s'})`);
+    f._saved = true; S.form = null; persist(); render(); toast(PLAN_EXT_NOM[k]+' registrado como elaborado'); return;
+  }
+  return _saveFormAS2.apply(this, arguments);
+};
+/* botón en la pestaña vacía del plan */
+const _emptyDocAS = emptyDoc;
+emptyDoc = function(s, k){
+  const h = _emptyDocAS.apply(this, arguments); if(!PLAN_EXT_NOM[k]) return h;
+  return h.replace(/(<button class="btn primary xl" data-act="edit-doc" data-tab="[a-z]+">[\s\S]*?<\/button>)/,
+    `<div class="quick-actions" style="justify-content:center">$1<button class="btn xl" data-act="plan-ext" data-tab="${k}">${ic('doc')} Ya está hecho: subir documento</button></div><p class="small muted" style="max-width:52ch;margin:0">¿El ${PLAN_EXT_NOM[k]} está en papel, Word o Drive? Súbelo como PDF o pega el enlace. Queda registrado como elaborado sin tener que transcribirlo.</p>`);
+};
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="plan-ext"]'); if(!el) return; e.stopImmediatePropagation();
+  const s = stu(el.dataset.sid || S.sid); if(s) planExtOpen(s, el.dataset.tab);
+}, true);
+/* en un plan ya registrado: aviso de origen y acceso directo a sus documentos */
+const _viewDocAS = viewDoc;
+viewDoc = function(schema, data, ctx){
+  const h = _viewDocAS.apply(this, arguments);
+  const k = schema===SCHEMA.paec ? 'paec' : schema===SCHEMA.pai ? 'pai' : schema===SCHEMA.paci ? 'paci' : null;
+  if(!k || !data || !(data.origen || (data.docs||[]).length)) return h;
+  const docs = data.docs||[];
+  const head = `<section class="sec"><div class="arbar info" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 14px;border-radius:14px;background:rgba(40,110,220,.08);border:1px solid rgba(40,110,220,.3)">
+    <span>${ic('doc','sm')} ${data.origen ? '<b>'+esc(data.origen)+'.</b> ' : ''}${docs.length ? docs.length+' documento'+(docs.length===1?'':'s')+' adjunto'+(docs.length===1?'':'s')+'.' : 'Sin documento adjunto.'}${data.resumenExt ? ' '+esc(data.resumenExt) : ''}</span>
+    <span class="doclinks" style="flex-direction:row;flex-wrap:wrap;gap:10px">${docs.map(d=>`<a href="#" data-doc-view="${esc(d.path||'')}" data-doc-href="${esc(d.url||'')}">${ic(docIco(d),'sm')} ${esc(d.nombre)}</a>`).join('')}<button class="btn sm" data-act="plan-ext" data-tab="${k}">${ic('edit','sm')} Documentos y fechas</button></span></div></section>`;
+  return head + h;
+};
+
 cloudBoot();
 </script>
