@@ -7656,5 +7656,113 @@ viewDoc = function(schema, data, ctx){
   return head + h;
 };
 
+/* ================= Plan 2026: lo anterior a la plataforma se gestionó en papel ================= */
+/* Las entregas, comunicaciones y autorizaciones con la familia cuyo plazo es anterior al inicio del registro en la
+   plataforma cuentan como "En papel (Plan 2026)": no aparecen como vencidas ni bajan los indicadores. Lo posterior se
+   mide normalmente. El Plan 2027 contempla registrar todo en la plataforma desde el inicio del año. */
+const P26_DEF = '2026-10-01';
+let P26_C = {t:0, v:''};
+function p26Inicio(){
+  const c = S.data.estab?.plan2026; if(c?.corte) return c.corte;
+  if(Date.now() - P26_C.t < 4000 && P26_C.v) return P26_C.v;
+  let m = '';
+  const look = o => { const t = o && o._creado; if(t && (!m || t < m)) m = t; };
+  (S.data.students||[]).forEach(s=>{ look(s); ['sesiones','comunicaciones','evaluaciones','dec','autorizaciones'].forEach(k=>(s[k]||[]).forEach(look)); look(s.paec); look(s.pai); look(s.anamnesis); });
+  const v = m ? String(m).slice(0,10) : P26_DEF;
+  P26_C = {t:Date.now(), v: v > D(0) ? D(0) : v}; return P26_C.v;
+}
+const p26On = () => S.data.estab?.plan2026?.activo !== false;
+const p26Corte = () => p26On() ? p26Inicio() : '';
+const P26_NOTA_DEF = 'Las entregas, comunicaciones y autorizaciones con la familia anteriores al {fecha} se gestionaron en papel y se respaldan en la carpeta de cada estudiante, de acuerdo con el Plan 2026. El Plan 2027 contempla registrar todo en la plataforma desde el inicio del año escolar.';
+const p26Nota = () => String(S.data.estab?.plan2026?.nota || P26_NOTA_DEF).replace(/\{fecha\}/g, fmt(p26Inicio()));
+const p26HTML = (extra) => p26On() ? `<div class="p26">${ic('info','sm')}<span><b>Plan 2026.</b> ${esc(p26Nota())}${extra?' '+extra:''}</span></div>` : '';
+(()=>{ const st = document.createElement('style'); st.textContent = `
+.p26{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:rgba(40,110,220,.07);border:1px solid rgba(40,110,220,.28);font-size:.92em;line-height:1.4;margin:0 0 14px}
+.p26 svg{flex:none;margin-top:2px}
+.pill.papel{background:rgba(40,110,220,.12);color:var(--ink,#123)}`; document.head.appendChild(st); })();
+
+/* --- obligaciones con la familia --- */
+OB_TXT.papel = 'En papel (Plan 2026)'; OB_PILL.papel = 'papel'; OB_IC.papel = 'doc';
+const P26_EV = () => `Gestionado en papel según el Plan 2026, antes del registro en la plataforma (${fmt(p26Inicio())}). Respaldo en la carpeta del estudiante.`;
+const _obligationsAT = obligations;
+obligations = function(s){
+  const L = _obligationsAT.apply(this, arguments); const corte = p26Corte(); if(!corte) return L;
+  L.forEach(o=>{ if(o.st==='ok' || !o.plazo || o.plazo >= corte) return;
+    o.st = S._p26ok ? 'ok' : 'papel'; o.ev = o.ev ? P26_EV()+' · '+o.ev : P26_EV(); o.papel = true; });
+  return L;
+};
+respaldo = function(s){ const L = obligations(s); if(!L.length) return {pct:100, L, ok:0, partial:0, late:0, pend:0, papel:0};
+  const n = k => L.filter(o=>o.st===k).length; const due = L.filter(o=>o.st!=='pend').length;
+  const pct = due ? Math.round((n('ok') + n('papel') + n('partial')*.5)/due*100) : 100;
+  return {pct, L, ok:n('ok'), partial:n('partial'), late:n('late'), pend:n('pend'), papel:n('papel')}; };
+/* las recomendaciones de los informes no piden "entregar" lo que ya se hizo en papel */
+const _genRecsAT = genRecs;
+genRecs = function(){ S._p26ok = true; try { return _genRecsAT.apply(this, arguments); } finally { S._p26ok = false; } };
+
+/* --- autorizaciones: las de inicio de año se firmaron en papel --- */
+AUT_PILL.papel = 'papel';
+const P26_AUT = ['ingreso','evaluacion','contencion'];
+const p26Antiguo = s => { const corte = p26Corte(); if(!corte) return false; const ini = String(s._creado||'').slice(0,10); return !ini || ini <= corte || (s.anamnesis?.fecha && s.anamnesis.fecha < corte) || (s.diagnosticos||[]).some(d=>d.fecha && d.fecha < corte); };
+const _autStateAT = autState;
+autState = function(s, k, en){
+  const r = _autStateAT.apply(this, arguments);
+  if(r.st!=='none' || !P26_AUT.includes(k) || !p26Antiguo(s)) return r;
+  if(k==='contencion' && !(s.paec?.fechaElaboracion || (typeof needsCont==='function' && needsCont(s)))) return r;
+  if(en && en >= p26Corte()) return r;
+  return {st:'papel', lbl: k==='contencion' ? 'En papel (Plan 2026): confirmar en la carpeta' : 'En papel (Plan 2026)', x:null, papel:true};
+};
+const _autAlertsAT = autAlerts;
+autAlerts = function(s){
+  const out = _autAlertsAT.apply(this, arguments); const corte = p26Corte(); if(!corte) return out;
+  return out.filter(a=>{
+    if(!/evaluaci(ón|ones) sin autorización previa/i.test(a.t)) return true;
+    const propias = (s.evaluaciones||[]).filter(e=>e.tipo!=='Informe externo recibido' && e.fecha >= corte);
+    const sinAut = propias.filter(e=>!autRecs(s,'evaluacion').some(x=>x.decision!=='No autoriza' && x.fecha<=e.fecha && autVigente(x, e.fecha)));
+    if(!sinAut.length) return false;
+    a.t = sinAut.length===1 ? 'Evaluación sin autorización previa de la familia' : `${sinAut.length} evaluaciones sin autorización previa`;
+    a.d = 'Evaluación del '+sinAut.map(e=>fmt(e.fecha)).join(', ')+'. Registra la autorización firmada antes de evaluar.'; return true; });
+};
+
+/* --- notas visibles --- */
+const p26Pegar = (h, marca) => { const i = h.indexOf(marca); return i>=0 ? h.slice(0, i+marca.length) + p26HTML() + h.slice(i+marca.length) : p26HTML() + h; };
+const _vFamiliaAT = vFamilia;
+vFamilia = function(s){ let h = _vFamiliaAT.apply(this, arguments); if(!p26On()) return h;
+  const R = respaldo(s); if(R.papel) h = h.replace('<span class="pill info">', `<span class="pill papel">${R.papel} en papel (Plan 2026)</span><span class="pill info">`);
+  return p26Pegar(h, '<div class="stack">'); };
+const _vAutorizacionesAT = vAutorizaciones;
+vAutorizaciones = function(s){ const h = _vAutorizacionesAT.apply(this, arguments); return p26On() ? p26HTML('Si necesitas el detalle de una autorización en papel, revisa la carpeta o regístrala con «Registrar firmada».') + h : h; };
+{ const _vp = vPanel; vPanel = function(){ const h = _vp.apply(this, arguments); const u = S.data.usuario;
+  if(!p26On() || !(isCoord(u) || isDir(u)) || (isCoord(u) && (S.pview||'coord')!=='coord')) return h;
+  const i = h.indexOf('</nav>'); return i>=0 && i < 3000 ? h.slice(0, i+6) + '<div style="margin-top:14px">' + p26HTML() + '</div>' + h.slice(i+6) : p26HTML() + h; }; }
+if(typeof vEquipoCoord==='function'){ const _ve = vEquipoCoord; vEquipoCoord = function(){ const h = _ve.apply(this, arguments); return p26On() ? p26Pegar(h, '<div class="stack">') : h; }; }
+if(typeof buildDir==='function'){ const _bd = buildDir; buildDir = function(o, meta){ const h = _bd.apply(this, arguments); if(!p26On()) return h;
+  const nota = `<p class="note"><b>Plan 2026.</b> ${esc(p26Nota())}</p>`; const i = h.indexOf('<h2>'); return i>=0 ? h.slice(0,i) + nota + h.slice(i) : h; }; }
+if(typeof buildFamilia==='function'){ const _bf = buildFamilia; buildFamilia = function(s, o, meta){ const h = _bf.apply(this, arguments); if(!p26On()) return h;
+  const nota = `<p class="note">${esc(p26Nota())}</p>`; const i = h.lastIndexOf('<h2>'); return i>=0 ? h.slice(0,i) + nota + h.slice(i) : h; }; }
+
+/* --- configuración: fecha de inicio y texto de la nota --- */
+SCHEMA.plan2026 = [{sec:'Registros en papel · Plan 2026', note:'Lo que tenga plazo antes de esta fecha se considera gestionado en papel: no aparece como vencido ni baja los indicadores. Lo posterior se mide normalmente.', fields:[
+  {k:'activo', l:'Considerar los registros en papel del Plan 2026', t:'bool', w:2},
+  {k:'corte', l:'Inicio del registro en la plataforma', t:'date', req:1},
+  {k:'nota', l:'Nota que se muestra en la plataforma y los informes ({fecha} se reemplaza por la fecha de inicio)', t:'textarea', w:2}]}];
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="p26-cfg"]'); if(!el) return; e.stopImmediatePropagation();
+  const c = S.data.estab?.plan2026 || {};
+  openForm({kind:'plan2026', schema:'plan2026', where:'modal', title:'Plan 2026 · registros en papel', draft:{activo:c.activo!==false, corte:c.corte||p26Inicio(), nota:c.nota||P26_NOTA_DEF}});
+}, true);
+const _saveFormAT = saveForm;
+saveForm = function(){ const f = S.form;
+  if(f?.kind==='plan2026'){ const miss = missingReq(SCHEMA.plan2026, f.draft); if(f.draft.corte && f.draft.corte > D(0)) miss.push('La fecha no puede ser futura'); if(miss.length){ f.err = miss; render(); return; }
+    S.data.estab.plan2026 = {activo:!!f.draft.activo, corte:f.draft.corte, nota:String(f.draft.nota||'').trim() || P26_NOTA_DEF};
+    P26_C = {t:0, v:''}; logEv('', 'Editó', `Plan 2026: inicio del registro en la plataforma ${fmt(f.draft.corte)}${f.draft.activo?'':' (desactivado)'}`);
+    S.form = null; persist(); render(); toast('Plan 2026 actualizado'); return; }
+  return _saveFormAT.apply(this, arguments); };
+if(typeof vConfig==='function'){ const _vc = vConfig; vConfig = function(){ const h = _vc.apply(this, arguments); if(typeof puedeCfg==='function' && !puedeCfg()) return h;
+  const c = S.data.estab?.plan2026 || {};
+  const sec = `<section class="glass card"><header><h2>Plan 2026 · registros en papel</h2><button class="btn sm" data-act="p26-cfg">${ic('edit','sm')} Editar</button></header>
+    <p class="small" style="margin:0 0 8px">${p26On() ? `Activo. Lo anterior al <b>${esc(fmt(p26Inicio()))}</b>${c.corte?'':' (fecha calculada desde el primer registro; puedes fijarla)'} cuenta como gestionado en papel.` : 'Desactivado: todas las entregas y autorizaciones se miden según lo registrado en la plataforma.'}</p>
+    <p class="small muted" style="margin:0">${esc(p26Nota())}</p></section>`;
+  const i = h.indexOf('<section class="glass card"><header><h2>Lo que requiere una actualización'); return i>=0 ? h.slice(0,i) + sec + h.slice(i) : h + sec; }; }
+
 cloudBoot();
 </script>
