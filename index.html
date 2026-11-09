@@ -7764,5 +7764,181 @@ if(typeof vConfig==='function'){ const _vc = vConfig; vConfig = function(){ cons
     <p class="small muted" style="margin:0">${esc(p26Nota())}</p></section>`;
   const i = h.indexOf('<section class="glass card"><header><h2>Lo que requiere una actualización'); return i>=0 ? h.slice(0,i) + sec + h.slice(i) : h + sec; }; }
 
+/* ================= TabulaTest de 3.º a 8.º básico · Reevaluación de cierre de año ================= */
+
+/* ---------- pruebas (puntajes máximos entregados por el equipo, nov. 2026) ---------- */
+const VL = {n:'Velocidad Lectora (PPM)', max:0, ppm:1};
+const TT = (id, curso, cog, lec, mat) => ({id, nombre:'TabulaTest '+curso, nivel:curso, areas:[
+  {area:'Área Cognitiva', subtests:cog.map(([n,max])=>({n, max}))},
+  {area:'Área Lectura y Escritura', subtests:lec.map(x=>x===VL ? {...VL} : {n:x[0], max:x[1]})},
+  {area:'Área Matemática', subtests:mat.map(([n,max])=>({n, max}))}]});
+const TT_6_7 = [[['Reflexividad',4],['Pensamiento Analógico',6],['Organización Perceptiva',4],['Memoria y Atención',7]],
+  [['Comprensión Lectora',18],['Expresión Escrita',10],['Ortografía Visual y Reglada',10],['Ortografía Fonética',26], VL],
+  [['Cálculo y Numeración',14],['Resolución de Problemas',8]]];
+const TABULATEST = [
+  TT('tt-3b','3.º básico', [['Memoria y Atención',74],['Reflexividad',14],['Analogías',6],['Organización Perceptiva',20]],
+    [['Comprensión Lectora',8],['Ortografía Fonética',18],['Grafía y expresión escrita',10], VL], [['Cálculo y Numeración',37],['Resolución de Problemas',8]]),
+  TT('tt-4b','4.º básico', [['Memoria y Atención',49],['Razonamiento Perceptivo',8],['Analogías Verbales',8],['Organización Perceptiva',24]],
+    [['Ortografía',18],['Escritura',22],['Lectura y Comprensión',24], VL], [['Cálculo y Numeración',37],['Resolución de Problemas',8]]),
+  TT('tt-5b','5.º básico', [['Memoria y Atención',107],['Razonamiento Lógico',41]],
+    [['Comprensión Lectora',8],['Ortografía Visual y Reglada',24],['Exactitud Lectora',23],['Ortografía Fonética',18],['Expresión Escrita',10], VL], [['Cálculo y Numeración',86],['Resolución de Problemas',12]]),
+  TT('tt-6b','6.º básico', ...TT_6_7),
+  TT('tt-7b','7.º básico', ...TT_6_7),
+  TT('tt-8b','8.º básico', [['Atención y Concentración',128],['Razonamiento Deductivo',12],['Razonamiento Inductivo',8],['Razonamiento Espacial',6]],
+    [['Eficacia Lectora',11],['Comprensión Lectora',9],['Expresión Escrita',10],['Ortografía Visual y Reglada',10],['Ortografía Fonética',30], VL], [['Cálculo y Numeración',13],['Resolución de Problemas',8]])];
+TABULATEST.forEach(p=>{ if(!PRUEBAS_BASE.some(x=>x.id===p.id)) PRUEBAS_BASE.push(p); });
+
+/* ---------- velocidad lectora: se registra en palabras por minuto y no entra al % del área ---------- */
+const isPpm = f => !!f && (f.ppm || (+f.max===0 && /ppm|velocidad/i.test(f.n||'')));
+const _tabTableAU = tabTable;
+tabTable = function(t, opts){
+  if(!t?.areas) return _tabTableAU.apply(this, arguments);
+  const vals = []; const t2 = {...t, areas:t.areas.map(a=>({...a, filas:a.filas.map(f=>{ if(!isPpm(f)) return f; vals.push(f.obt===''||f.obt==null ? '—' : f.obt+' ppm'); return {...f, max:'PPM', obt:''}; })}))};
+  let i = 0; return _tabTableAU.call(this, t2, opts).replace(/(>PPM<\/td><td[^>]*>)[^<]*(<\/td>)/g, (m, a, b) => a + esc(vals[i++] ?? '—') + b);
+};
+const _inputForAU = inputFor;
+inputFor = function(f, path, v, ctx){
+  let h = _inputForAU.apply(this, arguments);
+  if(f.t!=='tabgrid') return h;
+  const P = pruebas().find(p=>p.id===S.form?.draft?.pruebaId); if(!P) return h;
+  P.areas.forEach((a,ai)=>a.subtests.forEach((st,si)=>{ if(!isPpm(st)) return;
+    const id = `tg-${ai}-${si}`;
+    h = h.replace(new RegExp(`(<label for="${id}">[^<]*</label>)<span class="tg-max">[^<]*</span><input id="${id}" type="number" inputmode="numeric" min="0" max="[^"]*"`), `$1<span class="tg-max">palabras por minuto</span><input id="${id}" type="number" inputmode="numeric" min="0" max="400"`)
+         .replace(`data-path="tabObt.${tabKey(ai,si)}" data-max="0"`, `data-path="tabObt.${tabKey(ai,si)}" data-max="400"`)
+         .replace(new RegExp(`(<span class="tg-res" data-tg="${ai}-${si}">)[^<]*`), `$1no suma al % del área`); }));
+  return h;
+};
+const _missingReqAU = missingReq;
+missingReq = function(schema, draft){ const m = _missingReqAU.apply(this, arguments);
+  if(schema!==SCHEMA.eval || !draft?.pruebaId) return m;
+  const P = pruebas().find(p=>p.id===draft.pruebaId); if(!P) return m;
+  const ppm = P.areas.flatMap(a=>a.subtests).filter(isPpm);
+  return m.filter(x=>!ppm.some(st=>x.startsWith(st.n+': el puntaje debe estar entre 0 y'))).concat(
+    ppm.flatMap(st=>{ const ai = P.areas.findIndex(a=>a.subtests.includes(st)), si = P.areas[ai].subtests.indexOf(st); const v = (draft.tabObt||{})[tabKey(ai,si)];
+      return (v!=='' && v!=null && (+v < 0 || +v > 400)) ? [`${st.n}: escribe las palabras por minuto (entre 0 y 400)`] : []; }));
+};
+
+/* =====================================================================
+   Reevaluación de cierre de año: misma prueba, comparación con la evaluación inicial
+   ===================================================================== */
+const ETAPAS = ['Evaluación inicial','Evaluación de proceso','Reevaluación de cierre de año'];
+const REEVAL = 'Reevaluación de cierre de año';
+{ const f0 = SCHEMA.eval[0].fields; const i = f0.findIndex(f=>f.k==='tipo');
+  if(!f0.some(f=>f.k==='etapa')) f0.splice(i+1, 0,
+    {k:'etapa', l:'Momento de la evaluación', t:'select', o:()=>ETAPAS},
+    {k:'reevalDe', l:'Se compara con', t:'select', o:()=>{ const s = stu(S.form?.sid || S.sid); const d = S.form?.draft || {};
+      return [['','Elegir la evaluación inicial…'], ...(s?.evaluaciones||[]).filter(e=>e.id!==d.id && e.tabulacion && (!d.fecha || e.fecha <= d.fecha)).sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(e=>[e.id, fmt(e.fecha)+' · '+(e.tabulacion.prueba||e.tipo)])]; }}); }
+const _missingReqAU2 = missingReq;
+missingReq = function(schema, draft){ const m = _missingReqAU2.apply(this, arguments);
+  if(schema===SCHEMA.eval && draft?.etapa===REEVAL){
+    if(!draft.reevalDe) m.push('Se compara con: elige la evaluación inicial');
+    else { const s = stu(S.form?.sid || S.sid); const b = (s?.evaluaciones||[]).find(e=>e.id===draft.reevalDe);
+      if(b && draft.pruebaId && b.tabulacion?.pruebaId && b.tabulacion.pruebaId!==draft.pruebaId) m.push('Para comparar, aplica la misma prueba que en la evaluación inicial ('+b.tabulacion.prueba+')'); } }
+  return m; };
+const evBase = (s, e) => e?.reevalDe ? (s.evaluaciones||[]).find(x=>x.id===e.reevalDe) : null;
+const nivTxt = k => (TAB_NIV.find(x=>x[0]===k)||[])[1] || '—';
+const nivOrd = k => ({PL:0, ML:1, L:2})[k] ?? -1;
+const normN = n => String(n||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+function reevalComp(B, A){              /* B: tabulación inicial · A: final */
+  const CB = tabCalc(B), CA = tabCalc(A);
+  return CA.map(a=>{ const b = CB.find(x=>normN(x.area)===normN(a.area)) || {filas:[]};
+    const filas = a.filas.map(f=>{ const g = b.filas.find(x=>normN(x.n)===normN(f.n)) || {};
+      const ppm = isPpm(f); const vi = g.obt, vf = f.obt; const has = v => v!=='' && v!=null;
+      const dif = has(vi) && has(vf) ? (ppm ? (+vf - +vi) : (f.pct!=null && g.pct!=null ? Math.round(f.pct) - Math.round(g.pct) : null)) : null;
+      return {n:f.n, ppm, max:f.max, vi, vf, pi:g.pct, pf:f.pct, ni:g.niv, nf:f.niv, dif}; });
+    const dif = a.pct!=null && b.pct!=null ? Math.round(a.pct) - Math.round(b.pct) : null;
+    return {area:a.area, pi:b.pct, pf:a.pct, ni:b.niv, nf:a.niv, dif, filas}; });
+}
+const flecha = d => d==null ? '—' : d>0 ? `<b style="color:#1b7a3d">▲ +${d}</b>` : d<0 ? `<b style="color:#b3261e">▼ ${d}</b>` : '<span style="color:#5b6478">= 0</span>';
+function reevalTabla(C, fi, ff){
+  const th = 'background:#002D82;color:#fff;padding:5px 7px;border:1px solid #c9d1e3;font-size:9.5pt;text-align:left', td = 'padding:5px 7px;border:1px solid #c9d1e3;font-size:9.5pt;vertical-align:middle';
+  const cel = (v, p, niv, ppm) => v==='' || v==null ? '—' : ppm ? `${esc(v)} ppm` : `${esc(v)} · ${fmtPct(p)}${niv?` <span style="color:${TAB_COL[niv]};font-weight:700">${nivTxt(niv)}</span>`:''}`;
+  return `<table class="tabtest" style="border-collapse:collapse;width:100%;margin:8px 0"><thead><tr><th style="${th}">Área / subtest</th><th style="${th}">Inicial · ${esc(fmt(fi))}</th><th style="${th}">Cierre · ${esc(fmt(ff))}</th><th style="${th}">Cambio</th></tr></thead><tbody>${C.map(a=>`
+    <tr style="background:#eef2fa"><td style="${td}"><b>${esc(a.area)}</b></td><td style="${td}"><b>${fmtPct(a.pi)}</b> ${a.ni?`<span style="color:${TAB_COL[a.ni]};font-weight:700">${nivTxt(a.ni)}</span>`:''}</td><td style="${td}"><b>${fmtPct(a.pf)}</b> ${a.nf?`<span style="color:${TAB_COL[a.nf]};font-weight:700">${nivTxt(a.nf)}</span>`:''}</td><td style="${td}">${flecha(a.dif)}${a.dif!=null?' pts':''}</td></tr>
+    ${a.filas.map(f=>`<tr><td style="${td};padding-left:18px">${esc(f.n)}</td><td style="${td}">${cel(f.vi, f.pi, f.ni, f.ppm)}</td><td style="${td}">${cel(f.vf, f.pf, f.nf, f.ppm)}</td><td style="${td}">${flecha(f.dif)}${f.dif!=null?(f.ppm?' ppm':' pts'):''}</td></tr>`).join('')}`).join('')}</tbody></table>
+    <p style="font-size:8.5pt;color:#5b6478;margin:2px 0 0">Cambio en puntos porcentuales de logro. La velocidad lectora se compara en palabras por minuto.</p>`;
+}
+function reevalSintesis(C){
+  const F = C.flatMap(a=>a.filas).filter(f=>f.dif!=null && !f.ppm);
+  const sube = F.filter(f=>f.dif>0).length, igual = F.filter(f=>f.dif===0).length, baja = F.filter(f=>f.dif<0).length;
+  const subeNiv = C.filter(a=>nivOrd(a.nf) > nivOrd(a.ni) && a.ni), bajaNiv = C.filter(a=>nivOrd(a.nf) < nivOrd(a.ni) && a.nf);
+  const vel = C.flatMap(a=>a.filas).find(f=>f.ppm && f.dif!=null);
+  const p = [];
+  if(F.length) p.push(`De ${F.length} subtests comparables, ${sube} ${sube===1?'mejora':'mejoran'}, ${igual} se ${igual===1?'mantiene':'mantienen'} y ${baja} ${baja===1?'baja':'bajan'}.`);
+  if(subeNiv.length) p.push(`Sube de nivel de desempeño: ${subeNiv.map(a=>`${a.area.replace(/^Área /,'')} (${nivTxt(a.ni)} → ${nivTxt(a.nf)})`).join(', ')}.`);
+  if(bajaNiv.length) p.push(`Baja de nivel: ${bajaNiv.map(a=>`${a.area.replace(/^Área /,'')} (${nivTxt(a.ni)} → ${nivTxt(a.nf)})`).join(', ')}.`);
+  if(vel) p.push(`La velocidad lectora pasa de ${vel.vi} a ${vel.vf} palabras por minuto (${vel.dif>0?'+':''}${vel.dif}).`);
+  return p.join(' ');
+}
+const reevalBloque = (s, e) => { const b = evBase(s, e); if(!b?.tabulacion || !e?.tabulacion) return '';
+  const C = reevalComp(b.tabulacion, e.tabulacion); const sx = reevalSintesis(C);
+  return `<div class="reeval"><p style="margin:10px 0 4px"><b>Comparación con la evaluación inicial del ${esc(fmt(b.fecha))}</b></p>${reevalTabla(C, b.fecha, e.fecha)}${sx?`<p style="margin:6px 0 0">${esc(sx)}</p>`:''}</div>`; };
+
+/* en la ficha: etiqueta, comparación, botón para reevaluar e informe */
+const _vCollAU = vColl;
+vColl = function(s, key, embedded){
+  let h = _vCollAU.apply(this, arguments); if(key!=='evaluaciones') return h;
+  (s.evaluaciones||[]).forEach(x=>{ const mark = `data-act="edit-item" data-coll="evaluaciones" data-id="${x.id}"`; const i = h.indexOf(mark); if(i<0) return;
+    const j = h.indexOf('<div class="body">', i); const k = h.indexOf('</article>', j); if(j<0 || k<0) return; const end = h.lastIndexOf('</div>', k);
+    let add = '';
+    if(x.etapa===REEVAL && evBase(s, x)) add += reevalBloque(s, x) + `<div class="quick-actions"><button class="btn sm" data-act="report-item" data-kind="reeval" data-id="${x.id}">${ic('print','sm')} Informe de reevaluación</button></div>`;
+    else if(x.tabulacion && !(s.evaluaciones||[]).some(y=>y.reevalDe===x.id)) add += `<div class="quick-actions"><button class="btn sm primary" data-act="reeval-new" data-id="${x.id}">${ic('chart','sm')} Reevaluar para el cierre de año</button></div>`;
+    else if(x.tabulacion){ const r = (s.evaluaciones||[]).find(y=>y.reevalDe===x.id); add += `<p class="small muted" style="margin:6px 0 0">${ic('check','sm')} Reevaluada el ${esc(fmt(r.fecha))}.</p>`; }
+    if(x.etapa) h = h.slice(0, j) + h.slice(j).replace('<div class="body">', `<div class="body"><span class="pill ${x.etapa===REEVAL?'ok':'info'}" style="margin-bottom:6px">${esc(x.etapa)}</span>`);
+    if(add){ const h2 = h; const i2 = h2.indexOf(mark), j2 = h2.indexOf('<div class="body">', i2), k2 = h2.indexOf('</article>', j2), e2 = h2.lastIndexOf('</div>', k2); h = h2.slice(0, e2) + add + h2.slice(e2); } });
+  return h;
+};
+function reevalAbrir(s, x){
+  const P = x.tabulacion && pruebas().find(p=>p.id===x.tabulacion.pruebaId);
+  const d = {fecha:D(0), tipo:x.tipo, profesional:S.data.usuario||x.profesional||'', instrumento:x.instrumento||'', etapa:REEVAL, reevalDe:x.id, pruebaId:P ? P.id : '', tabObt:{}};
+  if(PSICO_TIPOS.includes(x.tipo)) d.motivo = `Reevaluación de cierre del año escolar ${D(0).slice(0,4)}, con el mismo instrumento aplicado en la evaluación inicial del ${fmt(x.fecha)}, para medir el avance del estudiante y orientar los apoyos del próximo año.`;
+  openForm({kind:'evaluaciones', schema:'eval', where:'modal', sid:s.id, isNew:true, draft:d, title:'Reevaluación de cierre · '+(s.nombreSocial||s.nombre)});
+  if(!P) setTimeout(()=>toast('La prueba de la evaluación inicial ya no está disponible: elige la prueba y escribe los puntajes.', true), 50);
+}
+document.addEventListener('click', e=>{
+  const el = e.target.closest?.('[data-act="reeval-new"]'); if(!el) return; e.stopImmediatePropagation();
+  const s = stu(el.dataset.sid || S.sid), x = s && (s.evaluaciones||[]).find(y=>y.id===el.dataset.id); if(x) reevalAbrir(s, x);
+}, true);
+/* al elegir "Reevaluación de cierre" a mano, se propone la última evaluación con tabla y su prueba */
+document.addEventListener('change', e=>{
+  if(e.target.dataset?.path!=='etapa' || S.form?.schema!=='eval') return;
+  setTimeout(()=>{ const d = S.form?.draft; if(d?.etapa!==REEVAL || d.reevalDe) return; const s = stu(S.form.sid || S.sid);
+    const b = (s?.evaluaciones||[]).filter(x=>x.id!==d.id && x.tabulacion && x.etapa!==REEVAL).sort((a,c)=>c.fecha.localeCompare(a.fecha))[0];
+    if(b){ d.reevalDe = b.id; if(!d.pruebaId && pruebas().some(p=>p.id===b.tabulacion.pruebaId)) d.pruebaId = b.tabulacion.pruebaId; keepScroll(render); } }, 0);
+});
+
+/* informe imprimible */
+RKINDS.reeval = {t:'Informe de reevaluación de cierre de año', d:'', ic:'chart', norecs:1};
+function buildReeval(s, o, meta){
+  const x = (s.evaluaciones||[]).find(e=>e.id===o.item); const b = x && evBase(s, x);
+  if(!x || !b) return `<div class="rpt">${rHead('Informe de reevaluación', esc(s.nombre), meta)}<p>No se encontró la evaluación inicial para comparar.</p>${rFoot(meta)}</div>`;
+  const C = reevalComp(b.tabulacion, x.tabulacion); const Y = String(x.fecha).slice(0,4);
+  let h = rHead('Informe de reevaluación de cierre de año', `Año ${esc(Y)}<br>${esc(s.nombre)} · ${esc(cursoOf(s))}`, meta) + rConf();
+  h += `<h2>1. Identificación</h2>${rkv([['Estudiante', s.nombre],['RUN', s.rut],['Curso', cursoOf(s)],['Profesional', profName(x.profesional)],['Instrumento', x.tabulacion.prueba || x.instrumento],['Evaluación inicial', fmt(b.fecha)],['Reevaluación', fmt(x.fecha)]])}`;
+  h += `<h2>2. Resultados comparados</h2>${reevalTabla(C, b.fecha, x.fecha)}`;
+  const sx = reevalSintesis(C);
+  h += `<h2>3. Síntesis del avance</h2>${sx?`<p>${esc(sx)}</p>`:''}${x.sintesis||x.resultados ? parr(x.sintesis || x.resultados) : ''}`;
+  const sug = [x.sugEst, x.sugFam, x.sugerencias].flat().filter(v=>!empty(v));
+  if(sug.length) h += `<h2>4. Sugerencias para el próximo año</h2>${x.sugEst?`<h3>Al establecimiento</h3>${vin(x.sugEst)}`:''}${x.sugFam?`<h3>A la familia</h3>${vin(x.sugFam)}`:''}${x.sugerencias?parr(x.sugerencias):''}`;
+  h += `<div class="firmas" style="margin-top:44px;text-align:center"><div style="display:inline-block;min-width:260px;border-top:1px solid #111a33;padding-top:6px"><b>${esc(profName(x.profesional)||'')}</b><br><span style="font-size:9pt">${esc(((S.data.equipo||[]).find(p=>p.id===x.profesional)||{}).cargo||'')}</span></div></div>`;
+  return `<div class="rpt">${h}${rFoot(meta)}</div>`;
+}
+const _buildReportAU = buildReport;
+buildReport = function(kind, s, o, meta){ if(kind==='reeval') return buildReeval(s, o, meta); return _buildReportAU.apply(this, arguments); };
+/* el informe psicopedagógico de una reevaluación incluye la comparación */
+const _buildPsicopedAU = buildPsicoped;
+buildPsicoped = function(s, o, meta){ const h = _buildPsicopedAU.apply(this, arguments);
+  const x = (s.evaluaciones||[]).find(e=>e.id===o.item); if(!x || x.etapa!==REEVAL) return h; const blk = reevalBloque(s, x); if(!blk) return h;
+  const i = h.indexOf('<h3>Análisis cualitativo</h3>'); return i>=0 ? h.slice(0,i) + `<h3>Comparación con la evaluación inicial</h3>` + blk + h.slice(i) : h; };
+
+/* pendientes de noviembre y diciembre: quien tuvo evaluación inicial con tabla y aún no se reevalúa */
+const reevalPend = s => { const y = D(0).slice(0,4); const E = s.evaluaciones||[];
+  return E.filter(e=>e.tabulacion && e.etapa!==REEVAL && String(e.fecha).slice(0,4)===y && !E.some(r=>r.reevalDe===e.id || (r.etapa===REEVAL && r.fecha>e.fecha && r.tabulacion?.pruebaId===e.tabulacion.pruebaId))); };
+const _alertsForAU = alertsFor;
+alertsFor = function(s){ const A = _alertsForAU.apply(this, arguments);
+  if(TODAY.getMonth() >= 10){ const P = reevalPend(s); if(P.length){ const e = P[0];
+    A.push({lvl:'info', t:'Reevaluación de cierre de año pendiente', d:`Evaluación inicial del ${fmt(e.fecha)} (${e.tabulacion.prueba}). Aplica la misma prueba para comparar el avance del año.`, tab:'evaluaciones', sid:s.id, nombre:s.nombre}); } }
+  return A; };
+
 cloudBoot();
 </script>
